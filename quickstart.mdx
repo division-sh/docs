@@ -1,82 +1,71 @@
 ---
 title: "Quickstart"
-description: "Boot the runtime and trigger your first run."
+description: "Validate a contract bundle and run a flow with the swarm CLI."
 icon: "rocket"
 ---
 
-This quickstart boots a Swarm runtime against a contract bundle and triggers a run. It uses
-the bundled Docker Compose setup, which runs in scripted-LLM mode by default — so a first
-run works without a real provider key.
+This quickstart runs a flow end to end with the `swarm` CLI. `swarm run` boots a runtime
+in-process, publishes your trigger event, streams the run's trace, and shuts down when the
+run settles — there is no long-running server to manage.
 
 <Note>
-  New to the contract model? Skim [Core concepts](/concepts/overview) first, or jump
-  straight to [Build a flow](/build/first-flow) to author a bundle from scratch.
+  New to the contract model? Skim [Core concepts](/concepts/overview), or
+  [build a flow](/build/first-flow). This page assumes you already have a contract bundle.
 </Note>
 
 ## Prerequisites
 
-- Docker and Docker Compose.
-- A contract bundle on disk (a directory with a `package.yaml` at its root).
-- Optional: an LLM provider credential. The bundled Compose file sets
-  `SWARM_LLM_RUNTIME_MODE: cli_test` (a scripted runtime, no API bill). To run real agents,
-  set `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` and switch the runtime mode to `api`.
+- The `swarm` binary on your PATH — see [Installation](/installation).
+- Postgres 16. The repository ships a Compose service for it.
+- A contract bundle (a directory with a `package.yaml` at its root).
+- Optional: an LLM credential. The default runtime mode is scripted (`cli_test`), so a first
+  run needs no provider key.
 
 <Steps>
-  <Step title="Clone and point at a contract bundle">
+  <Step title="Start Postgres">
     ```bash
-    git clone https://github.com/division-sh/swarm && cd swarm
-    export SWARM_CONTRACTS_HOST_DIR=/absolute/path/to/your/contracts
+    docker compose up -d postgres
     ```
 
-    The Compose file mounts that directory read-only at `/opt/swarm/contracts`. To run real
-    agents, add a credential: `echo 'CLAUDE_CODE_OAUTH_TOKEN=...' >> .env`.
+    Any reachable Postgres 16 works; connection settings come from the repository's `.env`.
   </Step>
-  <Step title="Boot the runtime">
+  <Step title="Validate your contracts">
     ```bash
-    docker compose up -d postgres orchestrator
+    swarm verify --contracts ./my-flow
     ```
 
-    Postgres comes up first; the orchestrator then loads your bundle, runs it through the
-    static analyzer, and starts the event loop.
+    `swarm verify` runs the static analyzer against files on disk — no runtime needed. Fix
+    any error before running; a bundle that runs has passed this check.
   </Step>
-  <Step title="Confirm the runtime is up">
-    ```bash
-    curl -fsS http://localhost:8070/healthz
-    ```
-
-    A successful boot means your contracts passed the static analyzer. If the bundle has a
-    contract error, boot aborts — see [Testing and verification](/build/testing).
-  </Step>
-  <Step title="Trigger a run">
-    Start a run from a triggering event. `swarm run` publishes the event, allocates a run,
-    and streams the run's trace — events, deliveries, state changes, and agent turns — until
-    it settles.
+  <Step title="Run a flow">
+    Write a JSON payload for the trigger event, then run it:
 
     ```bash
-    docker compose exec orchestrator swarm run \
-      --event order.created \
-      --payload-json '{"order_id":"o-123","priority":"high"}'
+    echo '{"order_id":"o-123","priority":"high"}' > payload.json
+
+    swarm run --contracts ./my-flow --event order.created --payload payload.json
     ```
 
-    To re-attach to a run later, use `swarm trace <run-id> -f`.
+    `swarm run` starts a runtime in-process, publishes `order.created`, and streams the run's
+    trace — events, deliveries, state changes, and agent turns — until the run settles.
   </Step>
 </Steps>
 
-<Note>
-  **Ports.** The bundled Compose file serves the runtime API on `:8070`; the standalone
-  `swarm` binary defaults to `http://127.0.0.1:8081`. See [Installation](/installation) for
-  the binary path.
-</Note>
+<Tip>
+  Run from the repository root so `swarm run` picks up `.env` (database settings) and the
+  default platform spec automatically. To run against an already-running runtime instead,
+  start [`swarm serve`](/installation) and use `swarm run --connect <url> …`.
+</Tip>
 
 ## What just happened
 
-1. The orchestrator loaded your contract bundle and validated it against the platform
-   specification before accepting any events.
-2. `order.created` was validated against its payload schema, persisted to the event store,
-   and routed to its subscribers by their declared subscriptions.
-3. A system node handled it inside a single transaction — advancing state, writing fields,
-   and emitting follow-up events atomically.
-4. Every step was persisted, which is why `swarm trace` can reconstruct the run.
+1. `swarm verify` checked the bundle against the platform specification.
+2. `swarm run` started a runtime in-process, backed by Postgres.
+3. `order.created` was validated against its payload schema, persisted, and routed to its
+   subscribers by their declared subscriptions.
+4. A system node handled it in one atomic transaction — advancing state, writing fields, and
+   emitting follow-up events; agents reasoned and emitted events of their own.
+5. The trace streamed to your terminal, and the local runtime shut down when the run settled.
 
 ## Next steps
 
