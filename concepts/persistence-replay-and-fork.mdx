@@ -52,9 +52,8 @@ contract bundle, and resume — so last week's failed run can be replayed agains
 fixed contracts.
 
 <Note>
-  The persistence and reconstruction plumbing for run-level fork is in place. The operator
-  command surface for it is gated — the top-level `swarm fork` command is **retired**, and a
-  dedicated run-fork control surface is the supported path going forward. For replaying
-  individual events today, use the event/agent replay primitives above. See
+  The persistence and reconstruction plumbing for run-level fork is in place — the mutation
+  log and the `runs`/`run_fork_*` tables. The operator command surface for it is in progress.
+  For replaying individual events today, use the event and agent replay primitives above. See
   [Fork and replay](/operate/fork-and-replay).
 </Note>

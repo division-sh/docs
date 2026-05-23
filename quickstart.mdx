@@ -48,30 +48,24 @@ run works without a real provider key.
     contract error, boot aborts — see [Testing and verification](/build/testing).
   </Step>
   <Step title="Trigger a run">
-    Publish a triggering event with an inline JSON payload. With no `--run-id`, the runtime
-    allocates a new run and returns its id.
+    Start a run from a triggering event. `swarm run` publishes the event, allocates a run,
+    and streams the run's trace — events, deliveries, state changes, and agent turns — until
+    it settles.
 
     ```bash
-    docker compose exec -e SWARM_API_SERVER=http://127.0.0.1:8070 orchestrator \
-      swarm event publish order.created \
+    docker compose exec orchestrator swarm run \
+      --event order.created \
       --payload-json '{"order_id":"o-123","priority":"high"}'
     ```
-  </Step>
-  <Step title="Follow the trace">
-    ```bash
-    docker compose exec -e SWARM_API_SERVER=http://127.0.0.1:8070 orchestrator \
-      swarm trace <run-id> -f
-    ```
 
-    `swarm trace` streams the run's causal trace — events, deliveries, state changes, and
-    agent turns — as it executes.
+    To re-attach to a run later, use `swarm trace <run-id> -f`.
   </Step>
 </Steps>
 
 <Note>
-  **Ports.** The bundled Compose file serves the runtime API on `:8070`, so the in-container
-  CLI is pointed there with `SWARM_API_SERVER`. The standalone `swarm` binary defaults to
-  `http://127.0.0.1:8081`. See [Installation](/installation) for the binary path.
+  **Ports.** The bundled Compose file serves the runtime API on `:8070`; the standalone
+  `swarm` binary defaults to `http://127.0.0.1:8081`. See [Installation](/installation) for
+  the binary path.
 </Note>
 
 ## What just happened
