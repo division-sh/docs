@@ -4,45 +4,85 @@ description: "Boot the runtime and trigger your first run."
 icon: "rocket"
 ---
 
-{/* STUB — outline only. Source: README "Quickstart". Keep to ONE happy path. */}
-
-This quickstart boots a Swarm runtime against a contract bundle and triggers a run. It
-assumes Docker, a contract bundle, and credentials for one LLM provider.
+This quickstart boots a Swarm runtime against a contract bundle and triggers a run. It uses
+the bundled Docker Compose setup, which runs in scripted-LLM mode by default — so a first
+run works without a real provider key.
 
 <Note>
-  New to the contract model? Read [Core concepts](/concepts/overview) first, or jump
+  New to the contract model? Skim [Core concepts](/concepts/overview) first, or jump
   straight to [Build a flow](/build/first-flow) to author a bundle from scratch.
 </Note>
 
 ## Prerequisites
 
-{/* TODO: Docker, a contract bundle path, provider credentials (CLAUDE_CODE_OAUTH_TOKEN or
-  Anthropic API key). Link to /installation for the full matrix. */}
+- Docker and Docker Compose.
+- A contract bundle on disk (a directory with a `package.yaml` at its root).
+- Optional: an LLM provider credential. The bundled Compose file sets
+  `SWARM_LLM_RUNTIME_MODE: cli_test` (a scripted runtime, no API bill). To run real agents,
+  set `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` and switch the runtime mode to `api`.
 
 <Steps>
   <Step title="Clone and point at a contract bundle">
-    {/* TODO: git clone; export SWARM_CONTRACTS_HOST_DIR=/abs/path; add credential to .env */}
+    ```bash
+    git clone https://github.com/division-sh/swarm && cd swarm
+    export SWARM_CONTRACTS_HOST_DIR=/absolute/path/to/your/contracts
+    ```
+
+    The Compose file mounts that directory read-only at `/opt/swarm/contracts`. To run real
+    agents, add a credential: `echo 'CLAUDE_CODE_OAUTH_TOKEN=...' >> .env`.
   </Step>
-  <Step title="Boot">
-    {/* TODO: docker compose up -d postgres orchestrator */}
+  <Step title="Boot the runtime">
+    ```bash
+    docker compose up -d postgres orchestrator
+    ```
+
+    Postgres comes up first; the orchestrator then loads your bundle, runs it through the
+    static analyzer, and starts the event loop.
   </Step>
   <Step title="Confirm the runtime is up">
-    {/* TODO: curl -fsS http://localhost:8070/healthz — note that a successful boot means
-      contracts passed the static analyzer. */}
+    ```bash
+    curl -fsS http://localhost:8070/healthz
+    ```
+
+    A successful boot means your contracts passed the static analyzer. If the bundle has a
+    contract error, boot aborts — see [Testing and verification](/build/testing).
   </Step>
   <Step title="Trigger a run">
-    {/* TODO: docker compose exec orchestrator swarm run --event order.created
-      --payload-json '{"order_id":"o-123","priority":"high"}' */}
+    Publish a triggering event with an inline JSON payload. With no `--run-id`, the runtime
+    allocates a new run and returns its id.
+
+    ```bash
+    docker compose exec -e SWARM_API_SERVER=http://127.0.0.1:8070 orchestrator \
+      swarm event publish order.created \
+      --payload-json '{"order_id":"o-123","priority":"high"}'
+    ```
   </Step>
   <Step title="Follow the trace">
-    {/* TODO: swarm trace <run-id> -f */}
+    ```bash
+    docker compose exec -e SWARM_API_SERVER=http://127.0.0.1:8070 orchestrator \
+      swarm trace <run-id> -f
+    ```
+
+    `swarm trace` streams the run's causal trace — events, deliveries, state changes, and
+    agent turns — as it executes.
   </Step>
 </Steps>
 
+<Note>
+  **Ports.** The bundled Compose file serves the runtime API on `:8070`, so the in-container
+  CLI is pointed there with `SWARM_API_SERVER`. The standalone `swarm` binary defaults to
+  `http://127.0.0.1:8081`. See [Installation](/installation) for the binary path.
+</Note>
+
 ## What just happened
 
-{/* TODO: contract bundle → boot verification → engine loaded → event ingested → handler
-  pipeline → persisted trace. Point at /concepts/overview. */}
+1. The orchestrator loaded your contract bundle and validated it against the platform
+   specification before accepting any events.
+2. `order.created` was validated against its payload schema, persisted to the event store,
+   and routed to its subscribers by their declared subscriptions.
+3. A system node handled it inside a single transaction — advancing state, writing fields,
+   and emitting follow-up events atomically.
+4. Every step was persisted, which is why `swarm trace` can reconstruct the run.
 
 ## Next steps
 
@@ -50,7 +90,13 @@ assumes Docker, a contract bundle, and credentials for one LLM provider.
   <Card title="Build a flow" icon="wrench" href="/build/first-flow">
     Author a contract bundle of your own.
   </Card>
+  <Card title="Core concepts" icon="book" href="/concepts/overview">
+    The model behind what you just ran.
+  </Card>
   <Card title="Operating Swarm" icon="gauge" href="/operate/running-the-runtime">
-    Trace, fork, and run in production.
+    Trace, inspect, and run in production.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/reference/cli">
+    Every `swarm` command and flag.
   </Card>
 </CardGroup>

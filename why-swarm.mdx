@@ -4,38 +4,76 @@ description: "When deterministic, contract-driven orchestration is the right tra
 icon: "circle-question"
 ---
 
-{/* STUB — outline only. Sources: README "When to use Swarm", BRIEF "The Problem"/"Competitive Position". */}
-
-Swarm makes a small number of opinionated choices and sticks to them. Those choices buy
-reproducibility, replay, and audit. They cost YAML and a static-analyzer pass before the
-runtime starts. That tradeoff is right for some workloads and wrong for others.
+Swarm makes a few opinionated choices and holds them. Those choices buy reproducibility,
+replay, and audit. They cost YAML and a static-analyzer pass before the runtime starts.
+That tradeoff is right for some workloads and wrong for others.
 
 ## The problem with LLM-managed orchestration
 
-{/* TODO: from BRIEF — non-deterministic routing, no crash recovery, context-window
-  exhaustion, no composition, tangled concerns. "The agents are smart; the wiring is broken." */}
+Most multi-agent frameworks let an LLM manage its own routing, state, and coordination. That
+works for a demo and breaks in production:
+
+- **Non-deterministic routing.** When an LLM "manager" decides who acts next, two runs of
+  the same input diverge. You cannot reliably debug, audit, or reproduce a run.
+- **No crash recovery.** A process dies mid-turn and the in-memory state goes with it.
+- **Context-window exhaustion.** Put ten agents in one shared chat and the model loses the
+  thread well before the tenth.
+- **No composition.** Reusing a pipeline in another project means refactoring code, not
+  importing a package.
+- **Tangled concerns.** Business logic, orchestration, and agent reasoning end up in the
+  same code path.
+
+Swarm's premise is that the agents are usually fine — it is the wiring that fails. So the
+wiring is made deterministic and auditable: routing is derived from declared subscriptions,
+every transition is one transaction, and every event and state change is persisted.
 
 ## Strong fit
 
-{/* TODO: long-running reproducible workflows; 3+ role coordination; crash recovery as a
-  requirement; regulated/audited environments; high-volume parallel entities; cost-controlled
-  deployments. */}
+- **Long-running workflows where reproducibility matters.** Anything where someone will
+  later ask "why did the system do that, and when?"
+- **Multi-agent coordination across three or more roles.** Hierarchical addressing
+  (coordinator → managers → workers) avoids the context-window blowup of a flat chat.
+- **Crash recovery as a requirement.** Atomic transitions and event replay are the
+  baseline, not a bolt-on.
+- **Regulated or audited environments.** Two-layer event-plus-mutation persistence makes
+  "what changed, when, and because of which event" a single query.
+- **High-volume parallel entities.** Orders, tickets, claims — hundreds flow through one
+  contract without interfering, each in its own scoped state.
+- **Cost-controlled deployments.** Token usage is tracked per entity and per actor, with
+  thresholds that escalate into throttle and emergency states.
 
 ## Weak fit
 
-{/* TODO: one-shot LLM calls; conversational chatbots; exploratory prototyping; LLM-managed
-  routing; Sunday-afternoon prototypes. */}
+- **One-shot LLM calls.** Use the provider SDK directly — no runtime needed.
+- **Conversational chatbots.** Short interactions where the value is the conversation; the
+  contract overhead does not pay for itself.
+- **Exploratory prototyping that changes hourly.** The analyzer refusing to boot a
+  half-finished contract is exactly the wrong friction while you are still sketching.
+- **LLM-managed routing at runtime.** Swarm refuses this by design. If "the model decides
+  what happens next" is the point of your system, this is the wrong tool.
 
 ## Swarm vs. alternatives
 
-{/* TODO: comparison table (from BRIEF "Competitive Position"), reframed for a balanced/honest
-  tone. Dimensions: routing, crash recovery, composition, agent isolation, scalability,
-  expression language, audit trail.
-  Columns: CrewAI/AutoGen · LangGraph · Temporal/Inngest (durable execution) · Swarm.
-  Position Swarm as "durable-execution rigor applied to multi-agent LLM systems". */}
+Swarm sits closer to durable-execution engines (Temporal, Restate, Inngest) than to agent
+libraries — it applies that rigor to multi-agent LLM systems.
+
+| Dimension | CrewAI / AutoGen | LangGraph | Swarm |
+|---|---|---|---|
+| Routing | LLM-managed (non-deterministic) | Code-defined state machine | Contract-defined, subscription-derived |
+| Crash recovery | None | Manual checkpointing | Atomic transitions + event replay |
+| Composition | Code refactoring | Python sub-graphs | YAML flow packages with typed pins |
+| Agent isolation | Shared chat | Shared state | Scoped sessions, hierarchical addressing |
+| Scaling | Single process | Single process | Per-entity parallelism, dynamic instances |
+| Expression language | — | Python | CEL (typed, non-Turing-complete) |
+| Audit trail | Logs | Logs | Event store + per-field mutation log |
 
 ## The tradeoff, stated plainly
 
-{/* TODO: a Swarm flow cannot be re-wired by an LLM at runtime. That rigidity is the point.
-  The analyzer refusing to boot a half-finished contract is a feature in prod, friction in
-  exploration. */}
+A Swarm flow cannot be re-wired by an LLM at runtime, and the static analyzer will refuse to
+boot a half-finished contract. In production that refusal is a feature; during exploration
+it is friction. Sketch loose first if you must, then port to Swarm once the workflow
+stabilizes.
+
+<Card title="Ready to try it?" icon="rocket" href="/quickstart">
+  Boot the runtime and trigger your first run.
+</Card>

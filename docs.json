@@ -124,7 +124,7 @@
       "anchors": [
         {
           "anchor": "GitHub",
-          "href": "https://github.com/swarm/swarm",
+          "href": "https://github.com/division-sh/swarm",
           "icon": "github"
         }
       ]
@@ -138,7 +138,7 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/swarm/swarm"
+        "href": "https://github.com/division-sh/swarm"
       }
     ],
     "primary": {
@@ -157,7 +157,7 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/swarm/swarm"
+      "github": "https://github.com/division-sh/swarm"
     }
   }
 }

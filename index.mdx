@@ -4,40 +4,73 @@ description: "Deterministic orchestration for multi-agent LLM systems."
 icon: "house"
 ---
 
-{/* STUB — outline only. Sources: Swarm/README.md, docs/specs/swarm-platform/SWARM-PLATFORM-BRIEF.md */}
-
-Swarm is an event-driven orchestration runtime for multi-agent LLM systems. Flows are
-declared as YAML contracts, validated by a static analyzer before boot, and executed by
-a deterministic engine. Every interaction is a typed, persisted event — replayable from
+Swarm is an event-driven orchestration runtime for multi-agent LLM systems. You declare a
+flow as a bundle of YAML contracts; a static analyzer validates the bundle against the
+platform specification before the runtime boots; and a deterministic engine executes it.
+Every interaction — agent to agent, system node to system node, human to runtime — is a
+typed event with a persisted payload, routed by declared subscriptions and replayable from
 the log.
 
-{/* TODO: tighten the one-paragraph pitch. Less an agent library, more a distributed OS for LLMs. */}
+Less an agent library, more a distributed operating system for LLMs. It assumes failures
+will happen, humans will intervene, and costs must be controlled, and ships the plumbing
+for those realities. It runs as a single Go binary backed by Postgres.
 
-## What Swarm is
+## How it works
 
-{/* TODO: 3–4 sentences. Single Go binary + Postgres. Two LLM runtimes today (Anthropic API, Claude CLI subprocess); provider-agnostic factory. */}
+A flow declares its states, events, agents, system nodes, tools, and policy as contracts.
+At boot, the engine loads the bundle, runs it through the static analyzer, and starts the
+event loop. From there:
 
-## The mental model
+- **System nodes** are deterministic code. They subscribe to events, run a fixed handler
+  pipeline, advance state, and emit new events. No LLM decides what fires next.
+- **Agents** are LLM sessions. They subscribe to events, reason inside a scoped session,
+  call tools, and emit events. They never write state directly — they emit, and a handler
+  decides what gets written.
+- **Humans** act through a durable mailbox, using the same event model as everything else.
 
-{/* TODO: the runtime in six sentences (see platform-guide.md §"The Runtime In Six Sentences"). */}
+Each event runs through a fixed handler pipeline and commits in a single transaction, so a
+crash mid-handler leaves no partial state. Because every event and every state change is
+persisted, any run can be replayed turn by turn or forked from a point in its history.
 
 ## Design positions
 
-{/* TODO: pull the opinionated choices from README "Design positions":
-  - control loop is deterministic (no LLM routing; CEL conditions)
-  - every transition is one transaction
-  - flows are composable units (pins)
-  - agents are isolated (scoped sessions, hierarchical addressing)
-  - execution is replayable
-  - runs are forkable
-  - humans are a first-class actor (durable mailbox)
-  Render as a CardGroup or a definition list. */}
+Swarm makes a few opinionated choices and holds them:
+
+<CardGroup cols={2}>
+  <Card title="Deterministic control loop" icon="route">
+    Routing is derived from declared subscriptions, not chosen by an LLM. Conditions use
+    CEL — strongly typed and non-Turing-complete.
+  </Card>
+  <Card title="One transaction per transition" icon="database">
+    Guard, accumulate, compute, commit, emit: all-or-nothing. No partial state survives a
+    crash.
+  </Card>
+  <Card title="Isolated agents" icon="box">
+    Each agent runs in a scoped session and sees only the events it subscribes to.
+    Hierarchical addressing keeps context windows from exploding.
+  </Card>
+  <Card title="Replayable and forkable" icon="clock-rotate-left">
+    Every event and state mutation is persisted. Reconstruct any run, or fork it from any
+    point against new contracts.
+  </Card>
+  <Card title="Composable flows" icon="puzzle-piece">
+    A flow is a self-contained package with typed input and output pins. Wire flows
+    together without refactoring.
+  </Card>
+  <Card title="Humans as a first-class actor" icon="user-check">
+    Approvals, rejections, and deferrals flow through a durable mailbox. Autonomy is a
+    dial, not a switch.
+  </Card>
+</CardGroup>
+
+The tradeoff: a Swarm flow cannot be re-wired by an LLM at runtime. That rigidity is the
+point. See [Why Swarm](/why-swarm) for when this is the right trade.
 
 ## Where to go next
 
 <CardGroup cols={2}>
   <Card title="Why Swarm" icon="circle-question" href="/why-swarm">
-    When this tradeoff is right — and when it is not.
+    When this tradeoff fits — and when it does not.
   </Card>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
     Boot the runtime and trigger your first run.

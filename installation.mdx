@@ -1,36 +1,85 @@
 ---
 title: "Installation"
-description: "Prerequisites, the Go binary, Docker Compose, Postgres, and credentials."
+description: "Run Swarm with Docker Compose or build the binary from source."
 icon: "download"
 ---
 
-{/* STUB — outline only. Sources: README "Development", docker-compose.yml, Dockerfile.*, .env */}
+Swarm runs as a single Go binary backed by Postgres. The fastest way to run it is the
+bundled Docker Compose setup; you can also build the binary and bring your own Postgres.
 
 ## Requirements
 
-{/* TODO: Go 1.23, Docker, Postgres 16 (provided via docker-compose.yml). */}
+- **Docker Compose path:** Docker and Docker Compose.
+- **From-source path:** Go 1.23, Postgres 16.
 
 ## Install paths
 
 <Tabs>
   <Tab title="Docker Compose">
-    {/* TODO: services (postgres, orchestrator); ports; volumes; SWARM_CONTRACTS_HOST_DIR. */}
+    The repository ships a `docker-compose.yml` with a `postgres` service and an
+    `orchestrator` service.
+
+    ```bash
+    git clone https://github.com/division-sh/swarm && cd swarm
+    export SWARM_CONTRACTS_HOST_DIR=/absolute/path/to/your/contracts
+    docker compose up -d postgres orchestrator
+    ```
+
+    - The orchestrator serves its HTTP listener on **`:8070`** (health, readiness, and the
+      `/v1/rpc` + `/v1/ws` API) in this configuration.
+    - `SWARM_CONTRACTS_HOST_DIR` is mounted read-only at `/opt/swarm/contracts`.
+    - The default `SWARM_LLM_RUNTIME_MODE` is `cli_test` (a scripted runtime). Set it to
+      `api` with a provider credential to run real agents.
   </Tab>
   <Tab title="Build from source">
-    {/* TODO: go build ./cmd/swarm; resulting `swarm` binary. */}
+    ```bash
+    go build ./cmd/swarm
+    ```
+
+    Run Postgres 16 and point the binary at it, then start the runtime:
+
+    ```bash
+    swarm serve --contracts ./my-flow
+    ```
+
+    `swarm serve` is the runtime, API, health, and MCP startup owner. By default the API
+    server is reachable at **`http://127.0.0.1:8081`**; CLI commands use that same default,
+    overridable with `--api-server` or `SWARM_API_SERVER`.
   </Tab>
 </Tabs>
 
 ## Postgres
 
-{/* TODO: why Postgres is the substrate (event log + mutation log + entity state). Version,
-  connection string, where migrations run (boot). */}
+Postgres is the substrate, not an add-on. Every event lands in the event store, every entity
+state change lands in a separate mutation log, and runs are correlated by `run_id` — which
+is what makes replay and fork possible. Connection settings are supplied through
+`SWARM_DB_*` environment variables (host, port, name, user, password, sslmode).
 
-## Credentials
+## Credentials and runtime mode
 
-{/* TODO: provider credentials — Anthropic API mode vs Claude CLI subprocess mode.
-  CLAUDE_CODE_OAUTH_TOKEN. Where they live (.env). Link to /reference/configuration. */}
+`SWARM_LLM_RUNTIME_MODE` selects how agents run:
+
+- `cli_test` — a scripted runtime for development and the conformance suite. No provider
+  bill. This is the bundled Compose default.
+- `api` — a real provider. Set `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
+
+Credentials are read from the environment (and a local credential store); the platform never
+logs or persists their values. See [Configuration](/reference/configuration) for the full
+variable list.
 
 ## Verifying the install
 
-{/* TODO: swarm version; swarm verify --contracts ./bundle; healthz. */}
+```bash
+# Validate a contract bundle without a running runtime (local, no DB needed)
+swarm verify --contracts ./my-flow
+
+# Print binary version; add --server to query a running runtime
+swarm version
+```
+
+`swarm verify` is the one command that works purely against files on disk — every other
+command targets the running runtime's API.
+
+<Card title="Trigger your first run" icon="rocket" href="/quickstart">
+  Boot the runtime and watch a run execute.
+</Card>
