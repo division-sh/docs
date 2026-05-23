@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Division Swarm",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
@@ -17,36 +17,91 @@
             "group": "Getting started",
             "pages": [
               "index",
+              "why-swarm",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/overview",
+              "concepts/flows-and-entities",
+              "concepts/system-nodes-and-handlers",
+              "concepts/agents-and-sessions",
+              "concepts/events-and-routing",
+              "concepts/gates-timers-and-state",
+              "concepts/expressions",
+              "concepts/persistence-replay-and-fork",
+              "concepts/human-in-the-loop"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Build a flow",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/components",
-              "essentials/reusable-snippets"
+              "build/flow-package",
+              "build/first-flow",
+              "build/state-machine",
+              "build/handlers",
+              "build/agents-and-prompts",
+              "build/tools",
+              "build/policy",
+              "build/composition",
+              "build/testing"
             ]
           },
           {
-            "group": "Agent ready",
+            "group": "Patterns",
             "pages": [
-              "agent-ready/prompt",
-              "agent-ready/visibility",
-              "agent-ready/contextual",
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "patterns/overview"
+            ]
+          },
+          {
+            "group": "Operating Swarm",
+            "pages": [
+              "operate/running-the-runtime",
+              "operate/tracing",
+              "operate/fork-and-replay",
+              "operate/mailbox",
+              "operate/budget-and-cost",
+              "operate/reliability",
+              "operate/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Contract reference",
+            "pages": [
+              "reference/contracts/overview",
+              "reference/contracts/package",
+              "reference/contracts/schema",
+              "reference/contracts/nodes",
+              "reference/contracts/events",
+              "reference/contracts/agents",
+              "reference/contracts/tools",
+              "reference/contracts/policy"
+            ]
+          },
+          {
+            "group": "Language reference",
+            "pages": [
+              "reference/handler-fields",
+              "reference/expressions-cel",
+              "reference/dialect-rules",
+              "reference/analyzer-checks"
+            ]
+          },
+          {
+            "group": "Operations reference",
+            "pages": [
+              "reference/cli",
+              "reference/configuration",
+              "reference/mcp-gateway",
+              "reference/glossary"
             ]
           }
         ]
@@ -55,18 +110,11 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "JSON-RPC API",
             "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/introduction",
+              "api-reference/transport-and-auth",
+              "api-reference/subscriptions"
             ]
           }
         ]
@@ -75,14 +123,9 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "GitHub",
+          "href": "https://github.com/swarm/swarm",
+          "icon": "github"
         }
       ]
     }
@@ -94,33 +137,27 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "GitHub",
+        "href": "https://github.com/swarm/swarm"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Quickstart",
+      "href": "/quickstart"
     }
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude"
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/swarm/swarm"
     }
   }
 }

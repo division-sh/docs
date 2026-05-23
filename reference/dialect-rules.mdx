@@ -1,0 +1,20 @@
+---
+title: "Dialect rules"
+description: "The strict YAML conventions the analyzer enforces."
+icon: "ruler"
+---
+
+{/* STUB — outline only. Source: DEVELOPER-GUIDE "Dialect Rules" (10 rules). */}
+
+{/* TODO: render the 10 rules as a checklist or table, each with a wrong/right example:
+  1. guards always {id, check}, never a bare string
+  2. on_complete is an ordered list, never a dict
+  3. conditions always prefixed payload./entity./policy.
+  4. on_complete vs rules mutually exclusive
+  5. advances_to is a single string, never a list
+  6. emit is a string or {event, fields}
+  7. data_accumulation.writes is a list of strings or {source_field, target_field} objects
+  8. dedup_by on accumulate tracks by content, not sender
+  9. clear_gates: true clears ALL gates, not selective
+  10. no self-emits — a handler must never emit its own trigger event
+*/}

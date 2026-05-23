@@ -1,133 +1,51 @@
 ---
 title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+description: "Deterministic orchestration for multi-agent LLM systems."
+icon: "house"
 ---
 
-## Setting up
+{/* STUB — outline only. Sources: Swarm/README.md, docs/specs/swarm-platform/SWARM-PLATFORM-BRIEF.md */}
 
-Get your documentation site up and running in minutes.
+Swarm is an event-driven orchestration runtime for multi-agent LLM systems. Flows are
+declared as YAML contracts, validated by a static analyzer before boot, and executed by
+a deterministic engine. Every interaction is a typed, persisted event — replayable from
+the log.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+{/* TODO: tighten the one-paragraph pitch. Less an agent library, more a distributed OS for LLMs. */}
 
-## Make it yours
+## What Swarm is
 
-Design a docs site that looks great and empowers your users.
+{/* TODO: 3–4 sentences. Single Go binary + Postgres. Two LLM runtimes today (Anthropic API, Claude CLI subprocess); provider-agnostic factory. */}
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+## The mental model
+
+{/* TODO: the runtime in six sentences (see platform-guide.md §"The Runtime In Six Sentences"). */}
+
+## Design positions
+
+{/* TODO: pull the opinionated choices from README "Design positions":
+  - control loop is deterministic (no LLM routing; CEL conditions)
+  - every transition is one transaction
+  - flows are composable units (pins)
+  - agents are isolated (scoped sessions, hierarchical addressing)
+  - execution is replayable
+  - runs are forkable
+  - humans are a first-class actor (durable mailbox)
+  Render as a CardGroup or a definition list. */}
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Why Swarm" icon="circle-question" href="/why-swarm">
+    When this tradeoff is right — and when it is not.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Boot the runtime and trigger your first run.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Core concepts" icon="book" href="/concepts/overview">
+    Flows, events, handlers, agents, and the engine.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Build a flow" icon="wrench" href="/build/first-flow">
+    A support-ticket flow from scratch.
   </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Make your content agent ready
-
-Make your docs work for humans and AI agents alike.
-
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+</CardGroup>

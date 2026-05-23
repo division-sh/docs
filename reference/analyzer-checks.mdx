@@ -1,0 +1,30 @@
+---
+title: "Analyzer checks"
+description: "The static-analysis checks run against every contract before boot."
+icon: "clipboard-check"
+---
+
+{/* STUB — outline only. Sources: README "Architecture" (54 checks), DEVELOPER-GUIDE
+  "Boot Verification Checks", platform-spec.md, verify.py. */}
+
+<Warning>
+  {/* TODO: reconcile the check count. README says "54 contract checks"; DEVELOPER-GUIDE says
+    "19 checks" in one place and a 16-check table in another; BRIEF says "19 checks". Pin the
+    current number against verify.py / platform-spec.yaml before publishing. */}
+</Warning>
+
+## How verification runs
+
+{/* TODO: swarm verify --contracts; runs at boot too. Errors abort boot; warnings log. */}
+
+## Check catalog
+
+{/* TODO: table of checks grouped by severity (error vs warning). From DEVELOPER-GUIDE:
+  error — payload fields, required agents, handler fields, tools, deprecated fields, CEL
+  parse, single node per event, dialect.
+  warning — event chains, prompts, policy conflicts, produces drift.
+  Add: state reachability, timer lifecycle, cycles, prompt linting (from README). */}
+
+## Common failures and fixes
+
+{/* TODO: map frequent analyzer errors to the dialect rule or contract field that fixes them. */}

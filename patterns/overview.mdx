@@ -1,0 +1,39 @@
+---
+title: "Handler patterns"
+description: "Ten reusable patterns for common orchestration shapes."
+icon: "shapes"
+---
+
+{/* STUB — outline only. Source: DEVELOPER-GUIDE "Patterns" (1–10). Each pattern: a short
+  problem statement + the YAML + 1–2 lines of explanation. Consider splitting into separate
+  pages if any pattern grows large. */}
+
+## 1. Guard with escalation
+{/* TODO: on_fail: escalate:{event}; the four on_fail actions. */}
+
+## 2. Multi-gate pipeline
+{/* TODO: sets_gate across stages; clear_gates: true to reset. */}
+
+## 3. Accumulate and compute
+{/* TODO: wait for N items, weighted_average, on_complete branches. */}
+
+## 4. Fan out
+{/* TODO: items_from → per-item event → track completion with accumulate. */}
+
+## 5. Rules-based routing
+{/* TODO: named conditions; "else"; mutually exclusive with on_complete. */}
+
+## 6. Dynamic flow instances
+{/* TODO: create_flow_instance + wildcard subscriptions. */}
+
+## 7. Timers
+{/* TODO: start_on/cancel_on; timer.* handler. */}
+
+## 8. Cross-entity queries
+{/* TODO: query with group_by/filter/select/store_as. */}
+
+## 9. Payload transform
+{/* TODO: emit.fields built from entity/payload/policy via CEL. */}
+
+## 10. Anti-bias routing
+{/* TODO: two pools for the same role; no shared context. */}

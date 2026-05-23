@@ -1,0 +1,37 @@
+---
+title: "Persistence, replay, and fork"
+description: "Two-layer event sourcing, the flight recorder, and timestamp-based fork."
+icon: "clock-rotate-left"
+---
+
+{/* STUB — outline only. Sources: README "Architecture"/"Design positions", FLIGHT-RECORDER.md. */}
+
+## Two-layer event-sourced persistence
+
+{/* TODO: every event lands in Postgres; every entity state mutation lands in a separate
+  mutation log with before/after diffs. Replay = "what happened"; mutation log = "what
+  changed". Accumulator projections compute read-models off the streams. */}
+
+## The flight recorder
+
+{/* TODO: events + entity_mutations + agent_turns + event_deliveries = a step-by-step audit
+  trail. Answers "what did entity X look like when event Y fired?" Drift detection rebuilds
+  entity_state from the log. */}
+
+## Replay
+
+{/* TODO: any run reconstructed turn by turn, audited end to end, resumed from last
+  consistent checkpoint after a crash. */}
+
+## Fork
+
+{/* TODO: timestamp-based system fork (chosen design). Reconstruct full system state at a
+  moment T, optionally swap contracts, resume. Counterfactuals: different policy, tweaked
+  prompt, new contract bundle. forked_from lineage. */}
+
+<Info>
+  Conceptual page. For the operator commands, see [Fork and replay](/operate/fork-and-replay).
+  {/* TODO: confirm current shipping status of `swarm fork` — README marks the CLI wrapper as
+    "shipping shortly"; FLIGHT-RECORDER notes top-level `swarm fork` is retired in the v1 CLI
+    contract in favor of a gated control surface. Reconcile before publishing. */}
+</Info>

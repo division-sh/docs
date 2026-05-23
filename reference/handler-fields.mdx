@@ -1,0 +1,32 @@
+---
+title: "Handler fields"
+description: "Every field a handler can declare, in dependency-graph order."
+icon: "list-tree"
+---
+
+{/* STUB — outline only. Source: platform-spec.md §handler_specification (the authoritative
+  list), DEVELOPER-GUIDE "Reference". This is the densest reference page — one subsection per
+  field with shape, semantics, and an example. */}
+
+## Dependency graph
+
+{/* TODO: the canonical order — guard → accumulate → compute → on_complete/rules →
+  {advances_to, sets_gate, data_accumulation} → emit.fields → emit.event → action. */}
+
+## Core fields vs. extension fields
+
+{/* TODO: platform-spec §core_vs_extensions. */}
+
+## Field catalog
+
+{/* TODO: one <Accordion> or subsection per field:
+  description, guard, accumulate, compute, on_complete, rules, advances_to, sets_gate,
+  clear_gates, data_accumulation, emit, fan_out, filter, reduce, count, group_by, query,
+  clear, action (create_flow_instance, record_evidence, mailbox_write), from.
+  Include canonical data_accumulation shape (direct writes vs source/target mapping). */}
+
+## Enumerations
+
+{/* TODO: guard on_fail (reject/discard/kill/escalate); reduce operations
+  (weighted_average, pick_or_average, sum, min, max, count); accumulate completion modes
+  (all, threshold, timeout). */}

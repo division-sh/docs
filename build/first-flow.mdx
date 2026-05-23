@@ -1,0 +1,35 @@
+---
+title: "Build your first flow"
+description: "A support-ticket flow from empty directory to a verified, running bundle."
+icon: "rocket"
+---
+
+{/* STUB — outline only. Source: DEVELOPER-GUIDE "Quick Start: Your First Flow in 10 Minutes".
+  This is the flagship tutorial — port the full 10-step walkthrough here. */}
+
+You are building a support ticket system: a ticket comes in, gets classified, routed to an
+agent, resolved, and closed. By the end you have a contract bundle that passes the analyzer
+and runs.
+
+<Steps>
+  <Step title="Create the flow package">{/* TODO: directory skeleton */}</Step>
+  <Step title="Define the flow identity">{/* TODO: package.yaml */}</Step>
+  <Step title="Define the state machine">{/* TODO: schema.yaml — states, pins, required_agents */}</Step>
+  <Step title="Define the system node">{/* TODO: nodes.yaml — handlers, timers, entity_schema */}</Step>
+  <Step title="Define the events">{/* TODO: events.yaml — payload schemas */}</Step>
+  <Step title="Define the agents">{/* TODO: agents.yaml — classifier + resolver */}</Step>
+  <Step title="Define tools">{/* TODO: tools.yaml — knowledge_base_search */}</Step>
+  <Step title="Set policy">{/* TODO: policy.yaml — sla_hours, max_escalations */}</Step>
+  <Step title="Write agent prompts">{/* TODO: prompts/classifier-agent.md, resolver-agent.md */}</Step>
+  <Step title="Verify">{/* TODO: swarm verify --contracts ./my-ticket-flow → 0 errors, 0 warnings */}</Step>
+</Steps>
+
+## Run it
+
+{/* TODO: boot + trigger ticket.created + follow the trace. Link to /quickstart. */}
+
+<Note>
+  {/* TODO: include the DEVELOPER-GUIDE note on emitted-event payload construction — empty
+    payload → emit.fields → forced platform fields; no implicit passthrough on the
+    declarative system-node emit surface. */}
+</Note>

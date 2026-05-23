@@ -1,0 +1,28 @@
+---
+title: "Gates, timers, and state"
+description: "State machines, gate checkpoints, and durable timers."
+icon: "timer"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE patterns 2 & 7, platform-guide.md §"State
+  Management"/"Timer Model". */}
+
+## State machines
+
+{/* TODO: initial_state, states, terminal_states. An entity is in exactly one state at a
+  time. advances_to is a single string, never a list. */}
+
+## Terminal states
+
+{/* TODO: done forever — events rejected, timers cancelled, data preserved (queryable, never
+  deleted). No config override. */}
+
+## Gates
+
+{/* TODO: named booleans set by a handler; other handlers guard on them. sets_gate /
+  clear_gates (clears ALL gates). Multi-gate pipelines. */}
+
+## Timers
+
+{/* TODO: durable, time-based triggers attached to a stage. start_on / cancel_on lifecycle.
+  Persisted across restarts. One-shot and recurring. */}

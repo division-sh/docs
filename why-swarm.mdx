@@ -1,0 +1,41 @@
+---
+title: "Why Swarm"
+description: "When deterministic, contract-driven orchestration is the right tradeoff."
+icon: "circle-question"
+---
+
+{/* STUB — outline only. Sources: README "When to use Swarm", BRIEF "The Problem"/"Competitive Position". */}
+
+Swarm makes a small number of opinionated choices and sticks to them. Those choices buy
+reproducibility, replay, and audit. They cost YAML and a static-analyzer pass before the
+runtime starts. That tradeoff is right for some workloads and wrong for others.
+
+## The problem with LLM-managed orchestration
+
+{/* TODO: from BRIEF — non-deterministic routing, no crash recovery, context-window
+  exhaustion, no composition, tangled concerns. "The agents are smart; the wiring is broken." */}
+
+## Strong fit
+
+{/* TODO: long-running reproducible workflows; 3+ role coordination; crash recovery as a
+  requirement; regulated/audited environments; high-volume parallel entities; cost-controlled
+  deployments. */}
+
+## Weak fit
+
+{/* TODO: one-shot LLM calls; conversational chatbots; exploratory prototyping; LLM-managed
+  routing; Sunday-afternoon prototypes. */}
+
+## Swarm vs. alternatives
+
+{/* TODO: comparison table (from BRIEF "Competitive Position"), reframed for a balanced/honest
+  tone. Dimensions: routing, crash recovery, composition, agent isolation, scalability,
+  expression language, audit trail.
+  Columns: CrewAI/AutoGen · LangGraph · Temporal/Inngest (durable execution) · Swarm.
+  Position Swarm as "durable-execution rigor applied to multi-agent LLM systems". */}
+
+## The tradeoff, stated plainly
+
+{/* TODO: a Swarm flow cannot be re-wired by an LLM at runtime. That rigidity is the point.
+  The analyzer refusing to boot a half-finished contract is a feature in prod, friction in
+  exploration. */}

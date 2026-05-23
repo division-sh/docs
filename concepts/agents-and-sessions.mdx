@@ -1,0 +1,34 @@
+---
+title: "Agents and sessions"
+description: "LLM sessions, isolation, conversation modes, and auto-generated tools."
+icon: "robot"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Agents", platform-guide.md §"Agent Session
+  Management", README "Design positions" (isolation). */}
+
+## What an agent is
+
+{/* TODO: an LLM session that receives events, reasons, and emits response events. Agents
+  never write entity state directly — they emit events; handlers decide what gets written. */}
+
+## Isolation and hierarchical addressing
+
+{/* TODO: scoped sessions; an agent observes only its subscribed events. Coordinator →
+  managers → workers; workers do not share a context window. Per-entity Docker workspaces
+  extend isolation to filesystem/process level. Role-based routing authority. */}
+
+## Conversation modes
+
+{/* TODO: task (stateless, new session per event) · session (persistent) ·
+  session_per_entity (one session per entity). */}
+
+## Emit tools and universal tools
+
+{/* TODO: emit tools auto-generated from emit_events (emit_ticket_classified). Universal
+  tools (agent_message, mailbox_send) auto-granted. Role-scoped persistence tools derived
+  from the entity contract (save_entity_field). */}
+
+## Model tiers
+
+{/* TODO: model_tier (haiku/sonnet/...) and max_turns_per_task. */}

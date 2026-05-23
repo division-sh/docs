@@ -1,0 +1,31 @@
+---
+title: "Deployment"
+description: "Running Swarm in production: Postgres, configuration, and contract versioning."
+icon: "server"
+---
+
+{/* STUB — outline only. Sources: docker-compose.yml, Dockerfile.*, README "Project status". */}
+
+## Topology
+
+{/* TODO: single Go binary + Postgres. Orchestrator + workspace containers. Single-deployment
+  scope today (no distributed execution / multi-tenant yet — see README "Project status"). */}
+
+## Postgres in production
+
+{/* TODO: sizing, backup, migrations, mutation log as source of truth (disaster recovery =
+  rebuild from log). */}
+
+## Configuration
+
+{/* TODO: link to /reference/configuration for env vars. */}
+
+## Contract versioning
+
+{/* TODO: replay and fork make contract versioning a correctness concern. How to roll a new
+  contract bundle safely; fork last week's run against this week's contracts.
+  TODO: confirm the recommended versioning workflow with maintainers. */}
+
+## Destructive reset
+
+{/* TODO: swarm control nuke — confirmation gate. When/why. */}

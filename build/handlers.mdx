@@ -1,0 +1,38 @@
+---
+title: "Writing handlers"
+description: "Declaring what happens when an event arrives."
+icon: "gears"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE "System Nodes"/"Handler Dependency Graph",
+  platform-guide.md §6. Exhaustive field catalog at /reference/handler-fields. */}
+
+## Anatomy of a handler
+
+{/* TODO: a worked handler with guard, data_accumulation, advances_to, emit. Each field
+  annotated. */}
+
+## Execution order
+
+{/* TODO: restate the dependency graph; emphasize what is independent vs ordered. */}
+
+## Guards
+
+{/* TODO: {id, check, on_fail}. on_fail actions: reject (default), discard, kill,
+  escalate:{event}. */}
+
+## Branching: on_complete and rules
+
+{/* TODO: on_complete (ordered list) vs rules (named). Mutually exclusive. */}
+
+## Accumulate and compute
+
+{/* TODO: wait for N items then aggregate. completion modes; reduce operations. */}
+
+## Emitting events
+
+{/* TODO: emit as string or {event, fields}; payload construction rules; no self-emits. */}
+
+<Card title="Common patterns" icon="shapes" href="/patterns/overview">
+  Ten reusable handler patterns.
+</Card>

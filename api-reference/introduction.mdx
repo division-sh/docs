@@ -1,33 +1,41 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API overview"
+description: "The single canonical JSON-RPC 2.0 surface for runs, events, agents, and control."
+icon: "code"
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+{/* STUB — outline only. Source of truth: Swarm/docs/specs/swarm-platform/platform/contracts/
+  openrpc.json (43 methods). The `swarm` CLI is one client of this API. */}
 
-## Welcome
+Swarm exposes one user-facing API: JSON-RPC 2.0 over HTTP for request/response, and JSON-RPC
+subscriptions over WebSocket for live streams. One transport, one auth model, one envelope.
+The CLI, dashboard, and any custom client route through it.
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+## Method groups
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+{/* TODO: card or table per group, linking to generated endpoint pages once the spec is wired:
+  - run.* (start, stop, pause, continue, get, list, trace, subscribe_trace, diagnose)
+  - event.* (publish, get, list, replay, subscribe)
+  - agent.* (list, get, diagnose, restart, send_directive, replay, replay_backlog)
+  - conversation.* (list, get, get_turn, current_for_agent)
+  - entity.* (list, get, aggregate)
+  - mailbox.* (list, get, approve, reject, defer)
+  - runtime.* (incidents, logs, subscribe_logs, pause, resume, nuke)
+  - health.* (check, ping, subscribe)
+  - rpc.unsubscribe
+*/}
 
-## Authentication
+<Info>
+  Auto-generating these endpoint pages from the OpenRPC document is set up as a follow-up —
+  see the maintainer note below.
+</Info>
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
-
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
-```
+{/* TODO (maintainers): Mintlify auto-generates from OpenAPI, not OpenRPC. To wire up
+  per-method pages:
+    1. Convert openrpc.json → an OpenAPI 3.x document (JSON-RPC methods modeled as POST
+       operations against the single RPC endpoint, request/response from components).
+       Options: write a small converter, or use an open-rpc → openapi tool.
+    2. Commit the generated openapi.json to this repo (e.g. /api-reference/openapi.json).
+    3. Add "openapi": "/api-reference/openapi.json" to the "API reference" tab (or group) in
+       docs.json, and list operations in navigation as `POST /rpc#run.start` style entries.
+  Until then, this section is a hand-written overview. */}

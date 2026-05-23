@@ -1,0 +1,26 @@
+---
+title: "Human in the loop"
+description: "The durable mailbox: approvals, rejections, and deferrals as events."
+icon: "user-check"
+---
+
+{/* STUB — outline only. Sources: README "Design positions", BRIEF, mailbox_write action. */}
+
+## Humans as a first-class actor
+
+{/* TODO: approvals, rejections, deferrals flow through a durable mailbox using the same
+  event model as everything else. A pending decision is just another event waiting for its
+  handler — a human's. "Autonomy is a dial, not a switch." */}
+
+## The mailbox
+
+{/* TODO: durable, persisted, survives restarts. mailbox_write action writes an item;
+  operators act on it. Budget emergencies raise a mailbox item. */}
+
+## Decisions
+
+{/* TODO: approve / reject / defer. How a decision resumes the flow. */}
+
+<Card title="Operate the mailbox" icon="inbox" href="/operate/mailbox">
+  The CLI and API for acting on pending decisions.
+</Card>

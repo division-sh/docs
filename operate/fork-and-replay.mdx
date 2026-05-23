@@ -1,0 +1,32 @@
+---
+title: "Fork and replay"
+description: "Re-executing a run from a point in its history, with optional contract swap."
+icon: "code-fork"
+---
+
+{/* STUB — outline only. Sources: FLIGHT-RECORDER.md, README, cmd/swarm (event replay,
+  agent replay). */}
+
+<Warning>
+  {/* TODO: reconcile shipping status before publishing. README "Try it" shows top-level
+    `swarm fork`; README "CLI" marks it "Shipping shortly"; FLIGHT-RECORDER notes the v1 CLI
+    contract retires top-level `swarm fork` in favor of a gated `swarm control run fork` /
+    API owner. State the actual current surface. */}
+</Warning>
+
+## What fork does
+
+{/* TODO: timestamp-based system fork — reconstruct full state at T, detect pending work,
+  create forked run with lineage, boot (optionally new contracts), resume. */}
+
+## Forking a run
+
+{/* TODO: the command/API; --at <event|timestamp>; --contracts <path>. */}
+
+## Replaying a single event
+
+{/* TODO: swarm event replay <event-id>; agent replay / replay-backlog. */}
+
+## Counterfactuals
+
+{/* TODO: swap policy/prompt/contracts and compare against the original run. */}

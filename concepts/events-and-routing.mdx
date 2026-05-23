@@ -1,0 +1,30 @@
+---
+title: "Events and routing"
+description: "Typed events, subscriptions, addressing, and reserved metadata."
+icon: "bolt"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Events", platform-guide.md §"URI Addressing",
+  README "Architecture". */}
+
+## Events as the communication primitive
+
+{/* TODO: every interaction flows through events. Agent emits → platform persists →
+  system node handles → new event emitted → next agent receives. Typed payload schema in
+  events.yaml; validated at entry. */}
+
+## Routing by subscription
+
+{/* TODO: routing is derived from declared subscriptions, not chosen by an LLM. Deterministic.
+  Ingress surfaces: RPC, API, MCP. */}
+
+## Addressing
+
+{/* TODO: local (event_name), absolute (intake/ticket.ready), wildcard
+  (processing then star then order.completed). What single-star and double-star mean.
+  Cross-flow event ownership. */}
+
+## Reserved swarm: metadata
+
+{/* TODO: swarm.source: external · swarm.producer: mailbox_human · swarm.consumer: external_ui
+  · swarm.status: planned. */}

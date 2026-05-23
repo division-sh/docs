@@ -1,0 +1,27 @@
+---
+title: "Flows and entities"
+description: "Self-contained flow packages, pins, and the entities that move through them."
+icon: "diagram-project"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Core Concepts", platform-guide.md §4. */}
+
+## Flows
+
+{/* TODO: a flow is a self-contained package declaring states, agents, events, handlers,
+  tools, policy. The composition/marketplace unit. */}
+
+## Static vs. template flows
+
+{/* TODO: table — static (exactly 1, at boot) vs template (0 at boot, N at runtime via
+  create_flow_instance). Use cases: per-customer/per-order instances. */}
+
+## Entities
+
+{/* TODO: an entity is a mutable document moving through the state machine: state + gates +
+  fields. Per-entity serialization prevents races. Many entities per flow concurrently. */}
+
+## Pins
+
+{/* TODO: typed input/output of a flow — the public interface used to wire flows together.
+  Link to /build/composition. */}

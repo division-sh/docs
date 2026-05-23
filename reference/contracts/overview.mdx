@@ -1,0 +1,30 @@
+---
+title: "Contract reference"
+description: "The authoritative spec for the YAML contract files."
+icon: "file-contract"
+---
+
+{/* STUB — outline only. Source of truth: Swarm/docs/specs/swarm-platform/platform/platform-spec.md
+  and contracts/platform-spec.yaml. Keep this section in sync with the platform spec version. */}
+
+Contracts are validated by the static analyzer before the runtime boots, so this section is
+effectively Swarm's language reference. Each page documents one contract file: every field,
+its type, and its constraints.
+
+{/* TODO: state the platform spec version this reference tracks (README says v1.3.0). */}
+
+## The files
+
+<CardGroup cols={2}>
+  <Card title="package.yaml" icon="id-card" href="/reference/contracts/package" />
+  <Card title="schema.yaml" icon="sitemap" href="/reference/contracts/schema" />
+  <Card title="nodes.yaml" icon="gears" href="/reference/contracts/nodes" />
+  <Card title="events.yaml" icon="bolt" href="/reference/contracts/events" />
+  <Card title="agents.yaml" icon="robot" href="/reference/contracts/agents" />
+  <Card title="tools.yaml" icon="wrench" href="/reference/contracts/tools" />
+  <Card title="policy.yaml" icon="sliders" href="/reference/contracts/policy" />
+</CardGroup>
+
+## Cross-cutting references
+
+{/* TODO: link to handler-fields, expressions-cel, dialect-rules, analyzer-checks. */}

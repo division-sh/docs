@@ -1,0 +1,36 @@
+---
+title: "System nodes and handlers"
+description: "Deterministic orchestrators and the handler dependency graph."
+icon: "gears"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE "System Nodes"/"Handler Dependency Graph",
+  platform-guide.md §6, platform-spec.md §handler_specification. */}
+
+## System nodes
+
+{/* TODO: deterministic orchestrators. Subscribe to events, execute handler declarations,
+  no code. One system node per event (unambiguous state authority). */}
+
+## Handlers
+
+{/* TODO: the unit of execution attached to an event. Composed of guard, accumulate, compute,
+  advances_to, sets_gate, data_accumulation, emit, action. */}
+
+## The dependency graph
+
+{/* TODO: execution order is fixed by the graph:
+  guard → accumulate → compute → on_complete/rules
+    → {advances_to, sets_gate, data_accumulation}   (independent, atomic)
+      → emit.fields → emit.event → action
+  Short-circuits: guard failure stops; incomplete accumulate waits. */}
+
+## Atomicity
+
+{/* TODO: guard/accumulate/compute/commit/emit is all-or-nothing. A crash mid-handler leaves
+  no partial state. Guards see pre-handler state; the next handler sees post-commit state. */}
+
+## on_complete vs. rules
+
+{/* TODO: two ways to branch, mutually exclusive. on_complete = ordered list, first match
+  wins; rules = named conditions. Link to /reference/handler-fields. */}

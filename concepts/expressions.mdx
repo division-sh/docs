@@ -1,0 +1,27 @@
+---
+title: "Expressions (CEL)"
+description: "The strongly typed, non-Turing-complete language for guards, rules, and filters."
+icon: "code"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Expressions (CEL)", platform-guide.md
+  §"Expression Language". Full function reference lives at /reference/expressions-cel. */}
+
+## Why CEL
+
+{/* TODO: all guard checks, rule conditions, filters use CEL. Strongly typed,
+  non-Turing-complete, safe to evaluate — "no hallucinating router". Link to cel-spec. */}
+
+## Context variables
+
+{/* TODO: entity (fields/state/gates), payload, policy, accumulated, fan_out. */}
+
+## Where CEL is used
+
+{/* TODO: guard.check, rules[*].condition, filter, emit.fields, compute conditions,
+  on_complete conditions. */}
+
+<Note>
+  Conditions are always prefixed: `payload.X`, `entity.X`, or `policy.X`. See
+  [Dialect rules](/reference/dialect-rules).
+</Note>

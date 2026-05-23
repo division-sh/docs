@@ -1,0 +1,36 @@
+---
+title: "Installation"
+description: "Prerequisites, the Go binary, Docker Compose, Postgres, and credentials."
+icon: "download"
+---
+
+{/* STUB — outline only. Sources: README "Development", docker-compose.yml, Dockerfile.*, .env */}
+
+## Requirements
+
+{/* TODO: Go 1.23, Docker, Postgres 16 (provided via docker-compose.yml). */}
+
+## Install paths
+
+<Tabs>
+  <Tab title="Docker Compose">
+    {/* TODO: services (postgres, orchestrator); ports; volumes; SWARM_CONTRACTS_HOST_DIR. */}
+  </Tab>
+  <Tab title="Build from source">
+    {/* TODO: go build ./cmd/swarm; resulting `swarm` binary. */}
+  </Tab>
+</Tabs>
+
+## Postgres
+
+{/* TODO: why Postgres is the substrate (event log + mutation log + entity state). Version,
+  connection string, where migrations run (boot). */}
+
+## Credentials
+
+{/* TODO: provider credentials — Anthropic API mode vs Claude CLI subprocess mode.
+  CLAUDE_CODE_OAUTH_TOKEN. Where they live (.env). Link to /reference/configuration. */}
+
+## Verifying the install
+
+{/* TODO: swarm version; swarm verify --contracts ./bundle; healthz. */}

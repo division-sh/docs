@@ -1,0 +1,40 @@
+---
+title: "Concepts overview"
+description: "The nouns of Swarm and how the engine ties them together."
+icon: "book"
+---
+
+{/* STUB — outline only. Sources: README "Core concepts", platform-guide.md §1–§2, BRIEF. */}
+
+This section explains what Swarm is, independent of how you author any one contract. Read
+it once to build the mental model; the [Build a flow](/build/flow-package) and
+[Reference](/reference/contracts/overview) sections show the exact syntax.
+
+## The nouns to keep separate
+
+{/* TODO: table from README "Core concepts": Flow, State, System node, Agent, Handler,
+  Event, Gate, Timer, Pin. One line each. Link each to its concept page. */}
+
+## Three execution types
+
+{/* TODO: system node (deterministic code, no LLM) · agent (LLM-powered) · human (mailbox).
+  See platform-guide.md §"Three Execution Types". */}
+
+## The runtime in six sentences
+
+{/* TODO: condensed runtime loop (platform-guide.md §"The Runtime In Six Sentences"):
+  ingress → event bus → routing by subscription → handler pipeline → atomic commit →
+  emit → persist. */}
+
+## How a transition executes
+
+{/* TODO: the handler dependency graph, one diagram:
+  guard → accumulate → compute → {advances_to, sets_gate, data_accumulation} → emit → action
+  with the atomic-commit boundary. Link to /concepts/system-nodes-and-handlers. */}
+
+<CardGroup cols={2}>
+  <Card title="Flows & entities" icon="diagram-project" href="/concepts/flows-and-entities" />
+  <Card title="System nodes & handlers" icon="gears" href="/concepts/system-nodes-and-handlers" />
+  <Card title="Agents & sessions" icon="robot" href="/concepts/agents-and-sessions" />
+  <Card title="Events & routing" icon="bolt" href="/concepts/events-and-routing" />
+</CardGroup>

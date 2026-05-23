@@ -1,0 +1,30 @@
+---
+title: "Reliability and failures"
+description: "Retries, dead letters, chain limits, incidents, and logs."
+icon: "shield-check"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Error Handling", README, cmd/swarm
+  (incidents, logs). */}
+
+## Handler failures and retries
+
+{/* TODO: 3 retries, exponential backoff (1s/2s/4s). Transient retries; business failures
+  don't. */}
+
+## Dead letters
+
+{/* TODO: after exhaustion → platform.dead_letter event; indexed and replayable. Dead-letter
+  payload shape. */}
+
+## Chain depth
+
+{/* TODO: max 50 chained emissions; prevents infinite loops; then dead letter. */}
+
+## Guard-failure semantics
+
+{/* TODO: reject / discard / kill / escalate table. */}
+
+## Incidents and logs
+
+{/* TODO: swarm incidents; swarm logs (list/follow); runtime.incidents / runtime.logs. */}

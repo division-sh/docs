@@ -1,0 +1,38 @@
+---
+title: "The flow package"
+description: "The seven contract files that make up a flow."
+icon: "folder-tree"
+---
+
+{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Core Concepts: Flows", platform-guide.md §3. */}
+
+A flow is a directory of YAML contracts plus agent prompts. The engine reads the package
+and executes it — no product-specific code.
+
+## Directory layout
+
+{/* TODO: code block of the canonical layout:
+  package.yaml  — identity, version, child flows
+  schema.yaml   — state machine, pins, required agents
+  nodes.yaml    — system nodes with handlers
+  events.yaml   — event payload schemas
+  agents.yaml   — agent definitions
+  tools.yaml    — available tools (optional)
+  policy.yaml   — configuration values (optional)
+  prompts/      — agent behavioral instructions
+  flows/        — child flows (optional)
+*/}
+
+## What each file does
+
+{/* TODO: one line per file, each linking to its reference page under
+  /reference/contracts/*. */}
+
+## Minimum package
+
+{/* TODO: required vs optional files/directories (platform-spec.md §minimum_flow_package).
+  Loader defaults. */}
+
+<Card title="Build your first flow" icon="rocket" href="/build/first-flow">
+  A complete support-ticket flow, file by file.
+</Card>
