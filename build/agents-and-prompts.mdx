@@ -4,23 +4,77 @@ description: "Agent contracts in agents.yaml and behavioral instructions in prom
 icon: "robot"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE steps 6 & 9, platform-guide.md §8 (prompts). */}
-
 ## The agent contract
 
-{/* TODO: id, model_tier, subscriptions, emit_events, tools, conversation_mode,
-  max_turns_per_task, description. */}
+An agent is declared as a map entry in `agents.yaml`. The key is the agent id and the role
+name it fulfills.
+
+```yaml
+resolver-agent:
+  id: resolver-agent
+  role: resolver-agent
+  model_tier: sonnet
+  manager_fallback: support-coordinator
+  subscriptions: [ticket.assigned]
+  emit_events: [ticket.resolved, ticket.escalated]
+  conversation_mode: session_per_entity
+  session_scope: entity
+  max_turns_per_task: 10
+  entity_writes:
+    ticket:
+      save: [resolution]
+```
+
+| Field | Purpose |
+|---|---|
+| `model_tier` | Which model the agent runs on (e.g. `haiku`, `sonnet`). |
+| `subscriptions` | The events the agent receives. |
+| `emit_events` | The events it may emit (each gets an auto-generated `emit_*` tool). |
+| `conversation_mode` | `task`, `session`, or `session_per_entity`. |
+| `session_scope` | `global`, `flow`, or `entity` — required for non-`task` modes. |
+| `manager_fallback` | The escalation/hierarchy parent. Not a messaging grant. |
+| `entity_writes` | Which entity fields the agent's generated `save_*`/`update_*` tools may write. |
+| `max_turns_per_task` | Turn budget before the session is terminated. |
+
+`conversation_mode` and `session_scope` must form a valid pair (for example,
+`session_per_entity` requires `session_scope: entity`); invalid combinations fail at boot.
+
+## What an agent can call
+
+You list only declared tools in `tools`. Beyond those, every agent automatically gets:
+
+- **Universal tools** — `agent_message`, `mailbox_send`.
+- **Emit tools** — `emit_{event_name}` for each entry in `emit_events`.
+- **Role-scoped entity tools** — `read_*`, `save_*`, `update_*`, generated from the entity
+  contract and `entity_writes`.
+
+Host capabilities (`bash`, `web_search`, `file_io`) are gated separately by the
+`native_tools` field. See [Tools](/build/tools).
 
 ## Prompts
 
-{/* TODO: one markdown file per agent in prompts/. Prompt templating. What a good agent
-  prompt looks like (task, process, tools, constraints). */}
+Each agent has a markdown prompt at `prompts/{agent-id}.md`. Prompts use `{{variable}}`
+placeholders, substituted at session creation from (in priority order) instance variables,
+policy values, entity-state fields, and a small runtime-token allowlist
+(`current_date`, `agent_id`, `flow_instance_path`). Substitution is plain string replacement
+— no logic — and a variable that resolves nowhere is left as-is.
 
-## Emit tools and universal tools
+```markdown
+# Resolver
 
-{/* TODO: auto-generated emit_<event> tools; universal agent_message/mailbox_send. Recap
-  from /concepts/agents-and-sessions. */}
+You resolve assigned support tickets using the ticket body and your judgment.
 
-## Anti-bias routing
+- If confident, save the resolution and emit `ticket.resolved`.
+- If the issue needs account access or a human, emit `ticket.escalated` with a reason.
 
-{/* TODO: two pools for the same role so reviewers/appeals don't share context (pattern 10). */}
+SLA: {{sla_hours}} hours.
+```
+
+The platform appends a short environment postamble (the workspace mount paths) to every
+prompt. It does not list tools — the model sees those through the tool definitions.
+
+## Keeping reviewers independent
+
+To stop two agents from sharing context, give a role two pools with different subscriptions —
+route originals to one and appeals to the other. Same prompt, separate sessions, no shared
+context.

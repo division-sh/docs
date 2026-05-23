@@ -1,35 +1,238 @@
 ---
 title: "Build your first flow"
-description: "A support-ticket flow from empty directory to a verified, running bundle."
+description: "A support-ticket flow from an empty directory to a verified, running bundle."
 icon: "rocket"
 ---
 
-{/* STUB — outline only. Source: DEVELOPER-GUIDE "Quick Start: Your First Flow in 10 Minutes".
-  This is the flagship tutorial — port the full 10-step walkthrough here. */}
+You are building a support-ticket system: a ticket comes in, an agent classifies it, a
+system node routes it, another agent resolves or escalates it, and it closes. By the end you
+have a contract bundle that passes the static analyzer and runs.
 
-You are building a support ticket system: a ticket comes in, gets classified, routed to an
-agent, resolved, and closed. By the end you have a contract bundle that passes the analyzer
-and runs.
+<Note>
+  The contracts below use only built-in scalar types (`text`, `integer`) so the bundle stays
+  self-contained. After writing them, always confirm with `swarm verify` — see
+  [Testing and verification](/build/testing).
+</Note>
 
 <Steps>
-  <Step title="Create the flow package">{/* TODO: directory skeleton */}</Step>
-  <Step title="Define the flow identity">{/* TODO: package.yaml */}</Step>
-  <Step title="Define the state machine">{/* TODO: schema.yaml — states, pins, required_agents */}</Step>
-  <Step title="Define the system node">{/* TODO: nodes.yaml — handlers, timers, entity_schema */}</Step>
-  <Step title="Define the events">{/* TODO: events.yaml — payload schemas */}</Step>
-  <Step title="Define the agents">{/* TODO: agents.yaml — classifier + resolver */}</Step>
-  <Step title="Define tools">{/* TODO: tools.yaml — knowledge_base_search */}</Step>
-  <Step title="Set policy">{/* TODO: policy.yaml — sla_hours, max_escalations */}</Step>
-  <Step title="Write agent prompts">{/* TODO: prompts/classifier-agent.md, resolver-agent.md */}</Step>
-  <Step title="Verify">{/* TODO: swarm verify --contracts ./my-ticket-flow → 0 errors, 0 warnings */}</Step>
+  <Step title="Create the package">
+    ```yaml package.yaml
+    name: ticket-flow
+    version: 1.0.0
+    description: Support ticket classification and resolution.
+    platform_version: ">=1.6.0"
+    flows: []
+    ```
+  </Step>
+
+  <Step title="Declare the state machine">
+    `schema.yaml` defines the lifecycle, the public pins, and the agent roles the flow
+    requires.
+
+    ```yaml schema.yaml
+    initial_state: new
+    terminal_states: [closed, abandoned]
+    states: [new, classified, assigned, resolved, closed, abandoned]
+    pins:
+      inputs:
+        events: [ticket.created]
+      outputs:
+        events: [ticket.resolved, ticket.abandoned]
+    required_agents:
+      - role: classifier-agent
+        subscribes_to: [ticket.created]
+        emits: [ticket.classified]
+      - role: resolver-agent
+        subscribes_to: [ticket.assigned]
+        emits: [ticket.resolved, ticket.escalated]
+    ```
+  </Step>
+
+  <Step title="Declare the entity contract">
+    `entities.yaml` declares the typed fields handlers and agents may write. Fields are
+    declared directly under the entity type name.
+
+    ```yaml entities.yaml
+    ticket:
+      category: text
+      priority: text
+      resolution: text
+      resolved_by: text
+      escalation_count: integer
+    ```
+  </Step>
+
+  <Step title="Declare the events">
+    Payload fields go directly under the event name. There is no `payload:` wrapper.
+
+    ```yaml events.yaml
+    ticket.created:
+      ticket_id: text
+      subject: text
+      body: text
+    ticket.classified:
+      ticket_id: text
+      category: text
+      priority: text
+    ticket.assigned:
+      ticket_id: text
+      category: text
+      priority: text
+    ticket.resolved:
+      ticket_id: text
+      resolution: text
+      resolved_by: text
+    ticket.escalated:
+      ticket_id: text
+      reason: text
+    ticket.abandoned:
+      ticket_id: text
+      reason: text
+    ```
+  </Step>
+
+  <Step title="Declare the system node">
+    The orchestrator is deterministic: it routes events, writes fields, advances state, and
+    emits follow-up events. Each handler commits atomically.
+
+    ```yaml nodes.yaml
+    ticket-orchestrator:
+      id: ticket-orchestrator
+      execution_type: system_node
+      subscribes_to:
+        - ticket.created
+        - ticket.classified
+        - ticket.resolved
+        - ticket.escalated
+      produces:
+        - ticket.assigned
+      event_handlers:
+        ticket.created:
+          advances_to: new
+
+        ticket.classified:
+          data_accumulation:
+            writes:
+              - source_field: category
+                target_field: category
+              - source_field: priority
+                target_field: priority
+            source_event: ticket.classified
+          advances_to: assigned
+          emit: ticket.assigned
+
+        ticket.escalated:
+          guard:
+            id: escalation_limit
+            check: "entity.escalation_count < policy.max_escalations"
+            on_fail: kill
+          advances_to: assigned
+          emit: ticket.assigned
+
+        ticket.resolved:
+          data_accumulation:
+            writes: [resolution, resolved_by]
+            source_event: ticket.resolved
+          advances_to: resolved
+    ```
+  </Step>
+
+  <Step title="Declare the agents">
+    Agents subscribe to events, reason, and emit events. The classifier is stateless; the
+    resolver keeps one session per ticket and may write the `resolution` field.
+
+    ```yaml agents.yaml
+    classifier-agent:
+      id: classifier-agent
+      role: classifier-agent
+      model_tier: haiku
+      subscriptions: [ticket.created]
+      emit_events: [ticket.classified]
+      conversation_mode: task
+      max_turns_per_task: 3
+
+    resolver-agent:
+      id: resolver-agent
+      role: resolver-agent
+      model_tier: sonnet
+      subscriptions: [ticket.assigned]
+      emit_events: [ticket.resolved, ticket.escalated]
+      conversation_mode: session_per_entity
+      session_scope: entity
+      max_turns_per_task: 10
+      entity_writes:
+        ticket:
+          save: [resolution]
+    ```
+  </Step>
+
+  <Step title="Set policy">
+    ```yaml policy.yaml
+    sla_hours: 24
+    max_escalations: 3
+    ```
+  </Step>
+
+  <Step title="Write the prompts">
+    One markdown file per agent, in `prompts/`. Use `{{variable}}` for policy and instance
+    values.
+
+    ```markdown prompts/classifier-agent.md
+    # Classifier
+
+    You classify support tickets by category and priority.
+
+    Read the ticket subject and body, then emit `ticket.classified` with:
+    - category: one of billing, technical, account, feature
+    - priority: one of critical, high, medium, low
+    ```
+
+    ```markdown prompts/resolver-agent.md
+    # Resolver
+
+    You resolve assigned tickets.
+
+    Draft a resolution from the ticket body. If you are confident, save it and emit
+    `ticket.resolved`. If the issue needs account access or a human, emit `ticket.escalated`
+    with a reason.
+    ```
+  </Step>
+
+  <Step title="Verify">
+    ```bash
+    swarm verify --contracts ./ticket-flow
+    ```
+
+    The analyzer checks payload coverage, state reachability, agent fulfillment, handler
+    fields, and CEL parsing. Fix any error before booting — a bundle that boots has passed
+    this pass.
+  </Step>
 </Steps>
 
 ## Run it
 
-{/* TODO: boot + trigger ticket.created + follow the trace. Link to /quickstart. */}
+Boot the runtime against the bundle and trigger a ticket, then follow the trace — see the
+[Quickstart](/quickstart) for the commands.
 
 <Note>
-  {/* TODO: include the DEVELOPER-GUIDE note on emitted-event payload construction — empty
-    payload → emit.fields → forced platform fields; no implicit passthrough on the
-    declarative system-node emit surface. */}
+  Emitted payloads are producer-complete: each declared field must be supplied by the emit
+  site (an agent's emit tool, or a handler's `emit.fields`). There is no implicit
+  entity or trigger-payload passthrough.
 </Note>
+
+## What to read next
+
+<CardGroup cols={2}>
+  <Card title="Writing handlers" icon="gears" href="/build/handlers">
+    Guards, branching, accumulation, and actions in depth.
+  </Card>
+  <Card title="Handler patterns" icon="shapes" href="/patterns/overview">
+    Reusable shapes for common orchestration problems.
+  </Card>
+  <Card title="Composing flows" icon="puzzle-piece" href="/build/composition">
+    Parent-child flows, pins, and dynamic instances.
+  </Card>
+  <Card title="Testing" icon="vial" href="/build/testing">
+    The analyzer, test packages, and agent fixtures.
+  </Card>
+</CardGroup>

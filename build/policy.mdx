@@ -1,20 +1,54 @@
 ---
 title: "Policy"
-description: "Configuration values referenced by handlers and inherited across flows."
+description: "Configuration values referenced by handlers, guards, and prompts."
 icon: "sliders"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE step 8 & "Policy Inheritance". */}
+`policy.yaml` holds named configuration values for a flow. They are referenced in CEL as
+`policy.*` and in prompts as `{{variable}}`.
 
-## What policy is
+```yaml policy.yaml
+sla_hours: 24
+max_escalations: 3
+```
 
-{/* TODO: policy.yaml holds named configuration values, referenced in CEL as policy.X. */}
+```yaml
+# in a guard
+check: "entity.escalation_count < policy.max_escalations"
+```
 
-## Policy inheritance
+## Inheritance
 
-{/* TODO: child flows inherit parent policy; child overrides specific keys. Worked example. */}
+Policy is hierarchical. A child flow inherits the root and parent policy, and overrides
+specific keys:
+
+```yaml
+# parent policy.yaml
+timeout_hours: 24
+max_retries: 3
+
+# child policy.yaml
+timeout_hours: 48    # overrides the parent; max_retries stays 3
+```
+
+Guards and prompt templates resolve a key by walking child → parent → root.
 
 ## Budget thresholds
 
-{/* TODO: declared thresholds that escalate into throttle/emergency states. Link to
-  /operate/budget-and-cost. */}
+Cost control is configured here. When token spend crosses a declared percentage the platform
+emits `platform.budget_threshold_crossed` with a matching `level`:
+
+```yaml
+budget_warning_percent: 60
+budget_throttle_percent: 80
+budget_emergency_percent: 95
+```
+
+If these keys are absent, budget monitoring is disabled. An emergency raises a mailbox item
+for a human. See [Budget and cost](/operate/budget-and-cost).
+
+## Other policy-owned settings
+
+`policy.yaml` is also where `mcp_servers` ([Tools](/build/tools)), `workspace_classes`
+(the `/workspace` scope per agent class), and `permission_bundles` (named permission sets)
+are declared.

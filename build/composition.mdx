@@ -1,30 +1,73 @@
 ---
 title: "Composing flows"
-description: "Parent-child flows, pins, addressing, dynamic instances, and policy inheritance."
+description: "Parent-child flows, pins, addressing, and dynamic instances."
 icon: "puzzle-piece"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Composing Flows" + pattern 6,
-  platform-guide.md §4 (pins, nesting), §7 (static/template/dynamic instances). */}
+Flows nest recursively. A parent declares child flows; the engine walks the tree and turns
+the nested structure into one connected runtime.
 
 ## Parent-child flows
 
-{/* TODO: flows/ subdirectory; parent package.yaml declares children with mode static|template. */}
+```yaml
+# parent package.yaml
+flows:
+  - id: intake
+    flow: intake
+    mode: static
+  - id: fulfillment
+    flow: fulfillment
+    mode: template
+```
+
+Each child lives under `flows/{child}/` with the same package structure. A `static` child
+starts one instance at boot; a `template` child is a blueprint instantiated at runtime.
 
 ## Pin wiring
 
-{/* TODO: child input/output pins; parent events matching child input pins are delivered
-  automatically. */}
+Child flows expose typed pins. At boot the engine matches a parent's output event pins to a
+child's input event pins to establish the allowed topology. If an input pin matches outputs
+from more than one flow, boot fails unless you disambiguate with an explicit target or scoped
+subscription.
 
-## Addressing across flows
+## Addressing
 
-{/* TODO: local / absolute (intake/ticket.ready) / wildcard (processing then star then
-  order.completed). Why wildcard expansion matters for dynamic instances. */}
+References resolve by whether they contain a slash:
 
-## Dynamic flow instances
+- **Local** — `ticket.assigned` — the current flow.
+- **Absolute** — `intake/ticket.ready` — a specific flow from the root.
+- **Wildcard** — `fulfillment` then `*` then `order.completed` matches any direct child
+  instance; `**` matches any depth. Wildcards expand to include new dynamic instances as they
+  are created.
 
-{/* TODO: create_flow_instance action; instance_id_from; config_from; auto_emit_on_create. */}
+## Dynamic instances
+
+A handler creates a dynamic instance with the `create_flow_instance` action:
+
+```yaml
+order.created:
+  action: create_flow_instance
+  template: fulfillment
+  instance_id_from: payload.order_id
+  config_from:
+    customer_name: payload.customer_name
+    order_total: payload.total
+```
+
+The platform validates the template, constructs the instance path, registers its nodes and
+agents, records the parent route, creates the entity at `initial_state`, and starts it. A
+child schema can declare `auto_emit_on_create` to bootstrap itself once started.
+
+## Cross-flow handoff and ownership
+
+State is flow-local. A business object moves between flows by an explicit event handoff: the
+source emits a cross-flow event, and the destination receives it on a handler that declares
+`create_entity: true`, `select_entity`, or `select_or_create_entity` to own its copy. Data
+crosses through the event payload or `config_from` bindings — never through direct cross-flow
+entity reads, which are prohibited. Write ownership is determined by semantic flow scope, not
+by path prefixes.
 
 ## Policy inheritance
 
-{/* TODO: cross-reference /build/policy. */}
+Child flows inherit parent and root policy and override specific keys. See
+[Policy](/build/policy).

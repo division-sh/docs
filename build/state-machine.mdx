@@ -1,24 +1,70 @@
 ---
 title: "Defining the state machine"
-description: "States, terminal states, pins, and required agents in schema.yaml."
+description: "States, pins, required agents, and entity acquisition in schema.yaml."
 icon: "sitemap"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE steps 3, platform-guide.md §4.
-  Field-level reference lives at /reference/contracts/schema. */}
+`schema.yaml` is a flow's public surface: its lifecycle, the pins other flows wire to, and
+the agent roles it requires.
 
-## States and terminal states
+## States
 
-{/* TODO: initial_state, states, terminal_states. */}
+```yaml
+initial_state: new
+terminal_states: [closed, abandoned]
+states: [new, classified, assigned, resolved, closed, abandoned]
+```
+
+An entity is in exactly one state, set by a handler's `advances_to`. Terminal states are
+absorbing — once reached, new events are rejected and timers are cancelled. A flow with
+`initial_state: null` and `states: []` is stateless. See
+[Gates, timers, and state](/concepts/gates-timers-and-state).
 
 ## Pins
 
-{/* TODO: inputs.events / outputs.events — the flow's public interface. */}
+Pins are the flow's public interface. Event pins declare what it accepts and emits; data pins
+declare what entity fields it reads and writes.
+
+```yaml
+pins:
+  inputs:
+    events: [ticket.created]
+    reads: [priority]
+  outputs:
+    events: [ticket.resolved, ticket.abandoned]
+    writes: [category, resolution]
+```
+
+No two flows may write the same data pin — that conflict is a boot error. Output event pins
+are the activation switch for cross-flow routing; an emit of a pin-declared output must
+resolve a target or set `broadcast: true`. Internal events not listed in pins are ordinary
+event-loop emits and need no target.
 
 ## Required agents
 
-{/* TODO: role, subscribes_to, emits, description. How required_agents is checked at boot. */}
+`required_agents` declares the roles the flow needs. Fulfillment has two conditions, both
+checked at boot:
 
-## auto_emit_on_create
+```yaml
+required_agents:
+  - role: classifier-agent
+    subscribes_to: [ticket.created]
+    emits: [ticket.classified]
+```
 
-{/* TODO: template flows bootstrapping themselves on instance creation. */}
+1. An agent in `agents.yaml` whose map key matches the `role` name.
+2. That agent's subscriptions cover the required `subscribes_to`, and its `emit_events` cover
+   the required `emits`.
+
+## Acquiring an entity
+
+A stateful flow's input-pin handler must say how it gets the entity to operate on. It
+declares exactly one acquisition mode:
+
+- `create_entity: true` — mint a new entity at `initial_state`.
+- `select_entity` — resolve exactly one existing flow-owned entity by a declared business
+  key.
+- `select_or_create_entity` — resolve one existing, or deterministically mint one.
+
+Omitting all three on a stateful input-pin handler is a boot error. See
+[Composing flows](/build/composition) for cross-flow handoff patterns.

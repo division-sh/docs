@@ -1,21 +1,75 @@
 ---
 title: "Tools"
-description: "Declaring tools agents can call, and the MCP gateway."
+description: "Declaring tools agents can call, plus MCP and native capabilities."
 icon: "wrench"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE step 7, platform-guide.md §"Tool Model",
-  README (MCP gateway). */}
+The platform owns all tool schema serving, validation, and routing. Every tool belongs to
+one of three implementation classes.
 
-## Declaring a tool
+## The three tool classes
 
-{/* TODO: tools.yaml — handler_type, description, input_schema, output_schema. */}
+```yaml tools.yaml
+knowledge_base_search:
+  description: Search the support knowledge base.
+  handler_type: http
+  input_schema:
+    query: text
+    max_results: integer
+  http:
+    method: POST
+    url: "https://kb.internal/search"
+```
 
-## Tool types
+| `handler_type` | Served by | Notes |
+|---|---|---|
+| `platform_builtin` | the runtime | A fixed set shipped with the platform. |
+| `mcp` | an MCP server | Registered in `policy.yaml`; namespaced by prefix. |
+| `http` | the HTTP executor | Needs an `http` block (`method`, `url`); the default class. |
 
-{/* TODO: workflow_registered vs platform/built-in tools; the tool model from platform-guide. */}
+A custom tool requires a `description`. Optional fields are `handler_type` (defaults to
+`http`), `input_schema`, `output_schema` (and the aliases `parameters`/`returns`), and — for
+HTTP tools — `http`, `response_mapping`, `credentials`. The fields `endpoint` and `type` are
+**not** accepted (use `http.url` and `handler_type`).
+
+<Note>
+  `workflow_registered` and `api_call` are deprecated handler types. They still load —
+  `workflow_registered` is normalized to `http` when an `http` block is present — but new
+  tools should use `handler_type: http` or an MCP server.
+</Note>
 
 ## MCP tools
 
-{/* TODO: agents pull tool definitions from upstream MCP servers without code changes.
-  Link to /reference/mcp-gateway. */}
+Swarm acts as an MCP client. Register servers in `policy.yaml`:
+
+```yaml policy.yaml
+mcp_servers:
+  postgres:
+    transport: http
+    url: "https://mcp.internal/pg"
+    prefix: pg
+    credentials_key: pg_token
+```
+
+Tools are namespaced by the server's `prefix` (`pg.list_tables`), and an agent references the
+prefixed name in its `tools` list. An unreachable server logs a warning at boot — it does not
+abort the boot. See the [MCP gateway reference](/reference/mcp-gateway).
+
+## Native capabilities
+
+`bash`, `web_search`, and `file_io` are not tools in `tools.yaml` — they are host
+capabilities gated by an agent's `native_tools` field (default all off):
+
+```yaml
+native_tools:
+  bash: true
+  web_search: false
+  file_io: true
+```
+
+The field is the authorization gate; it is not granted through `tools` or permissions.
+
+## Default-deny
+
+An agent can only call a tool that is in its `tools` list, a universal tool, an emit tool, a
+generated entity tool, or an enabled native capability. Anything else is rejected.
