@@ -36,13 +36,13 @@ it fails:
 | `on_fail` | Behavior |
 |---|---|
 | `reject` (default) | Stop. Event marked rejected. |
-| `discard` | Drop silently — for expected filtering. |
+| `discard` | Drop silently: for expected filtering. |
 | `kill` | Advance the entity to a terminal state. |
 | `escalate:{event}` | Emit an escalation event instead of proceeding. |
 
 ## Branching
 
-A handler branches with `on_complete` or `rules` — never both.
+A handler branches with `on_complete` or `rules`, never both.
 
 `on_complete` is an ordered list; the first matching condition wins. Use it after
 accumulation or computation:
@@ -101,7 +101,7 @@ data_accumulation:
 ## Emitting events
 
 Emit a string for internal events (`emit: ticket.assigned`). For a pin-declared output, the
-emit must resolve a target — `target: sender`, `target: {flow, match}`, or
+emit must resolve a target, `target: sender`, `target: {flow, match}`, or
 `broadcast: true`:
 
 ```yaml

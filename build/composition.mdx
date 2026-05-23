@@ -34,9 +34,9 @@ subscription.
 
 References resolve by whether they contain a slash:
 
-- **Local** — `ticket.assigned` — the current flow.
-- **Absolute** — `intake/ticket.ready` — a specific flow from the root.
-- **Wildcard** — `fulfillment` then `*` then `order.completed` matches any direct child
+- **Local**: `ticket.assigned`, the current flow.
+- **Absolute**: `intake/ticket.ready`, a specific flow from the root.
+- **Wildcard**: `fulfillment` then `*` then `order.completed` matches any direct child
   instance; `**` matches any depth. Wildcards expand to include new dynamic instances as they
   are created.
 
@@ -63,7 +63,7 @@ child schema can declare `auto_emit_on_create` to bootstrap itself once started.
 State is flow-local. A business object moves between flows by an explicit event handoff: the
 source emits a cross-flow event, and the destination receives it on a handler that declares
 `create_entity: true`, `select_entity`, or `select_or_create_entity` to own its copy. Data
-crosses through the event payload or `config_from` bindings — never through direct cross-flow
+crosses through the event payload or `config_from` bindings, never through direct cross-flow
 entity reads, which are prohibited. Write ownership is determined by semantic flow scope, not
 by path prefixes.
 

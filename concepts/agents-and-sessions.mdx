@@ -7,7 +7,7 @@ icon: "robot"
 ## What an agent is
 
 An agent is an LLM session. It receives events, reasons inside a scoped session, calls tools,
-and emits events. An agent is defined in `agents.yaml` — its subscriptions, the events it may
+and emits events. An agent is defined in `agents.yaml`: its subscriptions, the events it may
 emit, its tools, its model tier, and its conversation mode.
 
 Agents never write entity state directly. They emit events; a system node handler decides
@@ -17,7 +17,7 @@ what gets written. This keeps state authority deterministic.
 
 Each agent runs in a scoped session and observes only the events it subscribes to. A
 coordinator addresses managers; managers address workers; workers do not share a context
-window. Messaging scope is enforced and flow-instance-local — there is no "message anyone"
+window. Messaging scope is enforced and flow-instance-local; there is no "message anyone"
 default. Per-entity Docker workspaces extend the isolation to the filesystem and process
 level. See [Workspaces and permissions](/reference/handler-fields) and the platform guide for
 the authority model.
@@ -26,14 +26,14 @@ the authority model.
 
 `conversation_mode` controls how the platform manages session context:
 
-- **`task`** — a new session per event, no memory between invocations. The default.
-- **`session`** — a persistent session across events. Requires `session_scope: global` or
+- **`task`**: a new session per event, no memory between invocations. The default.
+- **`session`**: a persistent session across events. Requires `session_scope: global` or
   `flow`.
-- **`session_per_entity`** — one session per (agent, entity) pair. Requires
+- **`session_per_entity`**: one session per (agent, entity) pair. Requires
   `session_scope: entity`. The agent builds context for one entity over multiple turns.
-- **`stateless`** — an alias for `task`.
+- **`stateless`**: an alias for `task`.
 
-`session_scope` (`global`, `flow`, `entity`) pairs with the mode and is validated at boot —
+`session_scope` (`global`, `flow`, `entity`) pairs with the mode and is validated at boot,
 invalid combinations are boot errors.
 
 ## The tools an agent can call
@@ -41,13 +41,13 @@ invalid combinations are boot errors.
 An agent only sees the tools it can use; the platform never injects the full registry. The
 surfaces are:
 
-- **Declared tools** — entries in the agent's `tools` list, resolved against the registry
+- **Declared tools**: entries in the agent's `tools` list, resolved against the registry
   (`platform_builtin`, `mcp`, `http`).
-- **Universal tools** — `agent_message` and `mailbox_send`, auto-granted to every agent.
-- **Emit tools** — `emit_{event_name}`, auto-generated from the agent's `emit_events`.
-- **Role-scoped entity tools** — `read_*`/`save_*`/`update_*`, generated from the flow's
+- **Universal tools**: `agent_message` and `mailbox_send`, auto-granted to every agent.
+- **Emit tools**: `emit_{event_name}`, auto-generated from the agent's `emit_events`.
+- **Role-scoped entity tools**: `read_*`/`save_*`/`update_*`, generated from the flow's
   entity contract and the agent's `entity_writes` declaration.
-- **Native tools** — `bash`, `web_search`, `file_io`, gated by the `native_tools` field.
+- **Native tools**: `bash`, `web_search`, `file_io`, gated by the `native_tools` field.
 
 Anything outside these surfaces is rejected (default-deny). See
 [Defining agents and prompts](/build/agents-and-prompts) and [Tools](/build/tools).

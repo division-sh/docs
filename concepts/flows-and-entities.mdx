@@ -8,7 +8,7 @@ icon: "diagram-project"
 
 A flow is a self-contained package of YAML contracts that declares everything the platform
 needs to run a piece of work: states, events, agents, system nodes, tools, and policy. It is
-the universal building block — every level of the system is a flow, from the root flow down
+the universal building block, every level of the system is a flow, from the root flow down
 to the smallest child. There is no separate "project" concept.
 
 A flow exposes a public interface through typed **pins** (covered below), which is what makes
@@ -32,9 +32,9 @@ dynamic instance gets a path that includes its instance id
 
 An entity is a mutable document moving through a flow instance's state machine. It has:
 
-- **state** — where it is (`new`, `assigned`, `resolved`).
-- **gates** — named boolean checkpoints (`g_verified: true`).
-- **fields** — typed data written by handlers (`category`, `resolution`).
+- **state**: where it is (`new`, `assigned`, `resolved`).
+- **gates**: named boolean checkpoints (`g_verified: true`).
+- **fields**: typed data written by handlers (`category`, `resolution`).
 
 Many entities can be in the same flow at once, each with its own id and state. The engine
 serializes events per entity, so entity state, gates, and accumulators are protected from
@@ -49,21 +49,21 @@ by the shared type system in `types.yaml`. (Earlier versions embedded an `entity
 
 Swarm keeps two flow identities distinct, and the runtime uses the right one for each job:
 
-- **`flow_scope_key`** — the semantic namespace from a flow's position in the tree
+- **`flow_scope_key`**: the semantic namespace from a flow's position in the tree
   (`scoring`, `operating/build`). Used for gate projection, event scoping, and contract
   references. Stable across instances.
-- **`flow_instance_path`** — a concrete running instance, including the instance id for
+- **`flow_instance_path`**: a concrete running instance, including the instance id for
   template flows (`operating/vert-001`). Used for entity ownership and lifecycle.
 
 ## Pins
 
-Pins are a flow's public API — what the outside world may assume about it:
+Pins are a flow's public API, what the outside world may assume about it:
 
-- **Input event pins** — events the flow accepts from outside.
-- **Output event pins** — events it emits to the outside (the activation switch for
+- **Input event pins**: events the flow accepts from outside.
+- **Output event pins**: events it emits to the outside (the activation switch for
   cross-flow routing).
-- **Input data pins** — entity fields it reads.
-- **Output data pins** — entity fields it writes. No two flows may write the same field.
+- **Input data pins**: entity fields it reads.
+- **Output data pins**: entity fields it writes. No two flows may write the same field.
 
-`events.yaml` may declare more events than the pins show — those are **internal events**, not
+`events.yaml` may declare more events than the pins show, those are **internal events**, not
 part of the public interface. See [Composing flows](/build/composition) for wiring.

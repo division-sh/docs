@@ -6,7 +6,7 @@ icon: "code"
 
 Swarm evaluates all guard checks, rule conditions, filter conditions, and `on_complete`
 branch conditions with [CEL](https://github.com/google/cel-spec) (Common Expression
-Language). CEL is strongly typed and non-Turing-complete — it cannot loop or call out, so
+Language). CEL is strongly typed and non-Turing-complete: it cannot loop or call out, so
 there is no hallucinating router and no unbounded evaluation.
 
 ## Context variables
@@ -15,7 +15,7 @@ A CEL expression reads from a fixed set of namespaces:
 
 | Variable | What it holds | Where it is available |
 |---|---|---|
-| `entity` | Current entity state — declared fields, `current_state`, `gates` | Everywhere |
+| `entity` | Current entity state: declared fields, `current_state`, `gates` | Everywhere |
 | `payload` | The current event's payload fields | Everywhere |
 | `policy` | Flow policy merged with root policy | Everywhere |
 | `fan_out` | Fan-out metadata, e.g. `fan_out.count` | After a `fan_out` step |
@@ -39,7 +39,7 @@ list (`size`, `exists`, `all`, `filter`, `map`).
 
 ## The prefix rule
 
-Every condition must carry a context prefix — `payload.`, `entity.`, `policy.`,
+Every condition must carry a context prefix, `payload.`, `entity.`, `policy.`,
 `accumulated.`, or `fan_out.`. A bare identifier is a dialect violation. See
 [Dialect rules](/reference/dialect-rules) and the full
 [CEL reference](/reference/expressions-cel).

@@ -23,7 +23,7 @@ works for a demo and breaks in production:
 - **Tangled concerns.** Business logic, orchestration, and agent reasoning end up in the
   same code path.
 
-Swarm's premise is that the agents are usually fine — it is the wiring that fails. So the
+Swarm's premise is that the agents are usually fine; it is the wiring that fails. So the
 wiring is made deterministic and auditable: routing is derived from declared subscriptions,
 every transition is one transaction, and every event and state change is persisted.
 
@@ -37,14 +37,14 @@ every transition is one transaction, and every event and state change is persist
   baseline, not a bolt-on.
 - **Regulated or audited environments.** Two-layer event-plus-mutation persistence makes
   "what changed, when, and because of which event" a single query.
-- **High-volume parallel entities.** Orders, tickets, claims — hundreds flow through one
+- **High-volume parallel entities.** Orders, tickets, claims: hundreds flow through one
   contract without interfering, each in its own scoped state.
 - **Cost-controlled deployments.** Token usage is tracked per entity and per actor, with
   thresholds that escalate into throttle and emergency states.
 
 ## Weak fit
 
-- **One-shot LLM calls.** Use the provider SDK directly — no runtime needed.
+- **One-shot LLM calls.** Use the provider SDK directly: no runtime needed.
 - **Conversational chatbots.** Short interactions where the value is the conversation; the
   contract overhead does not pay for itself.
 - **Exploratory prototyping that changes hourly.** The analyzer refusing to boot a
@@ -55,7 +55,7 @@ every transition is one transaction, and every event and state change is persist
 ## Swarm vs. alternatives
 
 Swarm sits closer to durable-execution engines (Temporal, Restate, Inngest) than to agent
-libraries — it applies that rigor to multi-agent LLM systems.
+libraries; it applies that rigor to multi-agent LLM systems.
 
 | Dimension | CrewAI / AutoGen | LangGraph | Swarm |
 |---|---|---|---|
@@ -64,7 +64,7 @@ libraries — it applies that rigor to multi-agent LLM systems.
 | Composition | Code refactoring | Python sub-graphs | YAML flow packages with typed pins |
 | Agent isolation | Shared chat | Shared state | Scoped sessions, hierarchical addressing |
 | Scaling | Single process | Single process | Per-entity parallelism, dynamic instances |
-| Expression language | — | Python | CEL (typed, non-Turing-complete) |
+| Expression language | None | Python | CEL (typed, non-Turing-complete) |
 | Audit trail | Logs | Logs | Event store + per-field mutation log |
 
 ## The tradeoff, stated plainly

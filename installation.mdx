@@ -51,7 +51,7 @@ bundled Docker Compose setup; you can also build the binary and bring your own P
 ## Postgres
 
 Postgres is the substrate, not an add-on. Every event lands in the event store, every entity
-state change lands in a separate mutation log, and runs are correlated by `run_id` — which
+state change lands in a separate mutation log, and runs are correlated by `run_id`, which
 is what makes replay and fork possible. Connection settings are supplied through
 `SWARM_DB_*` environment variables (host, port, name, user, password, sslmode).
 
@@ -59,9 +59,9 @@ is what makes replay and fork possible. Connection settings are supplied through
 
 `SWARM_LLM_RUNTIME_MODE` selects how agents run:
 
-- `cli_test` — a scripted runtime for development and the conformance suite. No provider
+- `cli_test`: a scripted runtime for development and the conformance suite. No provider
   bill. This is the bundled Compose default.
-- `api` — a real provider. Set `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
+- `api`: a real provider. Set `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
 
 Credentials are read from the environment (and a local credential store); the platform never
 logs or persists their values. See [Configuration](/reference/configuration) for the full
@@ -77,7 +77,7 @@ swarm verify --contracts ./my-flow
 swarm version
 ```
 
-`swarm verify` is the one command that works purely against files on disk — every other
+`swarm verify` is the one command that works purely against files on disk, every other
 command targets the running runtime's API.
 
 <Card title="Trigger your first run" icon="rocket" href="/quickstart">

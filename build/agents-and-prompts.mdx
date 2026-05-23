@@ -31,7 +31,7 @@ resolver-agent:
 | `subscriptions` | The events the agent receives. |
 | `emit_events` | The events it may emit (each gets an auto-generated `emit_*` tool). |
 | `conversation_mode` | `task`, `session`, or `session_per_entity`. |
-| `session_scope` | `global`, `flow`, or `entity` — required for non-`task` modes. |
+| `session_scope` | `global`, `flow`, or `entity`: required for non-`task` modes. |
 | `manager_fallback` | The escalation/hierarchy parent. Not a messaging grant. |
 | `entity_writes` | Which entity fields the agent's generated `save_*`/`update_*` tools may write. |
 | `max_turns_per_task` | Turn budget before the session is terminated. |
@@ -43,9 +43,9 @@ resolver-agent:
 
 You list only declared tools in `tools`. Beyond those, every agent automatically gets:
 
-- **Universal tools** — `agent_message`, `mailbox_send`.
-- **Emit tools** — `emit_{event_name}` for each entry in `emit_events`.
-- **Role-scoped entity tools** — `read_*`, `save_*`, `update_*`, generated from the entity
+- **Universal tools**: `agent_message`, `mailbox_send`.
+- **Emit tools**: `emit_{event_name}` for each entry in `emit_events`.
+- **Role-scoped entity tools**: `read_*`, `save_*`, `update_*`, generated from the entity
   contract and `entity_writes`.
 
 Host capabilities (`bash`, `web_search`, `file_io`) are gated separately by the
@@ -56,8 +56,8 @@ Host capabilities (`bash`, `web_search`, `file_io`) are gated separately by the
 Each agent has a markdown prompt at `prompts/{agent-id}.md`. Prompts use `{{variable}}`
 placeholders, substituted at session creation from (in priority order) instance variables,
 policy values, entity-state fields, and a small runtime-token allowlist
-(`current_date`, `agent_id`, `flow_instance_path`). Substitution is plain string replacement
-— no logic — and a variable that resolves nowhere is left as-is.
+(`current_date`, `agent_id`, `flow_instance_path`). Substitution is plain string replacement with no logic, and a variable that resolves
+nowhere is left as-is.
 
 ```markdown
 # Resolver
@@ -71,10 +71,10 @@ SLA: {{sla_hours}} hours.
 ```
 
 The platform appends a short environment postamble (the workspace mount paths) to every
-prompt. It does not list tools — the model sees those through the tool definitions.
+prompt. It does not list tools; the model sees those through the tool definitions.
 
 ## Keeping reviewers independent
 
-To stop two agents from sharing context, give a role two pools with different subscriptions —
+To stop two agents from sharing context, give a role two pools with different subscriptions,
 route originals to one and appeals to the other. Same prompt, separate sessions, no shared
 context.

@@ -16,7 +16,7 @@ states: [new, classified, assigned, resolved, closed, abandoned]
 ```
 
 An entity is in exactly one state, set by a handler's `advances_to`. Terminal states are
-absorbing — once reached, new events are rejected and timers are cancelled. A flow with
+absorbing, once reached, new events are rejected and timers are cancelled. A flow with
 `initial_state: null` and `states: []` is stateless. See
 [Gates, timers, and state](/concepts/gates-timers-and-state).
 
@@ -35,7 +35,7 @@ pins:
     writes: [category, resolution]
 ```
 
-No two flows may write the same data pin — that conflict is a boot error. Output event pins
+No two flows may write the same data pin, that conflict is a boot error. Output event pins
 are the activation switch for cross-flow routing; an emit of a pin-declared output must
 resolve a target or set `broadcast: true`. Internal events not listed in pins are ordinary
 event-loop emits and need no target.
@@ -61,10 +61,10 @@ required_agents:
 A stateful flow's input-pin handler must say how it gets the entity to operate on. It
 declares exactly one acquisition mode:
 
-- `create_entity: true` — mint a new entity at `initial_state`.
-- `select_entity` — resolve exactly one existing flow-owned entity by a declared business
+- `create_entity: true`: mint a new entity at `initial_state`.
+- `select_entity`: resolve exactly one existing flow-owned entity by a declared business
   key.
-- `select_or_create_entity` — resolve one existing, or deterministically mint one.
+- `select_or_create_entity`: resolve one existing, or deterministically mint one.
 
 Omitting all three on a stateful input-pin handler is a boot error. See
 [Composing flows](/build/composition) for cross-flow handoff patterns.

@@ -28,10 +28,10 @@ once to build the mental model; the [Build a flow](/build/flow-package) and
 
 Every runtime actor is one of three kinds:
 
-- **System node** — deterministic code. No prompt, no model. It owns workflow transitions.
-- **Agent** — LLM-powered. It has a prompt, a model tier, and a conversation mode, and owns
+- **System node**: deterministic code. No prompt, no model. It owns workflow transitions.
+- **Agent**: LLM-powered. It has a prompt, a model tier, and a conversation mode, and owns
   transitions that require judgment.
-- **Runtime** — the platform itself, handling implicit transitions (human decisions, system
+- **Runtime**: the platform itself, handling implicit transitions (human decisions, system
   lifecycle). Never declared in a contract.
 
 ## The runtime in six sentences
@@ -39,7 +39,7 @@ Every runtime actor is one of three kinds:
 1. A flow declares its states, pins, and required roles.
 2. System nodes subscribe to events and own deterministic transitions.
 3. Agents subscribe to events and handle reasoning work.
-4. Events move work through the system — they are the only communication mechanism.
+4. Events move work through the system: they are the only communication mechanism.
 5. Each handler execution commits atomically.
 6. The platform persists state, events, deliveries, sessions, timers, runs, and mutations in
    platform-owned tables.
@@ -57,7 +57,7 @@ entity acquisition → query → clear_gates → guard → accumulate → filter
 ```
 
 No LLM decides what fires next. Routing is derived from declared subscriptions, and every
-step commits together — a crash mid-handler leaves no partial state.
+step commits together, so a crash mid-handler leaves no partial state.
 
 <CardGroup cols={2}>
   <Card title="Flows and entities" icon="diagram-project" href="/concepts/flows-and-entities" />

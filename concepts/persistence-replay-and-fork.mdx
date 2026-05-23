@@ -11,9 +11,9 @@ replayable, and recoverable.
 
 The platform records history at two levels:
 
-- **The event store (`events`)** — every event, appended before it is delivered. Answers
+- **The event store (`events`)**: every event, appended before it is delivered. Answers
   *what happened*.
-- **The mutation log (`entity_mutations`)** — every change to an entity field, with the
+- **The mutation log (`entity_mutations`)**: every change to an entity field, with the
   before and after value and the event that caused it. Answers *what changed, and why*.
 
 Every event, delivery, session, and turn is correlated by a **`run_id`** in the `runs`
@@ -48,11 +48,11 @@ Because everything is persisted, work can be re-delivered:
 
 The mutation log is also an undo log. Combined with the `runs` and `run_fork_*` tables, it
 lets the runtime reconstruct the full system state at a moment in time, optionally swap the
-contract bundle, and resume — so last week's failed run can be replayed against this week's
+contract bundle, and resume, so last week's failed run can be replayed against this week's
 fixed contracts.
 
 <Note>
-  The persistence and reconstruction plumbing for run-level fork is in place — the mutation
+  The persistence and reconstruction plumbing for run-level fork is in place: the mutation
   log and the `runs`/`run_fork_*` tables. The operator command surface for it is in progress.
   For replaying individual events today, use the event and agent replay primitives above. See
   [Fork and replay](/operate/fork-and-replay).

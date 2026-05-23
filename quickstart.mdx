@@ -6,7 +6,7 @@ icon: "rocket"
 
 This quickstart runs a flow end to end with the `swarm` CLI. `swarm run` boots a runtime
 in-process, publishes your trigger event, streams the run's trace, and shuts down when the
-run settles — there is no long-running server to manage.
+run settles. There is no long-running server to manage.
 
 <Note>
   New to the contract model? Skim [Core concepts](/concepts/overview), or
@@ -15,7 +15,7 @@ run settles — there is no long-running server to manage.
 
 ## Prerequisites
 
-- The `swarm` binary on your PATH — see [Installation](/installation).
+- The `swarm` binary on your PATH: see [Installation](/installation).
 - Postgres 16. The repository ships a Compose service for it.
 - A contract bundle (a directory with a `package.yaml` at its root).
 - Optional: an LLM credential. The default runtime mode is scripted (`cli_test`), so a first
@@ -34,7 +34,7 @@ run settles — there is no long-running server to manage.
     swarm verify --contracts ./my-flow
     ```
 
-    `swarm verify` runs the static analyzer against files on disk — no runtime needed. Fix
+    `swarm verify` runs the static analyzer against files on disk, with no runtime needed. Fix
     any error before running; a bundle that runs has passed this check.
   </Step>
   <Step title="Run a flow">
@@ -47,7 +47,7 @@ run settles — there is no long-running server to manage.
     ```
 
     `swarm run` starts a runtime in-process, publishes `order.created`, and streams the run's
-    trace — events, deliveries, state changes, and agent turns — until the run settles.
+    trace, events, deliveries, state changes, and agent turns, until the run settles.
   </Step>
 </Steps>
 
@@ -63,7 +63,7 @@ run settles — there is no long-running server to manage.
 2. `swarm run` started a runtime in-process, backed by Postgres.
 3. `order.created` was validated against its payload schema, persisted, and routed to its
    subscribers by their declared subscriptions.
-4. A system node handled it in one atomic transaction — advancing state, writing fields, and
+4. A system node handled it in one atomic transaction: advancing state, writing fields, and
    emitting follow-up events; agents reasoned and emitted events of their own.
 5. The trace streamed to your terminal, and the local runtime shut down when the run settled.
 

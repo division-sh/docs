@@ -7,7 +7,7 @@ icon: "house"
 Swarm is an event-driven orchestration runtime for multi-agent LLM systems. You declare a
 flow as a bundle of YAML contracts; a static analyzer validates the bundle against the
 platform specification before the runtime boots; and a deterministic engine executes it.
-Every interaction — agent to agent, system node to system node, human to runtime — is a
+Every interaction (agent to agent, system node to system node, human to runtime) is a
 typed event with a persisted payload, routed by declared subscriptions and replayable from
 the log.
 
@@ -24,7 +24,7 @@ event loop. From there:
 - **System nodes** are deterministic code. They subscribe to events, run a fixed handler
   pipeline, advance state, and emit new events. No LLM decides what fires next.
 - **Agents** are LLM sessions. They subscribe to events, reason inside a scoped session,
-  call tools, and emit events. They never write state directly — they emit, and a handler
+  call tools, and emit events. They never write state directly; they emit, and a handler
   decides what gets written.
 - **Humans** act through a durable mailbox, using the same event model as everything else.
 
@@ -39,7 +39,7 @@ Swarm makes a few opinionated choices and holds them:
 <CardGroup cols={2}>
   <Card title="Deterministic control loop" icon="route">
     Routing is derived from declared subscriptions, not chosen by an LLM. Conditions use
-    CEL — strongly typed and non-Turing-complete.
+    CEL, strongly typed and non-Turing-complete.
   </Card>
   <Card title="One transaction per transition" icon="database">
     Guard, accumulate, compute, commit, emit: all-or-nothing. No partial state survives a
@@ -70,7 +70,7 @@ point. See [Why Swarm](/why-swarm) for when this is the right trade.
 
 <CardGroup cols={2}>
   <Card title="Why Swarm" icon="circle-question" href="/why-swarm">
-    When this tradeoff fits — and when it does not.
+    When this tradeoff fits, and when it does not.
   </Card>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
     Boot the runtime and trigger your first run.

@@ -8,11 +8,11 @@ icon: "timer"
 
 A flow declares its state machine in `schema.yaml`: an `initial_state`, a list of `states`,
 and `terminal_states`. An entity is in exactly one state at a time, set by a handler's
-`advances_to` (a single state, never a list). State is flow-scoped — there is no global state
+`advances_to` (a single state, never a list). State is flow-scoped; there is no global state
 enum spanning the platform, and authors never declare a state field on the entity; the
 runtime carries `entity.current_state` implicitly.
 
-A flow with `initial_state: null` and `states: []` is **stateless** — it processes events
+A flow with `initial_state: null` and `states: []` is **stateless**: it processes events
 without a lifecycle. `advances_to` is invalid there. Stateless still allows entities: a
 handler that writes entity fields auto-materializes one with no state.
 
@@ -22,11 +22,11 @@ Terminal states are absorbing and unconditional. Once an entity is terminal:
 
 - New events targeting it are rejected before any handler runs (outcome `terminal_reject`).
 - Its timers are cancelled and its agent sessions terminated.
-- All of its state is preserved — queryable, never deleted.
+- All of its state is preserved: queryable, never deleted.
 
 There is no reopen mechanism. To continue work, create a new entity with the relevant data
 copied over; the old one stays terminal to preserve the audit trail. Backward transitions to
-*non-terminal* states (revision loops, resets) are allowed — the prohibition is specifically
+*non-terminal* states (revision loops, resets) are allowed, the prohibition is specifically
 on leaving a terminal state.
 
 ## Gates
@@ -40,7 +40,7 @@ instance ids.
 ## Timers
 
 A timer is a durable, time-based trigger declared on a system node. When it fires, its event
-enters the normal event loop like any other event — timers are just delayed event producers.
+enters the normal event loop like any other event, timers are just delayed event producers.
 
 ```yaml
 timers:
@@ -53,7 +53,7 @@ timers:
 ```
 
 The timer starts when the entity enters the `start_on` state (or the `start_on` event fires,
-or at `boot`), persists a `fire_at` timestamp, and emits its event when the time arrives —
+or at `boot`), persists a `fire_at` timestamp, and emits its event when the time arrives,
 unless `cancel_on` fires first. Recurring timers restart after firing until cancelled. Timers
 are persisted, so they survive restarts. Trigger values must be prefixed (`state:`/`event:`);
 a bare string is a boot error.

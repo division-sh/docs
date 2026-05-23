@@ -18,8 +18,8 @@ Payloads are **producer-complete**: every declared field must be populated by th
 `events.yaml` defines payload *shapes*, not routing. Routing comes from declared
 subscriptions:
 
-- `nodes.yaml` — `subscribes_to` and `event_handlers`
-- `agents.yaml` — subscriptions and `emit_events`
+- `nodes.yaml`: `subscribes_to` and `event_handlers`
+- `agents.yaml`: subscriptions and `emit_events`
 
 Delivery follows from who subscribes: a subscribing node *owns* the event; a node and agents
 together get *dual delivery*; a node alone is *node-only*; no node means *pure agent
@@ -30,8 +30,8 @@ payload schema. No LLM decides routing.
 
 References resolve by whether they contain a slash:
 
-- **Local** — `order.created` — the thing of that name in the current flow.
-- **Absolute** — `review/analysis/analysis.completed` — navigated from the root.
+- **Local**: `order.created`, the thing of that name in the current flow.
+- **Absolute**: `review/analysis/analysis.completed`, navigated from the root.
 
 Subscriptions can use wildcards: `*` matches one path segment (any direct child flow), and
 `**` matches any depth. Wildcards expand to include dynamic instances as they are created.
@@ -41,12 +41,12 @@ Subscriptions can use wildcards: `*` matches one path segment (any direct child 
 Runtime-owned fields live on the event *envelope*, read through `event.*`, never authored
 into the payload. Pin-routed events carry route identities:
 
-- `event.source` — the emitter's route identity (always set, never overwritten).
-- `event.target` — a single recipient route identity.
-- `event.target_set` — a concrete list of recipients for explicit fan-out.
+- `event.source`: the emitter's route identity (always set, never overwritten).
+- `event.target`: a single recipient route identity.
+- `event.target_set`: a concrete list of recipients for explicit fan-out.
 
 A pin-declared output emit must resolve a target (`target: sender`, `{instance_id}`,
-`{flow, match}`), a structural parent route, or `broadcast: true` — there is no silent
+`{flow, match}`), a structural parent route, or `broadcast: true`; there is no silent
 fallback to broadcast.
 
 ## Reserved metadata

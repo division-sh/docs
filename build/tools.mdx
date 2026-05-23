@@ -28,13 +28,13 @@ knowledge_base_search:
 | `http` | the HTTP executor | Needs an `http` block (`method`, `url`); the default class. |
 
 A custom tool requires a `description`. Optional fields are `handler_type` (defaults to
-`http`), `input_schema`, `output_schema` (and the aliases `parameters`/`returns`), and — for
-HTTP tools — `http`, `response_mapping`, `credentials`. The fields `endpoint` and `type` are
+`http`), `input_schema`, `output_schema` (and the aliases `parameters`/`returns`), and, for
+HTTP tools, `http`, `response_mapping`, `credentials`. The fields `endpoint` and `type` are
 **not** accepted (use `http.url` and `handler_type`).
 
 <Note>
-  `workflow_registered` and `api_call` are deprecated handler types. They still load —
-  `workflow_registered` is normalized to `http` when an `http` block is present — but new
+  `workflow_registered` and `api_call` are deprecated handler types. They still load
+  (`workflow_registered` is normalized to `http` when an `http` block is present), but new
   tools should use `handler_type: http` or an MCP server.
 </Note>
 
@@ -52,12 +52,12 @@ mcp_servers:
 ```
 
 Tools are namespaced by the server's `prefix` (`pg.list_tables`), and an agent references the
-prefixed name in its `tools` list. An unreachable server logs a warning at boot — it does not
+prefixed name in its `tools` list. An unreachable server logs a warning at boot and does not
 abort the boot. See the [MCP gateway reference](/reference/mcp-gateway).
 
 ## Native capabilities
 
-`bash`, `web_search`, and `file_io` are not tools in `tools.yaml` — they are host
+`bash`, `web_search`, and `file_io` are not declared in `tools.yaml`; they are host
 capabilities gated by an agent's `native_tools` field (default all off):
 
 ```yaml

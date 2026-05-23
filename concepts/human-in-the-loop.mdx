@@ -7,7 +7,7 @@ icon: "user-check"
 ## Humans as a first-class actor
 
 Approvals, rejections, and deferrals flow through a durable **mailbox** using the same event
-model as everything else. A pending decision is just another event waiting for its handler —
+model as everything else. A pending decision is just another event waiting for its handler,
 a human's, in this case. Autonomy is a dial, not a switch: you decide which transitions
 require judgment and route those to the mailbox, while everything else runs autonomously.
 
@@ -18,17 +18,17 @@ The mailbox is a persisted, human-in-the-loop task queue. A handler writes an it
 summary, and an explicit payload. Writes are row-idempotent per source event, so a replayed
 delivery never creates a duplicate item.
 
-Each item carries a server-built **decision sheet** — the entity context and a preview of
-what happens downstream — so an operator can decide without reconstructing the situation by
+Each item carries a server-built **decision sheet**: the entity context and a preview of
+what happens downstream, so an operator can decide without reconstructing the situation by
 hand.
 
 ## Decisions
 
 An operator acts on a pending item in one of three ways:
 
-- **Approve** — emits the configured downstream event, resuming the flow.
-- **Reject** — records a reason; no downstream event.
-- **Defer** — postpones the item until a given time.
+- **Approve**: emits the configured downstream event, resuming the flow.
+- **Reject**: records a reason; no downstream event.
+- **Defer**: postpones the item until a given time.
 
 A decided item cannot be decided again (a second attempt returns a conflict). Approvals on
 review, approval, and operational-decision items emit `mailbox.item_decided`, which the flow

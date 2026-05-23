@@ -5,7 +5,7 @@ icon: "folder-tree"
 ---
 
 A flow is a directory of YAML contracts plus agent prompts. The engine reads the package and
-executes it — no product-specific code.
+executes it, no product-specific code.
 
 ## Directory layout
 
@@ -30,7 +30,7 @@ my-flow/
 | File | Responsibility |
 |---|---|
 | `package.yaml` | Flow identity: `name`, `version`, `platform_version`, and child `flows`. |
-| [`schema.yaml`](/build/state-machine) | States, pins, and `required_agents` — the flow's public surface. |
+| [`schema.yaml`](/build/state-machine) | States, pins, and `required_agents`: the flow's public surface. |
 | [`entities.yaml`](/reference/contracts/agents) | The typed persistent fields of the entity this flow owns. |
 | `types.yaml` | Shared named types, enums, and lists used by entities and events. |
 | [`nodes.yaml`](/build/handlers) | System nodes and their event handlers. |
