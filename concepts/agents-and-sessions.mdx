@@ -1,34 +1,53 @@
 ---
 title: "Agents and sessions"
-description: "LLM sessions, isolation, conversation modes, and auto-generated tools."
+description: "LLM sessions, isolation, conversation modes, and the tools an agent can call."
 icon: "robot"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Agents", platform-guide.md §"Agent Session
-  Management", README "Design positions" (isolation). */}
-
 ## What an agent is
 
-{/* TODO: an LLM session that receives events, reasons, and emits response events. Agents
-  never write entity state directly — they emit events; handlers decide what gets written. */}
+An agent is an LLM session. It receives events, reasons inside a scoped session, calls tools,
+and emits events. An agent is defined in `agents.yaml` — its subscriptions, the events it may
+emit, its tools, its model tier, and its conversation mode.
+
+Agents never write entity state directly. They emit events; a system node handler decides
+what gets written. This keeps state authority deterministic.
 
 ## Isolation and hierarchical addressing
 
-{/* TODO: scoped sessions; an agent observes only its subscribed events. Coordinator →
-  managers → workers; workers do not share a context window. Per-entity Docker workspaces
-  extend isolation to filesystem/process level. Role-based routing authority. */}
+Each agent runs in a scoped session and observes only the events it subscribes to. A
+coordinator addresses managers; managers address workers; workers do not share a context
+window. Messaging scope is enforced and flow-instance-local — there is no "message anyone"
+default. Per-entity Docker workspaces extend the isolation to the filesystem and process
+level. See [Workspaces and permissions](/reference/handler-fields) and the platform guide for
+the authority model.
 
 ## Conversation modes
 
-{/* TODO: task (stateless, new session per event) · session (persistent) ·
-  session_per_entity (one session per entity). */}
+`conversation_mode` controls how the platform manages session context:
 
-## Emit tools and universal tools
+- **`task`** — a new session per event, no memory between invocations. The default.
+- **`session`** — a persistent session across events. Requires `session_scope: global` or
+  `flow`.
+- **`session_per_entity`** — one session per (agent, entity) pair. Requires
+  `session_scope: entity`. The agent builds context for one entity over multiple turns.
+- **`stateless`** — an alias for `task`.
 
-{/* TODO: emit tools auto-generated from emit_events (emit_ticket_classified). Universal
-  tools (agent_message, mailbox_send) auto-granted. Role-scoped persistence tools derived
-  from the entity contract (save_entity_field). */}
+`session_scope` (`global`, `flow`, `entity`) pairs with the mode and is validated at boot —
+invalid combinations are boot errors.
 
-## Model tiers
+## The tools an agent can call
 
-{/* TODO: model_tier (haiku/sonnet/...) and max_turns_per_task. */}
+An agent only sees the tools it can use; the platform never injects the full registry. The
+surfaces are:
+
+- **Declared tools** — entries in the agent's `tools` list, resolved against the registry
+  (`platform_builtin`, `mcp`, `http`).
+- **Universal tools** — `agent_message` and `mailbox_send`, auto-granted to every agent.
+- **Emit tools** — `emit_{event_name}`, auto-generated from the agent's `emit_events`.
+- **Role-scoped entity tools** — `read_*`/`save_*`/`update_*`, generated from the flow's
+  entity contract and the agent's `entity_writes` declaration.
+- **Native tools** — `bash`, `web_search`, `file_io`, gated by the `native_tools` field.
+
+Anything outside these surfaces is rejected (default-deny). See
+[Defining agents and prompts](/build/agents-and-prompts) and [Tools](/build/tools).

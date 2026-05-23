@@ -1,27 +1,69 @@
 ---
 title: "Flows and entities"
-description: "Self-contained flow packages, pins, and the entities that move through them."
+description: "Self-contained flow packages, their instances, and the entities that move through them."
 icon: "diagram-project"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Core Concepts", platform-guide.md §4. */}
-
 ## Flows
 
-{/* TODO: a flow is a self-contained package declaring states, agents, events, handlers,
-  tools, policy. The composition/marketplace unit. */}
+A flow is a self-contained package of YAML contracts that declares everything the platform
+needs to run a piece of work: states, events, agents, system nodes, tools, and policy. It is
+the universal building block — every level of the system is a flow, from the root flow down
+to the smallest child. There is no separate "project" concept.
 
-## Static vs. template flows
+A flow exposes a public interface through typed **pins** (covered below), which is what makes
+flows composable: you can import a flow into another project and wire it without refactoring.
 
-{/* TODO: table — static (exactly 1, at boot) vs template (0 at boot, N at runtime via
-  create_flow_instance). Use cases: per-customer/per-order instances. */}
+## Static and template flows
+
+A flow runs in one of two modes, declared in the parent's `package.yaml`:
+
+| Mode | Instances | Created | Use case |
+|---|---|---|---|
+| `static` | Exactly one | At boot | Most flows |
+| `template` | Zero at boot, N at runtime | By `create_flow_instance` | Per-customer, per-order instances |
+
+A **flow instance** is one running copy. A static flow has a single instance at a fixed path
+(`{flow_id}/{local_name}`); a template flow is loaded at boot but not started, and each
+dynamic instance gets a path that includes its instance id
+(`{template_id}/{instance_id}/{local_name}`).
 
 ## Entities
 
-{/* TODO: an entity is a mutable document moving through the state machine: state + gates +
-  fields. Per-entity serialization prevents races. Many entities per flow concurrently. */}
+An entity is a mutable document moving through a flow instance's state machine. It has:
+
+- **state** — where it is (`new`, `assigned`, `resolved`).
+- **gates** — named boolean checkpoints (`g_verified: true`).
+- **fields** — typed data written by handlers (`category`, `resolution`).
+
+Many entities can be in the same flow at once, each with its own id and state. The engine
+serializes events per entity, so entity state, gates, and accumulators are protected from
+races without flow authors reasoning about locks. Events for *different* entities run
+concurrently.
+
+An entity's persistent fields are declared in the flow's **`entities.yaml`** contract, backed
+by the shared type system in `types.yaml`. (Earlier versions embedded an `entity_schema` in
+`package.yaml`; that is retired.)
+
+## Two identities
+
+Swarm keeps two flow identities distinct, and the runtime uses the right one for each job:
+
+- **`flow_scope_key`** — the semantic namespace from a flow's position in the tree
+  (`scoring`, `operating/build`). Used for gate projection, event scoping, and contract
+  references. Stable across instances.
+- **`flow_instance_path`** — a concrete running instance, including the instance id for
+  template flows (`operating/vert-001`). Used for entity ownership and lifecycle.
 
 ## Pins
 
-{/* TODO: typed input/output of a flow — the public interface used to wire flows together.
-  Link to /build/composition. */}
+Pins are a flow's public API — what the outside world may assume about it:
+
+- **Input event pins** — events the flow accepts from outside.
+- **Output event pins** — events it emits to the outside (the activation switch for
+  cross-flow routing).
+- **Input data pins** — entity fields it reads.
+- **Output data pins** — entity fields it writes. No two flows may write the same field.
+
+`events.yaml` may declare more events than the pins show — those are **internal events**, not
+part of the public interface. See [Composing flows](/build/composition) for wiring.

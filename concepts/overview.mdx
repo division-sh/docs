@@ -4,37 +4,66 @@ description: "The nouns of Swarm and how the engine ties them together."
 icon: "book"
 ---
 
-{/* STUB — outline only. Sources: README "Core concepts", platform-guide.md §1–§2, BRIEF. */}
-
-This section explains what Swarm is, independent of how you author any one contract. Read
-it once to build the mental model; the [Build a flow](/build/flow-package) and
+This section explains what Swarm is, independent of how you author any one contract. Read it
+once to build the mental model; the [Build a flow](/build/flow-package) and
 [Reference](/reference/contracts/overview) sections show the exact syntax.
 
 ## The nouns to keep separate
 
-{/* TODO: table from README "Core concepts": Flow, State, System node, Agent, Handler,
-  Event, Gate, Timer, Pin. One line each. Link each to its concept page. */}
+| Concept | One line |
+|---|---|
+| **Flow** | A self-contained package of contracts with typed input/output pins. The composition unit. |
+| **Flow instance** | One running copy of a flow. A flow is the class; the instance is the object. |
+| **Entity** | A mutable document moving through a flow instance's state machine: state, gates, and fields. |
+| **State** | A named state in a flow's state machine. An entity is in exactly one at a time. |
+| **System node** | Deterministic code. Subscribes to events, advances state, emits events. No LLM. |
+| **Agent** | An LLM session. Subscribes to events, reasons, calls tools, emits events. |
+| **Handler** | The unit of execution attached to an event on a system node. |
+| **Event** | A typed message with a payload schema, declared in `events.yaml`. |
+| **Gate** | A named boolean on an entity, set by a handler and checked by guards. |
+| **Timer** | A durable time-based trigger attached to a stage. |
+| **Pin** | A typed input or output of a flow, used to wire flows together. |
 
 ## Three execution types
 
-{/* TODO: system node (deterministic code, no LLM) · agent (LLM-powered) · human (mailbox).
-  See platform-guide.md §"Three Execution Types". */}
+Every runtime actor is one of three kinds:
+
+- **System node** — deterministic code. No prompt, no model. It owns workflow transitions.
+- **Agent** — LLM-powered. It has a prompt, a model tier, and a conversation mode, and owns
+  transitions that require judgment.
+- **Runtime** — the platform itself, handling implicit transitions (human decisions, system
+  lifecycle). Never declared in a contract.
 
 ## The runtime in six sentences
 
-{/* TODO: condensed runtime loop (platform-guide.md §"The Runtime In Six Sentences"):
-  ingress → event bus → routing by subscription → handler pipeline → atomic commit →
-  emit → persist. */}
+1. A flow declares its states, pins, and required roles.
+2. System nodes subscribe to events and own deterministic transitions.
+3. Agents subscribe to events and handle reasoning work.
+4. Events move work through the system — they are the only communication mechanism.
+5. Each handler execution commits atomically.
+6. The platform persists state, events, deliveries, sessions, timers, runs, and mutations in
+   platform-owned tables.
 
 ## How a transition executes
 
-{/* TODO: the handler dependency graph, one diagram:
-  guard → accumulate → compute → {advances_to, sets_gate, data_accumulation} → emit → action
-  with the atomic-commit boundary. Link to /concepts/system-nodes-and-handlers. */}
+When an event reaches a system node, the handler runs through a fixed dependency graph and
+commits in one transaction:
+
+```text
+entity acquisition → query → clear_gates → guard → accumulate → filter → reduce → count
+  → compute → branch selection (on_complete / rules)
+    → { advances_to, sets_gate, data_accumulation }   (independent, atomic)
+      → projection → emit.fields → emit.event → action → clear
+```
+
+No LLM decides what fires next. Routing is derived from declared subscriptions, and every
+step commits together — a crash mid-handler leaves no partial state.
 
 <CardGroup cols={2}>
-  <Card title="Flows & entities" icon="diagram-project" href="/concepts/flows-and-entities" />
-  <Card title="System nodes & handlers" icon="gears" href="/concepts/system-nodes-and-handlers" />
-  <Card title="Agents & sessions" icon="robot" href="/concepts/agents-and-sessions" />
-  <Card title="Events & routing" icon="bolt" href="/concepts/events-and-routing" />
+  <Card title="Flows and entities" icon="diagram-project" href="/concepts/flows-and-entities" />
+  <Card title="System nodes and handlers" icon="gears" href="/concepts/system-nodes-and-handlers" />
+  <Card title="Agents and sessions" icon="robot" href="/concepts/agents-and-sessions" />
+  <Card title="Events and routing" icon="bolt" href="/concepts/events-and-routing" />
+  <Card title="Persistence, replay, and fork" icon="clock-rotate-left" href="/concepts/persistence-replay-and-fork" />
+  <Card title="Human in the loop" icon="user-check" href="/concepts/human-in-the-loop" />
 </CardGroup>

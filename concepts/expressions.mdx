@@ -4,24 +4,42 @@ description: "The strongly typed, non-Turing-complete language for guards, rules
 icon: "code"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Expressions (CEL)", platform-guide.md
-  §"Expression Language". Full function reference lives at /reference/expressions-cel. */}
-
-## Why CEL
-
-{/* TODO: all guard checks, rule conditions, filters use CEL. Strongly typed,
-  non-Turing-complete, safe to evaluate — "no hallucinating router". Link to cel-spec. */}
+Swarm evaluates all guard checks, rule conditions, filter conditions, and `on_complete`
+branch conditions with [CEL](https://github.com/google/cel-spec) (Common Expression
+Language). CEL is strongly typed and non-Turing-complete — it cannot loop or call out, so
+there is no hallucinating router and no unbounded evaluation.
 
 ## Context variables
 
-{/* TODO: entity (fields/state/gates), payload, policy, accumulated, fan_out. */}
+A CEL expression reads from a fixed set of namespaces:
 
-## Where CEL is used
+| Variable | What it holds | Where it is available |
+|---|---|---|
+| `entity` | Current entity state — declared fields, `current_state`, `gates` | Everywhere |
+| `payload` | The current event's payload fields | Everywhere |
+| `policy` | Flow policy merged with root policy | Everywhere |
+| `fan_out` | Fan-out metadata, e.g. `fan_out.count` | After a `fan_out` step |
+| `accumulated` | The received items from the current `accumulate` step | Inside `on_complete` and `filter` |
 
-{/* TODO: guard.check, rules[*].condition, filter, emit.fields, compute conditions,
-  on_complete conditions. */}
+Declared entity fields are always readable at a type-valid value; referencing an undeclared
+field is a contract error caught at boot.
 
-<Note>
-  Conditions are always prefixed: `payload.X`, `entity.X`, or `policy.X`. See
-  [Dialect rules](/reference/dialect-rules).
-</Note>
+## Examples
+
+```text
+entity.retry_count <= policy.max_retries
+payload.category == "billing"
+entity.kill_reason != null
+accumulated.size() >= policy.required_dimensions
+```
+
+Supported operations include comparison (`== != < <= > >=`), logical (`&& || !`), arithmetic
+(`+ - * /`), membership (`in`, `contains`), string (`startsWith`, `endsWith`, `matches`), and
+list (`size`, `exists`, `all`, `filter`, `map`).
+
+## The prefix rule
+
+Every condition must carry a context prefix — `payload.`, `entity.`, `policy.`,
+`accumulated.`, or `fan_out.`. A bare identifier is a dialect violation. See
+[Dialect rules](/reference/dialect-rules) and the full
+[CEL reference](/reference/expressions-cel).

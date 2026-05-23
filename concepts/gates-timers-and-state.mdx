@@ -4,25 +4,56 @@ description: "State machines, gate checkpoints, and durable timers."
 icon: "timer"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE patterns 2 & 7, platform-guide.md §"State
-  Management"/"Timer Model". */}
-
 ## State machines
 
-{/* TODO: initial_state, states, terminal_states. An entity is in exactly one state at a
-  time. advances_to is a single string, never a list. */}
+A flow declares its state machine in `schema.yaml`: an `initial_state`, a list of `states`,
+and `terminal_states`. An entity is in exactly one state at a time, set by a handler's
+`advances_to` (a single state, never a list). State is flow-scoped — there is no global state
+enum spanning the platform, and authors never declare a state field on the entity; the
+runtime carries `entity.current_state` implicitly.
+
+A flow with `initial_state: null` and `states: []` is **stateless** — it processes events
+without a lifecycle. `advances_to` is invalid there. Stateless still allows entities: a
+handler that writes entity fields auto-materializes one with no state.
 
 ## Terminal states
 
-{/* TODO: done forever — events rejected, timers cancelled, data preserved (queryable, never
-  deleted). No config override. */}
+Terminal states are absorbing and unconditional. Once an entity is terminal:
+
+- New events targeting it are rejected before any handler runs (outcome `terminal_reject`).
+- Its timers are cancelled and its agent sessions terminated.
+- All of its state is preserved — queryable, never deleted.
+
+There is no reopen mechanism. To continue work, create a new entity with the relevant data
+copied over; the old one stays terminal to preserve the audit trail. Backward transitions to
+*non-terminal* states (revision loops, resets) are allowed — the prohibition is specifically
+on leaving a terminal state.
 
 ## Gates
 
-{/* TODO: named booleans set by a handler; other handlers guard on them. sets_gate /
-  clear_gates (clears ALL gates). Multi-gate pipelines. */}
+A gate is a named boolean on the entity, set by `sets_gate` and checked by guards. Gates
+model "which milestones are complete" in validation-style flows. They default to unset and
+are not auto-reset; `clear_gates: true` resets *every* gate on the entity at once (it is
+all-or-nothing). Gates are projected by `flow_scope_key`, so they stay stable across
+instance ids.
 
 ## Timers
 
-{/* TODO: durable, time-based triggers attached to a stage. start_on / cancel_on lifecycle.
-  Persisted across restarts. One-shot and recurring. */}
+A timer is a durable, time-based trigger declared on a system node. When it fires, its event
+enters the normal event loop like any other event — timers are just delayed event producers.
+
+```yaml
+timers:
+  - id: ticket_sla
+    event: timer.ticket_sla
+    delay: "{{sla_hours}}h"      # duration string or a policy reference
+    start_on: state:assigned     # state:<name>, event:<name>, or boot
+    cancel_on: state:resolved    # state:<name> or event:<name> (boot is invalid)
+    recurring: false
+```
+
+The timer starts when the entity enters the `start_on` state (or the `start_on` event fires,
+or at `boot`), persists a `fire_at` timestamp, and emits its event when the time arrives —
+unless `cancel_on` fires first. Recurring timers restart after firing until cancelled. Timers
+are persisted, so they survive restarts. Trigger values must be prefixed (`state:`/`event:`);
+a bare string is a boot error.

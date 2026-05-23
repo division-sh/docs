@@ -4,22 +4,42 @@ description: "The durable mailbox: approvals, rejections, and deferrals as event
 icon: "user-check"
 ---
 
-{/* STUB — outline only. Sources: README "Design positions", BRIEF, mailbox_write action. */}
-
 ## Humans as a first-class actor
 
-{/* TODO: approvals, rejections, deferrals flow through a durable mailbox using the same
-  event model as everything else. A pending decision is just another event waiting for its
-  handler — a human's. "Autonomy is a dial, not a switch." */}
+Approvals, rejections, and deferrals flow through a durable **mailbox** using the same event
+model as everything else. A pending decision is just another event waiting for its handler —
+a human's, in this case. Autonomy is a dial, not a switch: you decide which transitions
+require judgment and route those to the mailbox, while everything else runs autonomously.
 
 ## The mailbox
 
-{/* TODO: durable, persisted, survives restarts. mailbox_write action writes an item;
-  operators act on it. Budget emergencies raise a mailbox item. */}
+The mailbox is a persisted, human-in-the-loop task queue. A handler writes an item with the
+`mailbox_write` action, declaring the item type, severity (`normal`, `urgent`, `critical`), a
+summary, and an explicit payload. Writes are row-idempotent per source event, so a replayed
+delivery never creates a duplicate item.
+
+Each item carries a server-built **decision sheet** — the entity context and a preview of
+what happens downstream — so an operator can decide without reconstructing the situation by
+hand.
 
 ## Decisions
 
-{/* TODO: approve / reject / defer. How a decision resumes the flow. */}
+An operator acts on a pending item in one of three ways:
+
+- **Approve** — emits the configured downstream event, resuming the flow.
+- **Reject** — records a reason; no downstream event.
+- **Defer** — postpones the item until a given time.
+
+A decided item cannot be decided again (a second attempt returns a conflict). Approvals on
+review, approval, and operational-decision items emit `mailbox.item_decided`, which the flow
+subscribes to in order to continue.
+
+## Budget escalations
+
+Cost control surfaces through the same channel. Token usage is tracked per entity and per
+actor; when spend crosses a declared threshold the platform emits
+`platform.budget_threshold_crossed` with a `level` (`warning`, `throttle`, `emergency`), and
+an emergency raises a mailbox item for a human.
 
 <Card title="Operate the mailbox" icon="inbox" href="/operate/mailbox">
   The CLI and API for acting on pending decisions.

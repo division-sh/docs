@@ -4,33 +4,74 @@ description: "Deterministic orchestrators and the handler dependency graph."
 icon: "gears"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE "System Nodes"/"Handler Dependency Graph",
-  platform-guide.md §6, platform-spec.md §handler_specification. */}
-
 ## System nodes
 
-{/* TODO: deterministic orchestrators. Subscribe to events, execute handler declarations,
-  no code. One system node per event (unambiguous state authority). */}
+System nodes are deterministic orchestrators. They subscribe to events and execute handler
+declarations — no code, just YAML. A system node has no prompt and no model; it owns the
+workflow's state transitions.
+
+**One system node per event.** No two nodes may handle the same event, which gives every
+event an unambiguous state authority. Agents are not constrained this way — many agents may
+subscribe to the same event.
 
 ## Handlers
 
-{/* TODO: the unit of execution attached to an event. Composed of guard, accumulate, compute,
-  advances_to, sets_gate, data_accumulation, emit, action. */}
+A handler is the unit of execution attached to an event. It declares what happens when that
+event arrives — guards, state changes, data writes, emitted events, and actions:
+
+```yaml
+ticket.classified:
+  guard:
+    id: valid_category
+    check: "payload.category in ['billing', 'technical', 'account']"
+    on_fail: reject
+  data_accumulation:
+    writes: [category, priority]
+    source_event: ticket.classified
+  advances_to: assigned
+  emit: ticket.assigned
+```
 
 ## The dependency graph
 
-{/* TODO: execution order is fixed by the graph:
-  guard → accumulate → compute → on_complete/rules
-    → {advances_to, sets_gate, data_accumulation}   (independent, atomic)
-      → emit.fields → emit.event → action
-  Short-circuits: guard failure stops; incomplete accumulate waits. */}
+A handler's fields execute in a fixed causal order — a dependency graph, not a script. YAML
+field order is cosmetic:
+
+```text
+entity acquisition (create_entity | select_entity | select_or_create_entity)
+  → query → clear_gates → guard → accumulate → filter → reduce → count → compute
+    → branch selection (on_complete / rules)
+      → { advances_to, sets_gate, data_accumulation }   ← independent of each other
+        → projection → emit.fields → emit.event → action → clear
+```
+
+Two short-circuits stop a handler early:
+
+- **Guard failure** runs the configured `on_fail` action (`reject`, `discard`, `kill`, or
+  `escalate:{event}`).
+- **Accumulate incomplete** records the arrival and waits (observable outcome `waiting`).
 
 ## Atomicity
 
-{/* TODO: guard/accumulate/compute/commit/emit is all-or-nothing. A crash mid-handler leaves
-  no partial state. Guards see pre-handler state; the next handler sees post-commit state. */}
+Every handler execution is atomic. State changes, gate updates, data writes, and event
+persistence commit in a single database transaction — no observer sees intermediate state,
+and a crash mid-handler rolls back cleanly. Because `advances_to`, `sets_gate`, and
+`data_accumulation` commit together, their relative order is cosmetic.
 
-## on_complete vs. rules
+Guards evaluate against entity state *before* any of the handler's writes. A handler's own
+`data_accumulation` affects the *next* handler, not its own guard.
 
-{/* TODO: two ways to branch, mutually exclusive. on_complete = ordered list, first match
-  wins; rules = named conditions. Link to /reference/handler-fields. */}
+## Two ways to branch
+
+`on_complete` and `rules` are mutually exclusive:
+
+- **`on_complete`** — an ordered list of `{condition, advances_to, emit}`; the first matching
+  condition wins. Used after accumulation or computation.
+- **`rules`** — a map of named rules matched against the payload. Used for type-dispatch
+  routing.
+
+When a handler has `rules`, the matched rule owns the emit; a handler-level `emit` alongside
+`rules` is rejected at boot as ambiguous.
+
+See [Writing handlers](/build/handlers) for patterns and the full field
+[reference](/reference/handler-fields).

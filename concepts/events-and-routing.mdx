@@ -1,30 +1,57 @@
 ---
 title: "Events and routing"
-description: "Typed events, subscriptions, addressing, and reserved metadata."
+description: "Typed events, subscription-derived routing, addressing, and envelope identities."
 icon: "bolt"
 ---
 
-{/* STUB — outline only. Sources: DEVELOPER-GUIDE "Events", platform-guide.md §"URI Addressing",
-  README "Architecture". */}
+## Events as the only communication primitive
 
-## Events as the communication primitive
+Every interaction flows through events: an agent or node emits an event, the platform
+validates and persists it, subscribers handle it, and new events continue the chain. Every
+event has a typed payload schema in `events.yaml`, validated before the event is persisted.
 
-{/* TODO: every interaction flows through events. Agent emits → platform persists →
-  system node handles → new event emitted → next agent receives. Typed payload schema in
-  events.yaml; validated at entry. */}
+Payloads are **producer-complete**: every declared field must be populated by the emit site's
+`emit.fields`. There are no payload defaults and no implicit passthrough.
 
-## Routing by subscription
+## Routing is derived, not chosen
 
-{/* TODO: routing is derived from declared subscriptions, not chosen by an LLM. Deterministic.
-  Ingress surfaces: RPC, API, MCP. */}
+`events.yaml` defines payload *shapes*, not routing. Routing comes from declared
+subscriptions:
+
+- `nodes.yaml` — `subscribes_to` and `event_handlers`
+- `agents.yaml` — subscriptions and `emit_events`
+
+Delivery follows from who subscribes: a subscribing node *owns* the event; a node and agents
+together get *dual delivery*; a node alone is *node-only*; no node means *pure agent
+delivery*. You change who receives an event by editing subscriptions, never by touching its
+payload schema. No LLM decides routing.
 
 ## Addressing
 
-{/* TODO: local (event_name), absolute (intake/ticket.ready), wildcard
-  (processing then star then order.completed). What single-star and double-star mean.
-  Cross-flow event ownership. */}
+References resolve by whether they contain a slash:
 
-## Reserved swarm: metadata
+- **Local** — `order.created` — the thing of that name in the current flow.
+- **Absolute** — `review/analysis/analysis.completed` — navigated from the root.
 
-{/* TODO: swarm.source: external · swarm.producer: mailbox_human · swarm.consumer: external_ui
-  · swarm.status: planned. */}
+Subscriptions can use wildcards: `*` matches one path segment (any direct child flow), and
+`**` matches any depth. Wildcards expand to include dynamic instances as they are created.
+
+## The envelope/payload split
+
+Runtime-owned fields live on the event *envelope*, read through `event.*`, never authored
+into the payload. Pin-routed events carry route identities:
+
+- `event.source` — the emitter's route identity (always set, never overwritten).
+- `event.target` — a single recipient route identity.
+- `event.target_set` — a concrete list of recipients for explicit fan-out.
+
+A pin-declared output emit must resolve a target (`target: sender`, `{instance_id}`,
+`{flow, match}`), a structural parent route, or `broadcast: true` — there is no silent
+fallback to broadcast.
+
+## Reserved metadata
+
+Event-level metadata lives under the reserved `swarm:` namespace: `swarm.source` (external
+producer proof), `swarm.consumer` (external sink), `swarm.status` (lifecycle, e.g.
+`planned`), and the exceptional `swarm.producer`. The `platform.` event prefix is reserved
+for the engine's own events.

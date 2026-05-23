@@ -1,37 +1,60 @@
 ---
 title: "Persistence, replay, and fork"
-description: "Two-layer event sourcing, the flight recorder, and timestamp-based fork."
+description: "Two-layer event sourcing, the flight recorder, and rewinding a run."
 icon: "clock-rotate-left"
 ---
 
-{/* STUB — outline only. Sources: README "Architecture"/"Design positions", FLIGHT-RECORDER.md. */}
+Persistence is the substrate, not an add-on. It is what makes Swarm runs auditable,
+replayable, and recoverable.
 
-## Two-layer event-sourced persistence
+## Two layers of history
 
-{/* TODO: every event lands in Postgres; every entity state mutation lands in a separate
-  mutation log with before/after diffs. Replay = "what happened"; mutation log = "what
-  changed". Accumulator projections compute read-models off the streams. */}
+The platform records history at two levels:
+
+- **The event store (`events`)** — every event, appended before it is delivered. Answers
+  *what happened*.
+- **The mutation log (`entity_mutations`)** — every change to an entity field, with the
+  before and after value and the event that caused it. Answers *what changed, and why*.
+
+Every event, delivery, session, and turn is correlated by a **`run_id`** in the `runs`
+table, so a run is a first-class execution context you can reconstruct end to end.
 
 ## The flight recorder
 
-{/* TODO: events + entity_mutations + agent_turns + event_deliveries = a step-by-step audit
-  trail. Answers "what did entity X look like when event Y fired?" Drift detection rebuilds
-  entity_state from the log. */}
+Four tables together form a step-by-step audit trail of any run:
+
+| What happened | Where it lives |
+|---|---|
+| An event fired | `events` |
+| An entity field changed | `entity_mutations` |
+| An agent reasoned | `agent_turns` |
+| An event was delivered | `event_deliveries` |
+
+Joined on `run_id` and ordered by time, these answer "what did entity X look like when event
+Y fired?" without reverse-engineering it from current state.
 
 ## Replay
 
-{/* TODO: any run reconstructed turn by turn, audited end to end, resumed from last
-  consistent checkpoint after a crash. */}
+Because everything is persisted, work can be re-delivered:
+
+- **Event replay** redelivers a persisted event to its original subscribers (or a subset),
+  creating a new event with `source_event_id` lineage and fresh delivery rows.
+- **Agent replay** is the same primitive scoped to one agent; **replay-backlog** redelivers
+  an agent's pending events after a restart.
+- **Crash recovery** replays any event that was persisted but not yet marked delivered;
+  idempotency keeps the result the same.
 
 ## Fork
 
-{/* TODO: timestamp-based system fork (chosen design). Reconstruct full system state at a
-  moment T, optionally swap contracts, resume. Counterfactuals: different policy, tweaked
-  prompt, new contract bundle. forked_from lineage. */}
+The mutation log is also an undo log. Combined with the `runs` and `run_fork_*` tables, it
+lets the runtime reconstruct the full system state at a moment in time, optionally swap the
+contract bundle, and resume — so last week's failed run can be replayed against this week's
+fixed contracts.
 
-<Info>
-  Conceptual page. For the operator commands, see [Fork and replay](/operate/fork-and-replay).
-  {/* TODO: confirm current shipping status of `swarm fork` — README marks the CLI wrapper as
-    "shipping shortly"; FLIGHT-RECORDER notes top-level `swarm fork` is retired in the v1 CLI
-    contract in favor of a gated control surface. Reconcile before publishing. */}
-</Info>
+<Note>
+  The persistence and reconstruction plumbing for run-level fork is in place. The operator
+  command surface for it is gated — the top-level `swarm fork` command is **retired**, and a
+  dedicated run-fork control surface is the supported path going forward. For replaying
+  individual events today, use the event/agent replay primitives above. See
+  [Fork and replay](/operate/fork-and-replay).
+</Note>
