@@ -31,10 +31,16 @@ persisted.
 
 ## Strong fit
 
-- **Long-running workflows where reproducibility matters.** Anything where someone will
-  later ask "why did the system do that, and when?"
-- **Multi-agent coordination across three or more roles.** Hierarchical addressing
-  (coordinator → managers → workers) avoids the context-window blowup of a flat chat.
+- **Long-running workflows, hours to days.** Durable timers, persistence, and crash recovery
+  let a run span days without losing state; replay answers "why did the system do that, and
+  when?" later.
+- **Coordinating many agents, from a handful to a hundred or more.** Hierarchical addressing
+  (coordinator → managers → workers), per-flow agent sharding, and dynamic flow instances
+  scale the agent count on a single deployment, without the context-window blowup of a flat
+  chat.
+- **Systems assembled from reusable parts.** A flow is a self-contained package with typed
+  input and output pins. Build a flow once and import it into other projects, or swap one for
+  a better version, without refactoring.
 - **Crash recovery as a requirement.** Atomic transitions and event replay are the
   baseline, not a bolt-on.
 - **Regulated or audited environments.** Two-layer event-plus-mutation persistence makes
@@ -65,7 +71,7 @@ libraries; it applies that rigor to multi-agent LLM systems.
 | Crash recovery | None | Manual checkpointing | Atomic transitions + event replay |
 | Composition | Code refactoring | Python sub-graphs | YAML flow packages with typed pins |
 | Agent isolation | Shared chat | Shared state | Scoped sessions, hierarchical addressing |
-| Scaling | Single process | Single process | Per-entity parallelism, dynamic instances |
+| Scaling | Single process | Single process | Per-entity parallelism, agent sharding, dynamic instances; runs spanning hours to days |
 | Expression language | None | Python | CEL (typed, non-Turing-complete) |
 | Audit trail | Logs | Logs | Event store + per-field mutation log |
 
