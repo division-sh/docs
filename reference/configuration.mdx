@@ -43,11 +43,13 @@ Either way, a bearer token is required.
 
 ## Database
 
-Postgres is the store. The repository `.env` sets these for local development (pointing at
-`127.0.0.1:5432`).
+Postgres is the store; any Postgres 16 works (local, managed, or a container). The defaults
+target a local Postgres, so a stock setup needs no configuration:
 
 <ParamField path="SWARM_DB_HOST / SWARM_DB_PORT / SWARM_DB_NAME / SWARM_DB_USER / SWARM_DB_PASSWORD / SWARM_DB_SSLMODE" type="string">
-  Postgres connection parameters.
+  Postgres connection parameters. Defaults: `127.0.0.1`, `5432`, `swarm`, `postgres`,
+  `postgres`, `disable`. Each `SWARM_DB_*` variable falls back to the standard libpq
+  equivalent (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`) before the default.
 </ParamField>
 
 ## Runtime mode and credentials

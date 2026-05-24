@@ -23,9 +23,13 @@ it, boot a runtime, trigger it, and watch the trace.
 Run the commands below from the repository root, so the default platform spec resolves.
 
 <Steps>
-  <Step title="Start Postgres">
-    Any Postgres 16 works. A throwaway container, matching the connection settings in the
-    repository's `.env`:
+  <Step title="Provide Postgres">
+    Any Postgres 16 works: a local install, a managed service, or a container. The binary
+    connects to `127.0.0.1:5432` (database `swarm`, user `postgres`) by default and honors the
+    standard `SWARM_DB_*` and `PG*` variables for anything else.
+
+    For a local install, create the database (`createdb swarm`). Or run a throwaway container
+    that matches the defaults:
 
     ```bash
     docker run -d --name swarm-postgres \

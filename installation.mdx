@@ -59,9 +59,13 @@ Postgres container, or use Docker Compose for a fully containerized runtime.
 ## Postgres
 
 Postgres is the substrate, not an add-on. Every event lands in the event store, every entity
-state change lands in a separate mutation log, and runs are correlated by `run_id`, which
-is what makes replay and fork possible. Connection settings are supplied through
-`SWARM_DB_*` environment variables (host, port, name, user, password, sslmode).
+state change lands in a separate mutation log, and runs are correlated by `run_id`, which is
+what makes replay and fork possible.
+
+Any Postgres 16 works: a local install, a managed service, or a container. Docker is not
+required. The binary defaults to a local Postgres (`127.0.0.1:5432`, database `swarm`, user
+and password `postgres`) and reads `SWARM_DB_*` (falling back to the standard `PG*`
+variables) for anything else. Create the `swarm` database, or set `SWARM_DB_NAME`.
 
 ## Credentials and runtime mode
 
