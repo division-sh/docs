@@ -37,12 +37,14 @@ ticket.classified:
 A handler's fields execute in a fixed causal order, a dependency graph, not a script. YAML
 field order is cosmetic:
 
-```text
-entity acquisition (create_entity | select_entity | select_or_create_entity)
-  → query → clear_gates → guard → accumulate → filter → reduce → count → compute
-    → branch selection (on_complete / rules)
-      → { advances_to, sets_gate, data_accumulation }   ← independent of each other
-        → projection → emit.fields → emit.event → action → clear
+```mermaid
+flowchart TD
+    AQ["entity acquisition<br/>create_entity / select_entity / select_or_create_entity"] --> Q[query]
+    Q --> CG[clear_gates] --> G[guard]
+    G --> AC[accumulate] --> FI[filter] --> RE[reduce] --> CN[count] --> CM[compute]
+    CM --> BR{"branch selection<br/>on_complete / rules"}
+    BR --> AP["advances_to, sets_gate, data_accumulation<br/>(independent of each other, commit together)"]
+    AP --> PR[projection] --> EF["emit.fields"] --> EE["emit.event"] --> ACT[action] --> CL[clear]
 ```
 
 Two short-circuits stop a handler early:

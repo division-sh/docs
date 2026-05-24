@@ -8,6 +8,40 @@ This section explains what Swarm is, independent of how you author any one contr
 once to build the mental model; the [Build a flow](/build/flow-package) and
 [Reference](/reference/contracts/overview) sections show the exact syntax.
 
+## Two kinds of actor, and only one owns the truth
+
+Every actor you declare is one of two kinds, and the split is the whole idea:
+
+- A **system node** is deterministic code, no prompt and no model. It owns state: it advances
+  the entity, sets gates, writes fields, and emits events.
+- An **agent** is an LLM session. It reasons inside a scoped session, calls tools, and emits
+  events carrying its results. It never writes state directly.
+
+Both communicate the same way, by emitting typed events. What differs is what each is trusted
+with. An agent can *propose* an outcome by emitting an event; a system node decides what that
+event actually changes. So an agent can never leave the entity in a state it only *claimed* to
+reach, the way it could if it were also the bookkeeper.
+
+```mermaid
+flowchart LR
+    EV(["Typed event"])
+    EV -->|subscription| SN["System node<br/>deterministic"]
+    EV -->|subscription| AG["Agent<br/>LLM, scoped session"]
+    SN -->|emit| EV
+    AG -->|emit result| EV
+    SN ==>|"advance state, one transaction"| DB[("Entity state + event log<br/>persisted, replayable")]
+```
+
+Reading it: an event routes to its subscribers by their declared subscriptions, never by an
+LLM. A subscribing system node runs its handler and commits the state change in one
+transaction; a subscribing agent reasons and emits its own event. Notice that only the system
+node touches state. Both kinds of emitted event re-enter the loop and route to their own
+subscribers.
+
+A third actor is implicit: the **runtime** itself handles transitions you never declare, such
+as a human decision arriving through the mailbox or a flow's own lifecycle. You never write it
+in a contract.
+
 ## The nouns to keep separate
 
 | Concept | One line |
@@ -24,16 +58,6 @@ once to build the mental model; the [Build a flow](/build/flow-package) and
 | **Timer** | A durable time-based trigger attached to a stage. |
 | **Pin** | A typed input or output of a flow, used to wire flows together. |
 
-## Three execution types
-
-Every runtime actor is one of three kinds:
-
-- **System node**: deterministic code. No prompt, no model. It owns workflow transitions.
-- **Agent**: LLM-powered. It has a prompt, a model tier, and a conversation mode, and owns
-  transitions that require judgment.
-- **Runtime**: the platform itself, handling implicit transitions (human decisions, system
-  lifecycle). Never declared in a contract.
-
 ## The runtime in six sentences
 
 1. A flow declares its states, pins, and required roles.
@@ -46,18 +70,25 @@ Every runtime actor is one of three kinds:
 
 ## How a transition executes
 
-When an event reaches a system node, the handler runs through a fixed dependency graph and
-commits in one transaction:
+When an event reaches a system node, its handler runs through a fixed dependency graph, not
+the order you wrote the fields in, and commits in one transaction. Grouped into stages:
 
-```text
-entity acquisition → query → clear_gates → guard → accumulate → filter → reduce → count
-  → compute → branch selection (on_complete / rules)
-    → { advances_to, sets_gate, data_accumulation }   (independent, atomic)
-      → projection → emit.fields → emit.event → action → clear
+```mermaid
+flowchart LR
+    subgraph tx["one transaction, all or nothing"]
+        direction LR
+        A["Acquire<br/>entity"] --> B["Evaluate<br/>guard, accumulate, compute"]
+        B --> C{"Branch<br/>on_complete / rules"}
+        C --> D["Apply<br/>state, gates, data"]
+        D --> E["Emit<br/>events"]
+        E --> F["Action<br/>(optional)"]
+    end
 ```
 
 No LLM decides what fires next. Routing is derived from declared subscriptions, and every
-step commits together, so a crash mid-handler leaves no partial state.
+step commits together, so a crash mid-handler leaves no partial state. For the exact stage
+order and the short-circuits that stop a handler early, see
+[System nodes and handlers](/concepts/system-nodes-and-handlers).
 
 <CardGroup cols={2}>
   <Card title="Flows and entities" icon="diagram-project" href="/concepts/flows-and-entities" />
