@@ -4,12 +4,13 @@ description: "Deterministic orchestration for multi-agent LLM systems."
 icon: "house"
 ---
 
-Swarm is an event-driven orchestration runtime for multi-agent LLM systems. You declare a
-flow as a bundle of YAML contracts; a static analyzer validates the bundle against the
-platform specification before the runtime boots; and a deterministic engine executes it.
-Every interaction (agent to agent, system node to system node, human to runtime) is a
-typed event with a persisted payload, routed by declared subscriptions and replayable from
-the log.
+Swarm is an orchestration runtime for multi-agent LLM systems, built on one decision: the LLM
+does not run the system. Agents reason in small, scoped tasks while a deterministic engine
+owns state, routing, and rules, so an agent can never leave the system in a state it only
+*claimed* to reach. You declare a flow as a bundle of YAML contracts, a static analyzer
+validates it against the platform specification before the runtime boots, and the engine
+executes it. Every interaction (agent to agent, system node to system node, human to runtime)
+is a typed, persisted event, routed by declared subscriptions and replayable from the log.
 
 Less an agent library, more a distributed operating system for LLMs. It assumes failures
 will happen, humans will intervene, and costs must be controlled, and ships the plumbing

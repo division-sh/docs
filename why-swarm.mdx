@@ -10,24 +10,27 @@ That tradeoff is right for some workloads and wrong for others.
 
 ## The problem with LLM-managed orchestration
 
-Most multi-agent frameworks let an LLM manage its own routing, state, and coordination. That
-works for a demo and breaks in production:
+Most multi-agent frameworks make the LLM *be* the system: it decides who acts next, tracks the
+state, and is trusted to follow the rules. LLMs are not reliable at that job, and it shows in
+production:
 
-- **Non-deterministic routing.** When an LLM "manager" decides who acts next, two runs of
-  the same input diverge. You cannot reliably debug, audit, or reproduce a run.
-- **No crash recovery.** A process dies mid-turn and the in-memory state goes with it.
+- **The model fakes the state.** An agent reports a step done when it is not, or contradicts
+  an earlier decision. Nothing catches it, because the model is also the bookkeeper: there is
+  no independent source of truth.
+- **Non-deterministic routing.** When an LLM decides who acts next, two runs of the same input
+  diverge. You cannot reliably debug, audit, or reproduce a run.
 - **Context-window exhaustion.** Put ten agents in one shared chat and the model loses the
-  thread well before the tenth.
+  thread well before the tenth; quality falls as the task grows.
+- **No crash recovery.** A process dies mid-turn and the in-memory state goes with it.
 - **No composition.** Reusing a pipeline in another project means refactoring code, not
   importing a package.
-- **Tangled concerns.** Business logic, orchestration, and agent reasoning end up in the
-  same code path.
 
-Swarm's premise is that the agents are usually fine; it is the wiring that fails. So the
-wiring is made deterministic and auditable: routing is [derived from declared
-subscriptions](/concepts/events-and-routing), each transition commits in [one
-transaction](/concepts/system-nodes-and-handlers), and every event and state change is
-persisted.
+The fix is to stop asking the LLM to be the system. Swarm splits the two jobs: **LLMs reason,
+in small targeted tasks; deterministic system nodes own state, routing, and rules.** An agent
+emits an event with its result, and a system node decides what is written and whether anything
+advances. Routing is [derived from declared subscriptions](/concepts/events-and-routing), each
+transition commits in [one transaction](/concepts/system-nodes-and-handlers), and every event
+and state change is persisted, so runs are reproducible, auditable, and crash-safe.
 
 ## Strong fit
 
