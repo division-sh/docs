@@ -112,14 +112,103 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "JSON-RPC API",
+            "group": "Overview",
             "pages": [
               "api-reference/introduction",
               "api-reference/transport-and-auth",
               "api-reference/subscriptions"
             ]
+          },
+          {
+            "group": "Health",
+            "pages": [
+              "POST /v1/rpc/health.check",
+              "POST /v1/rpc/health.ping",
+              "POST /v1/rpc/health.subscribe"
+            ]
+          },
+          {
+            "group": "Runs",
+            "pages": [
+              "POST /v1/rpc/run.continue",
+              "POST /v1/rpc/run.diagnose",
+              "POST /v1/rpc/run.get",
+              "POST /v1/rpc/run.list",
+              "POST /v1/rpc/run.pause",
+              "POST /v1/rpc/run.start",
+              "POST /v1/rpc/run.stop",
+              "POST /v1/rpc/run.subscribe_trace",
+              "POST /v1/rpc/run.trace"
+            ]
+          },
+          {
+            "group": "Events",
+            "pages": [
+              "POST /v1/rpc/event.get",
+              "POST /v1/rpc/event.list",
+              "POST /v1/rpc/event.publish",
+              "POST /v1/rpc/event.replay",
+              "POST /v1/rpc/event.subscribe"
+            ]
+          },
+          {
+            "group": "Entities",
+            "pages": [
+              "POST /v1/rpc/entity.aggregate",
+              "POST /v1/rpc/entity.get",
+              "POST /v1/rpc/entity.list"
+            ]
+          },
+          {
+            "group": "Mailbox",
+            "pages": [
+              "POST /v1/rpc/mailbox.approve",
+              "POST /v1/rpc/mailbox.defer",
+              "POST /v1/rpc/mailbox.get",
+              "POST /v1/rpc/mailbox.list",
+              "POST /v1/rpc/mailbox.reject"
+            ]
+          },
+          {
+            "group": "Agents",
+            "pages": [
+              "POST /v1/rpc/agent.diagnose",
+              "POST /v1/rpc/agent.get",
+              "POST /v1/rpc/agent.list",
+              "POST /v1/rpc/agent.replay",
+              "POST /v1/rpc/agent.replay_backlog",
+              "POST /v1/rpc/agent.restart",
+              "POST /v1/rpc/agent.send_directive"
+            ]
+          },
+          {
+            "group": "Conversations",
+            "pages": [
+              "POST /v1/rpc/conversation.current_for_agent",
+              "POST /v1/rpc/conversation.get",
+              "POST /v1/rpc/conversation.get_turn",
+              "POST /v1/rpc/conversation.list"
+            ]
+          },
+          {
+            "group": "Runtime",
+            "pages": [
+              "POST /v1/rpc/runtime.incidents",
+              "POST /v1/rpc/runtime.logs",
+              "POST /v1/rpc/runtime.nuke",
+              "POST /v1/rpc/runtime.pause",
+              "POST /v1/rpc/runtime.resume",
+              "POST /v1/rpc/runtime.subscribe_logs"
+            ]
+          },
+          {
+            "group": "Protocol",
+            "pages": [
+              "POST /v1/rpc/rpc.unsubscribe"
+            ]
           }
-        ]
+        ],
+        "openapi": "/api-reference/openapi.json"
       }
     ],
     "global": {

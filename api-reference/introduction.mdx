@@ -4,38 +4,42 @@ description: "The single canonical JSON-RPC 2.0 surface for runs, events, agents
 icon: "code"
 ---
 
-{/* STUB, outline only. Source of truth: Swarm/docs/specs/swarm-platform/platform/contracts/
-  openrpc.json (43 methods). The `swarm` CLI is one client of this API. */}
+Swarm exposes one user-facing API: JSON-RPC 2.0 over HTTP for request and response, and
+JSON-RPC subscriptions over WebSocket for live streams. One transport, one auth model, one
+envelope. The `swarm` CLI, the dashboard, and any custom client all route through it.
 
-Swarm exposes one user-facing API: JSON-RPC 2.0 over HTTP for request/response, and JSON-RPC
-subscriptions over WebSocket for live streams. One transport, one auth model, one envelope.
-The CLI, dashboard, and any custom client route through it.
+This reference is generated from the OpenRPC source of truth (`openrpc.json`), which the spec
+generates and treats as authoritative; drift between the two fails boot verification.
+
+<Note>
+  Every method is a single `POST /v1/rpc` with the method name in the JSON-RPC body. The
+  per-method paths in this section (for example `POST /v1/rpc/run.start`) are a documentation
+  convenience so each method gets its own page. See
+  [Transport and auth](/api-reference/transport-and-auth) for the real envelope.
+</Note>
 
 ## Method groups
 
-{/* TODO: card or table per group, linking to generated endpoint pages once the spec is wired:
-  - run.* (start, stop, pause, continue, get, list, trace, subscribe_trace, diagnose)
-  - event.* (publish, get, list, replay, subscribe)
-  - agent.* (list, get, diagnose, restart, send_directive, replay, replay_backlog)
-  - conversation.* (list, get, get_turn, current_for_agent)
-  - entity.* (list, get, aggregate)
-  - mailbox.* (list, get, approve, reject, defer)
-  - runtime.* (incidents, logs, subscribe_logs, pause, resume, nuke)
-  - health.* (check, ping, subscribe)
-  - rpc.unsubscribe
-*/}
+| Namespace | What it owns |
+|---|---|
+| `run.*` | Start, control, list, trace, and diagnose runs. |
+| `event.*` | Publish, replay, query, and subscribe to events. |
+| `entity.*` | List, read, and aggregate entities. |
+| `agent.*` | Inspect and control agents; replay deliveries; send directives. |
+| `conversation.*` | Sessions, turns, and transcripts. |
+| `mailbox.*` | List items and record approve, reject, defer decisions. |
+| `runtime.*` | Logs, incidents, pause and resume, destructive reset. |
+| `health.*` | Liveness, structured health, and a heartbeat subscription. |
+| `rpc.*` | The subscription protocol (`rpc.unsubscribe`). |
 
-<Info>
-  Auto-generating these endpoint pages from the OpenRPC document is set up as a follow-up,
-  see the maintainer note below.
-</Info>
+## Conventions at a glance
 
-{/* TODO (maintainers): Mintlify auto-generates from OpenAPI, not OpenRPC. To wire up
-  per-method pages:
-    1. Convert openrpc.json → an OpenAPI 3.x document (JSON-RPC methods modeled as POST
-       operations against the single RPC endpoint, request/response from components).
-       Options: write a small converter, or use an open-rpc → openapi tool.
-    2. Commit the generated openapi.json to this repo (e.g. /api-reference/openapi.json).
-    3. Add "openapi": "/api-reference/openapi.json" to the "API reference" tab (or group) in
-       docs.json, and list operations in navigation as `POST /rpc#run.start` style entries.
-  Until then, this section is a hand-written overview. */}
+- **Auth:** a bearer token on every HTTP request and the WebSocket upgrade.
+- **Pagination:** cursor-based; list methods take `limit` and `cursor` and return
+  `next_cursor`.
+- **Idempotency:** mutating methods accept an `idempotency_key`.
+- **Versioning:** the surface is under `/v1/`; breaking changes bump to `/v2/`.
+
+Browse the methods in the sidebar, or start with
+[Transport and auth](/api-reference/transport-and-auth) and
+[Subscriptions](/api-reference/subscriptions).

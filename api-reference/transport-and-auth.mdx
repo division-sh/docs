@@ -1,26 +1,59 @@
 ---
 title: "Transport, auth, and envelope"
-description: "How requests are framed and authenticated."
+description: "How requests are framed, authenticated, and paginated."
 icon: "key"
 ---
 
-{/* STUB, outline only. Sources: openrpc.json info, BUILDER-API.md (JSON-RPC 2.0 envelope,
-  error codes). */}
+## Endpoints
 
-## Endpoint and transport
+- **`POST /v1/rpc`** for request and response.
+- **`GET /v1/ws`** (WebSocket upgrade) for subscriptions.
 
-{/* TODO: HTTP endpoint for request/response; WebSocket for subscriptions. Default host/port
-  (8070). */}
+Two unauthenticated process probes sit outside the API: `GET /healthz` (process alive) and
+`GET /readyz` (runtime ready). The authenticated `health.*` methods are separate.
 
 ## Authentication
 
-{/* TODO: the auth model. TODO: confirm exact scheme from the implementation. */}
+Send a bearer token on every HTTP request and on the WebSocket upgrade:
+
+```
+Authorization: Bearer <token>
+```
+
+In v1, token presence and validity are the only check; a valid token grants every scope.
+Scopes are declared per method for forward compatibility but are not enforced yet.
 
 ## Request and response envelope
 
-{/* TODO: JSON-RPC 2.0 envelope, jsonrpc, id, method, params, result/error. Example
-  request/response with <CodeGroup>. */}
+```json
+// request
+{ "jsonrpc": "2.0", "id": 1, "method": "run.start", "params": { "event_name": "order.created", "payload": {} } }
 
-## Error codes
+// success
+{ "jsonrpc": "2.0", "id": 1, "result": { "run_id": "r-123", "status": "running" } }
 
-{/* TODO: the error-code table from BUILDER-API.md. */}
+// error
+{ "jsonrpc": "2.0", "id": 1, "error": { "code": -32000, "message": "...", "data": { "code": "RUN_NOT_FOUND", "retryable": false, "correlation_id": "..." } } }
+```
+
+The canonical error discriminator is the string `data.code` (for example `BUNDLE_MISMATCH`,
+`IDEMPOTENCY_CONFLICT`), distinct from the numeric JSON-RPC `code`. `data` also carries
+`details` (per-code structured fields), `retryable` (a boolean), and `correlation_id`.
+
+## Pagination
+
+List methods are cursor-based: pass `limit` (default 50, max 500 unless a method overrides it)
+and `cursor` (omitted for the first page); the response returns `next_cursor` when more pages
+exist. Offset pagination is not supported.
+
+## Idempotency
+
+Mutating methods accept an optional `idempotency_key`. The runtime stores the response keyed
+by `(method, token, key)` for 24 hours. Replaying with the same key and body returns the
+stored response; the same key with a different body returns `IDEMPOTENCY_CONFLICT`.
+
+## Versioning
+
+The surface is under `/v1/`. Additive changes (new optional fields, new methods, new error
+codes) stay in `/v1/`; breaking changes bump to `/v2/`. A deprecated `/v1/` method stays
+functional for at least one minor spec revision.

@@ -4,19 +4,41 @@ description: "Live traces, event streams, log tails, and health over WebSocket."
 icon: "satellite-dish"
 ---
 
-{/* STUB, outline only. Sources: openrpc.json (run.subscribe_trace, event.subscribe,
-  runtime.subscribe_logs, health.subscribe, rpc.unsubscribe). */}
+Subscriptions run over `GET /v1/ws`. You open the socket, call a `*.subscribe` method, and
+receive notifications until you unsubscribe.
 
-## How subscriptions work
+## Establishing a subscription
 
-{/* TODO: open a WebSocket, call a subscribe method, receive notifications until
-  rpc.unsubscribe. Subscription id semantics. */}
+Call a subscribe method with an optional `filter` and `replay_since`. The response returns a
+`subscription_id`, then the runtime pushes notifications:
+
+```json
+// notification
+{ "jsonrpc": "2.0", "method": "rpc.subscription", "params": { "subscription": "<id>", "result": { } } }
+```
 
 ## Available streams
 
-{/* TODO: run.subscribe_trace (live causal trace) · event.subscribe (event log) ·
-  runtime.subscribe_logs (log tail) · health.subscribe (health). One example each. */}
+| Method | Notification payload |
+|---|---|
+| `run.subscribe_trace` | A composed trace row for one run (events, deliveries, sessions, turns). |
+| `event.subscribe` | Each matching event from the event log. |
+| `runtime.subscribe_logs` | Each matching log entry. |
+| `health.subscribe` | A health snapshot every few seconds. |
+
+A subscribe method and its `list` sibling share the same `filter` type (for example
+`event.subscribe` and `event.list`). Pagination is list-only; subscriptions accept
+`replay_since` for catch-up, not `until`.
+
+## Delivery semantics
+
+Notifications are ordered per stream key within one subscription, with no ordering guarantee
+across subscriptions. Delivery is eventual, not durable across disconnects, and may drop under
+backpressure. To recover, re-subscribe with `replay_since`, or reconcile with the matching
+`list` method using the same filter and a `since` bound.
 
 ## Unsubscribing
 
-{/* TODO: rpc.unsubscribe. */}
+```json
+{ "jsonrpc": "2.0", "id": 9, "method": "rpc.unsubscribe", "params": { "subscription_id": "<id>" } }
+```
