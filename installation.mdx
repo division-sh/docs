@@ -25,11 +25,12 @@ bundled Docker Compose setup; you can also build the binary and bring your own P
     docker compose up -d postgres orchestrator
     ```
 
-    - The orchestrator serves its HTTP listener on **`:8070`** (health, readiness, and the
-      `/v1/rpc` + `/v1/ws` API) in this configuration.
+    - The orchestrator binds its HTTP listener to **`:8070`** here. The runtime's default is
+      `:8081`; Compose overrides the port. It serves health, readiness, and the
+      `/v1/rpc` + `/v1/ws` API on that one listener.
     - `SWARM_CONTRACTS_HOST_DIR` is mounted read-only at `/opt/swarm/contracts`.
-    - The default `SWARM_LLM_RUNTIME_MODE` is `cli_test` (a scripted runtime). Set it to
-      `api` with a provider credential to run real agents.
+    - `SWARM_LLM_RUNTIME_MODE` defaults to `cli_test`, which drives the Claude CLI and needs
+      `CLAUDE_CODE_OAUTH_TOKEN`. Use `api` with `ANTHROPIC_API_KEY` for the Anthropic API.
   </Tab>
   <Tab title="Build from source">
     ```bash
@@ -42,9 +43,11 @@ bundled Docker Compose setup; you can also build the binary and bring your own P
     swarm serve --contracts ./my-flow
     ```
 
-    `swarm serve` is the runtime, API, health, and MCP startup owner. By default the API
-    server is reachable at **`http://127.0.0.1:8081`**; CLI commands use that same default,
-    overridable with `--api-server` or `SWARM_API_SERVER`.
+    `swarm serve` is the runtime, API, health, and MCP startup owner, reachable at
+    **`http://127.0.0.1:8081`** by default. It needs Postgres, an API token
+    (`SWARM_API_TOKEN`), and an LLM credential (see below). CLI commands target that same
+    address; point them elsewhere with `--api-server`. See
+    [Configuration](/reference/configuration).
   </Tab>
 </Tabs>
 
@@ -57,15 +60,17 @@ is what makes replay and fork possible. Connection settings are supplied through
 
 ## Credentials and runtime mode
 
-`SWARM_LLM_RUNTIME_MODE` selects how agents run:
+Two credentials are needed to run anything beyond `swarm verify`:
 
-- `cli_test`: a scripted runtime for development and the conformance suite. No provider
-  bill. This is the bundled Compose default.
-- `api`: a real provider. Set `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
+- **An API token.** Set `SWARM_API_TOKEN` (any value for local development). Every command
+  except `swarm verify` requires it.
+- **An LLM credential**, validated at boot even by flows with no agents.
+  `SWARM_LLM_RUNTIME_MODE` is `cli_test` (drives the Claude CLI; needs `CLAUDE_CODE_OAUTH_TOKEN`
+  plus the tool-gateway variables that `.env` provides) or `api` (the Anthropic API; needs
+  `ANTHROPIC_API_KEY`).
 
-Credentials are read from the environment (and a local credential store); the platform never
-logs or persists their values. See [Configuration](/reference/configuration) for the full
-variable list.
+Credentials are read from the environment and a local credential store, and are never logged
+or persisted. See [Configuration](/reference/configuration) for the full list.
 
 ## Verifying the install
 

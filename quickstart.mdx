@@ -4,9 +4,9 @@ description: "Create a minimal flow and run it end to end."
 icon: "rocket"
 ---
 
-This quickstart creates a tiny flow and runs it. The flow is pure system-node logic, with no
-agents and no LLM, so it runs to completion without any provider credentials. You will verify
-it, boot a runtime, trigger it, and watch the trace reach a terminal state.
+This quickstart creates a tiny flow and runs it end to end. The flow is deterministic, just
+one system node and no agents, so it advances to a terminal state on its own. You will verify
+it, boot a runtime, trigger it, and watch the trace.
 
 <Note>
   Want an agent-backed flow built from scratch? Do [Build your first flow](/build/first-flow)
@@ -17,6 +17,8 @@ it, boot a runtime, trigger it, and watch the trace reach a terminal state.
 
 - The `swarm` binary on your PATH and a clone of the repository (see [Installation](/installation)).
 - Postgres 16. The bundled Compose file provides it.
+- An LLM credential configured (see [Installation](/installation)). The runtime validates one
+  at boot even though this flow never calls an agent.
 
 Run the commands below from the repository root, so the default platform spec resolves.
 
@@ -82,17 +84,19 @@ Run the commands below from the repository root, so the default platform spec re
   </Step>
 
   <Step title="Run it">
-    Write a payload for the trigger event, then run the flow. `swarm run` boots a runtime in
-    process, publishes `greeting.requested`, and streams the run's trace until it settles.
+    Set an API token, write a payload for the trigger event, then run the flow. `swarm run`
+    boots a runtime in process, publishes `greeting.requested`, and streams the run's trace.
 
     ```bash
-    echo '{"message": "hello"}' > payload.json
+    export SWARM_API_TOKEN=dev-token        # any value; the local runtime and CLI share it
 
+    echo '{"message": "hello"}' > payload.json
     swarm run --contracts ./greeting-flow --event greeting.requested --payload payload.json
     ```
 
     The trace shows `greeting.requested` arriving, the `greeter` node creating an entity, and
-    the entity advancing to `done` (a terminal state). The run then completes.
+    the entity advancing to `done` (a terminal state). Press Ctrl-C to stop the local runtime
+    once you have seen it.
   </Step>
 </Steps>
 

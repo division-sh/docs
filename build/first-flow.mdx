@@ -247,8 +247,9 @@ With Postgres running (see [Installation](/installation)), run the bundle from t
 root. `swarm run` boots a runtime in process, publishes the trigger, and streams the trace:
 
 ```bash
-echo '{"ticket_id": "t-1", "subject": "Double charge", "body": "I was billed twice."}' > ticket.json
+export SWARM_API_TOKEN=dev-token        # any value; required by every command but `swarm verify`
 
+echo '{"ticket_id": "t-1", "subject": "Double charge", "body": "I was billed twice."}' > ticket.json
 swarm run --contracts ./ticket-flow --event ticket.created --payload ticket.json
 ```
 
