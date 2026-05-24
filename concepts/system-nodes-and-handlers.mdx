@@ -1,79 +1,101 @@
 ---
 title: "System nodes and handlers"
-description: "Deterministic orchestrators and the handler dependency graph."
+description: "The deterministic half of Swarm: plain workflow logic that owns state, written as YAML."
 icon: "gears"
 ---
 
-## System nodes
+Every Swarm workflow has two kinds of worker: **agents**, which are LLMs that make judgment
+calls, and **system nodes**, which handle everything that has to be exact and repeatable. A
+system node is plain workflow logic you write as YAML, with no model and no prompt. Its job is
+to own the things you would never want an LLM to track on its own: what state each item is in,
+what data has been recorded, and which step happens next.
 
-System nodes are deterministic orchestrators. They subscribe to events and execute handler
-declarations, no code, just YAML. A system node has no prompt and no model; it owns the
-workflow's state transitions.
+The division of labor is the whole point. An agent proposes an outcome by sending an event; a
+system node decides what that event actually changes. So a ticket only reaches `resolved`
+because a system node moved it there, never because an agent said it was done.
 
-**One system node per event.** No two nodes may handle the same event, which gives every
-event an unambiguous state authority. Agents are not constrained this way, many agents may
-subscribe to the same event.
+## What a system node does
 
-## Handlers
+A system node listens for events. For each kind of event, it runs a **handler**: a small set of
+instructions for what to do when that event arrives. If you have written an event handler or a
+route in a web app, this is the same idea, one per event type, except you write it as
+configuration instead of code, and Swarm runs it the same way every time (the same input always
+produces the same result).
 
-A handler is the unit of execution attached to an event. It declares what happens when that
-event arrives, guards, state changes, data writes, emitted events, and actions:
+**Exactly one node owns each event.** Two nodes handling the same event is an error caught
+before the system starts. That single owner is what makes a change unambiguous: there is never a
+question of which node moved the ticket to `assigned`. Agents work differently, because they
+only react to events and never change state directly, so any number of them can listen to the
+same event.
+
+## A handler, in plain English
+
+A handler answers one question: when this event arrives, what changes? Here is one that runs
+when a ticket has been classified:
 
 ```yaml
 ticket.classified:
-  guard:
+  guard:                              # only continue if the category is one we handle
     id: valid_category
     check: "payload.category in ['billing', 'technical', 'account']"
     on_fail: reject
-  data_accumulation:
+  data_accumulation:                  # record category and priority on the ticket
     writes: [category, priority]
     source_event: ticket.classified
-  advances_to: assigned
-  emit: ticket.assigned
+  advances_to: assigned               # move the ticket to the "assigned" state
+  emit: ticket.assigned               # send the next event, for whoever handles assigned tickets
 ```
 
-## The dependency graph
+Read as a sentence: *if* the category is valid, save `category` and `priority` onto the ticket,
+move it to `assigned`, and send a `ticket.assigned` event. The agent that classified the ticket
+never touched the ticket's state to make any of this happen.
 
-A handler's fields execute in a fixed causal order, a dependency graph, not a script. YAML
-field order is cosmetic:
+Every handler has that same shape: an event comes in, the handler looks at the item it concerns
+(here, the ticket), changes that item, and sends the next event. That is the whole job.
+
+## You declare what; the engine decides when
+
+You can write a handler's steps in any order. Swarm ignores the order you wrote them and always
+runs them in the same fixed sequence: find or create the item, check the conditions, do any
+computation, choose a path, save the changes, and send the next events.
 
 ```mermaid
-flowchart TD
-    AQ["entity acquisition<br/>create_entity / select_entity / select_or_create_entity"] --> Q[query]
-    Q --> CG[clear_gates] --> G[guard]
-    G --> AC[accumulate] --> FI[filter] --> RE[reduce] --> CN[count] --> CM[compute]
-    CM --> BR{"branch selection<br/>on_complete / rules"}
-    BR --> AP["advances_to, sets_gate, data_accumulation<br/>(independent of each other, commit together)"]
-    AP --> PR[projection] --> EF["emit.fields"] --> EE["emit.event"] --> ACT[action] --> CL[clear]
+flowchart LR
+    A["find / create<br/>the item"] --> B["check<br/>conditions"] --> C[compute]
+    C --> D{"choose<br/>a path"} --> E["update<br/>the item"] --> F["send the<br/>next events"]
 ```
 
-Two short-circuits stop a handler early:
+So the order of lines in your YAML does not matter; the order things happen in is fixed. Most
+handlers use only a few of these steps. For the complete sequence and the rules about what takes
+precedence, see the [handler execution model](/reference/execution-model).
 
-- **Guard failure** runs the configured `on_fail` action (`reject`, `discard`, `kill`, or
-  `escalate:{event}`).
-- **Accumulate incomplete** records the arrival and waits (observable outcome `waiting`).
+## It all saves together
 
-## Atomicity
+Everything a handler does, the state change, the data it records, and the events it sends, is
+saved in one database transaction: all of it, or none of it. If the process crashes halfway
+through, nothing is left half-finished; the event simply runs again when the system restarts.
 
-Every handler execution is atomic. State changes, gate updates, data writes, and event
-persistence commit in a single database transaction, no observer sees intermediate state,
-and a crash mid-handler rolls back cleanly. Because `advances_to`, `sets_gate`, and
-`data_accumulation` commit together, their relative order is cosmetic.
+This is what lets the rest of the flow trust an item's state. A ticket is always in exactly one
+of the states you declared, never stuck somewhere in between, and never showing a result that
+was not actually committed.
 
-Guards evaluate against entity state *before* any of the handler's writes. A handler's own
-`data_accumulation` affects the *next* handler, not its own guard.
+## Branching
 
-## Two ways to branch
+A handler can also take different paths, based on the incoming event or on something it worked
+out along the way. Swarm has two ways to do that, `rules` and `on_complete`. See
+[Writing handlers](/build/handlers) for how to use them.
 
-`on_complete` and `rules` are mutually exclusive:
-
-- **`on_complete`**: an ordered list of `{condition, advances_to, emit}`; the first matching
-  condition wins. Used after accumulation or computation.
-- **`rules`**: a map of named rules matched against the payload. Used for type-dispatch
-  routing.
-
-When a handler has `rules`, the matched rule owns the emit; a handler-level `emit` alongside
-`rules` is rejected at boot as ambiguous.
-
-See [Writing handlers](/build/handlers) for patterns and the full field
-[reference](/reference/handler-fields).
+<CardGroup cols={2}>
+  <Card title="Writing handlers" icon="gears" href="/build/handlers">
+    Guards, branching, recording data, and filling event payloads, with worked examples.
+  </Card>
+  <Card title="Handler execution model" icon="diagram-project" href="/reference/execution-model">
+    The full step order, how it all commits, and the precedence rules.
+  </Card>
+  <Card title="Handler fields" icon="list-tree" href="/reference/handler-fields">
+    Every field a handler can declare, with its schema and constraints.
+  </Card>
+  <Card title="Events and routing" icon="bolt" href="/concepts/events-and-routing">
+    How an event you send finds its next handler.
+  </Card>
+</CardGroup>
