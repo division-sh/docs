@@ -30,7 +30,8 @@ to fulfill `required_agents`.
 </ParamField>
 <ParamField path="session_scope" type="string">
   `global`, `flow`, or `entity`. Required for non-`task` modes; must form a valid pair with
-  `conversation_mode` or boot fails.
+  `conversation_mode`. `entity` and `flow` scope require a flow-scoped (child-flow) agent; a
+  root-level agent can only use `task`.
 </ParamField>
 <ParamField path="manager_fallback" type="string">
   The escalation and hierarchy parent. Not a messaging grant.

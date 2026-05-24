@@ -1,55 +1,177 @@
 ---
 title: "Analyzer checks"
-description: "The static-analysis checks run against every contract before boot."
+description: "Every static-analysis rule the platform enforces, with rationale."
 icon: "clipboard-check"
 ---
 
-Contract verification runs at boot, after loading all contracts and before starting any nodes
-or agents, and on demand with `swarm verify`. An `error` finding aborts boot; a `warning` is
-logged and boot continues. The authoritative list lives in `engine.boot_verification.checks`,
-stated as **43 primary checks plus 3 supplemental**.
-
-## How verification runs
+The static analyzer runs at boot, after loading all contracts and before starting any nodes
+or agents, and on demand with `swarm verify`. It is the authoritative integration test for a
+contract bundle: a bundle that boots has passed it.
 
 ```bash
 swarm verify --contracts ./my-flow
 ```
 
-All checks run on every boot; there is no mechanism to disable an individual check.
+## Severities
 
-## Key checks by severity
+| Severity | Effect |
+|---|---|
+| **error** | Boot aborts; the system does not start. Must be fixed. |
+| **warning** | Boot continues; the finding is logged. Worth fixing, not blocking. |
+| **informational** | Never blocks. Surfaced as `lint_evidence` on detailed audit output. |
 
-**Error (aborts boot):** `payload_field_coverage`, `entity_write_target_compliance`,
-`condition_payload_alignment`, `state_machine_coherence`, `required_agents_match`,
-`handler_field_compliance`, `invalid_field_detection`, `event_cycle_detection`,
-`dialect_compliance`, `single_node_per_event`, `config_from_payload_alignment`,
-`native_tools_valid`, `flow_data_access_validation`, `platform_namespace_violation`,
-`workspace_class_exists`, `agent_permission_validation`, `transition_reference_validation`,
-`condition_expression_validation`, `transition_ownership_validation`,
-`event_runtime_wiring_validation`, `timer_validation`, `write_pin_ownership_validation`,
-`gate_schema_validation`, `pin_target_resolution`, `missing_external_select_entity`.
+The spec states **43 primary checks plus 3 supplemental**. The catalog below documents the
+full set: the boot-verification checks plus the entity-contract checks that also run in
+`swarm verify` (the "Wave 1" slices). All checks run on every boot; there is no way to
+disable an individual check.
 
-**Warning (logs, continues):** `event_chain_integrity`, `event_consumer_exists`,
-`event_producer_exists`, `condition_policy_alignment`, `tool_resolution`, `prompt_exists`,
-`produces_drift`, `policy_conflict_detection`, `phantom_produces`, `mcp_server_reachable`,
-`credential_key_exists`, `input_pin_wiring`, `redundant_in_topology_select_entity`,
-`semantic_drift_dead_event_schema`.
+## Events and routing
 
-## The static analyzer slices
+- **`single_node_per_event`** (error). Two system nodes declare a handler for the same event.
+  Only one node may own an event. *Rationale: one event, one state authority, so a transition
+  is never ambiguous.*
+- **`event_runtime_wiring_validation`** (error). An event that requires node handling has no
+  owning node, or the owning node has no handler for it.
+- **`transition_reference_validation`** (error). An `advances_to`, `on_complete` branch, or
+  pin references an event not defined in any `events.yaml` in the flow tree.
+- **`event_cycle_detection`** (error). A handler chain emits an event that eventually
+  re-triggers the same handler. *Rationale: catch infinite loops at boot; the runtime
+  chain-depth limit of 50 is only a safety net.*
+- **`platform_namespace_violation`** (error). A product event name (or agent `emit_events`
+  entry) uses the reserved `platform.` prefix.
+- **`event_chain_integrity`** (warning). An emitted event has no handler path to a terminal
+  state or output pin. Flags dead-end events.
+- **`event_consumer_exists`** (warning). An event is emitted but nothing subscribes to it.
+  Suppressed by `swarm.consumer` or `swarm.status`.
+- **`event_producer_exists`** (warning). An agent subscribes to an event nothing emits.
+  Suppressed by `swarm.source`, `swarm.producer`, or `swarm.status`.
+- **`semantic_drift_dead_event_schema`** (warning). A declared event has no active authored
+  role anywhere in the bundle. *Rationale: dead schema entries drift out of sync; either use
+  the event or remove it.*
 
-Separately from boot verification, the spec's `static_analyzer` section defines **13 promoted
-"Wave 1" slices** surfaced through `swarm verify`. Their authority levels are:
+## Payloads and expressions
 
-- `hard_invalidity` (boot-fatal): 7 slices.
-- `semantic_drift_warning`: 4 slices.
-- `lint_evidence` (informational): 1 slice.
-- one verdict-dependent slice that can be error, warning, or ok.
+- **`payload_field_coverage`** (error). A `data_accumulation` write reads a source payload
+  field that does not exist in the source event's schema.
+- **`emitted_event_payload_completeness`** (error). An emit site does not populate every field
+  the emitted event declares. *Rationale: payloads are producer-complete, so a consumer can
+  rely on every declared field being present.*
+- **`condition_payload_alignment`** (error). A CEL condition references `payload.X` where `X`
+  is not declared in the triggering event's schema.
+- **`condition_policy_alignment`** (warning). A CEL condition references `policy.X` where `X`
+  is not a key in any reachable `policy.yaml`.
+- **`condition_expression_validation`** (error). A guard `on_fail` is not one of `reject`,
+  `kill`, `discard`, `escalate`; or a CEL condition fails to parse; or a condition lacks a
+  required context prefix (`entity.`, `payload.`, `policy.`, `accumulated.`, `fan_out.`).
+- **`expression_field_reference_validation`** (error). An `entity.*` reference in a CEL
+  surface does not resolve to a declared field (and must be a scalar or enum leaf in a query
+  filter).
 
-Some slice ids overlap with boot-verification checks by name (for example
-`pin_target_resolution`, `input_pin_wiring`, `entity_write_target_compliance`). The slices
-are scoped to Wave 1 and may not be widened without a spec change.
+## State machine
 
-<Note>
-  Older docs cited "16", "19", or "54" checks; those numbers are not supported by v1.6.0. Use
-  the authoritative "43 primary plus 3 supplemental" figure.
-</Note>
+- **`state_machine_coherence`** (error). An `advances_to` target is not in the flow's `states`
+  list, or `initial_state` is not in `states`.
+- **`transition_ownership_validation`** (error). A node owns a transition whose target state
+  is not in the schema, or whose trigger event is not in its `subscribes_to`.
+- **`semantic_drift_unreachable_state`** (warning). A declared state cannot be reached from
+  `initial_state` through any transition. *Rationale: an unreachable state is dead, usually a
+  leftover or a missing transition. (This is a warning, not a boot-abort, but it almost always
+  signals a mistake.)*
+
+## Entities
+
+- **`entity_write_target_compliance`** (error). A handler write targets an envelope field, an
+  undeclared entity field, or a flow with no entity contract.
+- **`entity_writer_coverage`** (error). A declared entity field has no writer, no `initial`,
+  and no `_unused_reason`. *Rationale: a field nothing ever sets is either a bug or dead
+  weight; the analyzer forces you to state your intent.*
+- **`create_entity_field_initialization`** (error). A `create_entity` handler reads
+  `entity.X` for a field not declared on the entity contract.
+- **`accumulator_entity_projection`** (error). A `materialize_from` declaration does not
+  resolve through the projection resolver (bad reference, type mismatch, or a competing
+  writer).
+- **`entity_reader_coverage`** (informational). A declared field has no internal reader. Often
+  fine: the field may be read by an agent or an external consumer.
+
+## Handlers and dialect
+
+- **`handler_field_compliance`** (error). A handler uses a field name outside the defined
+  handler-field set.
+- **`invalid_field_detection`** (error). A node uses a top-level field outside the node-field
+  set, or an agent declares an invalid `session_scope` (see Agents below).
+- **`dialect_compliance`** (error). `on_complete` is a map instead of a list; or both
+  `on_complete` and `rules`; or both `create_entity` and `accumulate`; or more than one entity
+  acquisition mode on one handler.
+- **`config_from_payload_alignment`** (error). A `create_flow_instance` action's `config_from`
+  references payload fields not in the triggering event's schema.
+- **`gate_schema_validation`** (error). A `sets_gate` references a gate not declared in the
+  node's `gate_state`.
+
+## Agents, sessions, and prompts
+
+- **`required_agents_match`** (error). A `required_agents` role has no matching agent (by map
+  key) in `agents.yaml`.
+- **`invalid_field_detection` (session scope)** (error). A non-`task` mode declares no valid
+  `session_scope`, or `entity`/`flow` scope is declared on a root-level agent. *Rationale:
+  entity and flow session scope need an owning flow, so they require a flow-scoped (child-flow)
+  agent; a single root flow uses `task`.*
+- **`agent_permission_validation`** (error). An agent declares an unknown permission, or uses a
+  builtin tool whose required permission it lacks.
+- **`native_tools_valid`** (error). `native_tools` names an unrecognized capability (not
+  `bash`, `web_search`, `file_io`) or a non-boolean value.
+- **`flow_data_access_validation`** (error). A `flow_data_access` entry is invalid, missing,
+  escaping, or outside the flow's data root; or a root-scoped agent declares it.
+- **`workspace_class_exists`** (error). An agent's `workspace_class` is not defined in
+  `policy.yaml` and is not platform-reserved.
+- **`agent_prompt_lint_structural`** (error). A parseable structural reference in a prompt
+  drifts from the declared event or entity contract.
+- **`prompt_exists`** (warning). An agent has no prompt file at `prompts/{agent-id}.md`.
+
+## Tools and credentials
+
+- **`tool_resolution`** (warning). An agent's `tools` entry is not in the merged registry
+  (`tools.yaml` plus MCP catalogs).
+- **`mcp_server_reachable`** (warning). An MCP server in `policy.yaml` is unreachable at boot;
+  its tools are unavailable.
+- **`credential_key_exists`** (warning). A tool's `credentials` or an MCP server's
+  `credentials_key` references a key absent from the credential store.
+
+## Pins and cross-flow routing
+
+- **`write_pin_ownership_validation`** (error). Two flows declare writes to the same output
+  data pin. *Rationale: one writer per field keeps entity state authoritative.*
+- **`pin_target_resolution`** (error). A pin-declared output emit lacks an explicit `target`,
+  a structural parent route, or `broadcast: true`; or has malformed or unknown target syntax.
+  *Rationale: a pin output must never silently broadcast to the wrong recipients.*
+- **`missing_external_select_entity`** (error). A stateful handler consumes an external or
+  no-target event but declares no `select_entity`/`select_or_create_entity`, so it would run
+  against the sender instead of a receiving-flow-owned entity.
+- **`input_pin_wiring`** (warning). A required input event pin has no satisfiable producer path
+  in the authored bundle (checked against sibling output pins, root agent emits, root node
+  emits, the platform event catalog, `swarm.source: external`, and same-flow timers).
+- **`redundant_in_topology_select_entity`** (warning). A handler declares `select_entity` for
+  an event whose only producers already set `event.target`; the receiver-side acquisition is
+  redundant.
+
+## Timers, policy, and produces
+
+- **`timer_validation`** (error). A timer is missing its owner, its owner is not a flow
+  participant, or its fire event is not in `events.yaml`.
+- **`policy_conflict_detection`** (warning). A child flow overrides a parent policy key with a
+  different value. Informational; overriding is allowed.
+- **`produces_drift`** (warning). A node's explicit `produces` list does not match the events
+  derived from its emit sites.
+- **`phantom_produces`** (warning). A node's `produces` lists an event no handler emits.
+
+## Common failures and fixes
+
+| Error | Fix |
+|---|---|
+| `missing_external_select_entity` | Add `create_entity: true` (or `select_entity`) to the stateful input-pin handler. |
+| `entity_writer_coverage` | Give the field an `initial:` value, write it in a handler, or mark `_unused_reason`. |
+| `state_machine_coherence` / unreachable state | Make every declared state an `advances_to` target, and remove states nothing reaches. |
+| `invalid_field_detection` (session scope) | Use `conversation_mode: task` for a root agent, or move the agent into a child flow for `entity`/`flow` scope. |
+| `single_node_per_event` | Ensure only one system node handles each event. |
+| `payload_field_coverage` | Declare the field in the source event's `events.yaml`, or stop writing it. |
+| `pin_target_resolution` | Add `target:` or `broadcast: true` to the pin-declared output emit. |
+| `produces_drift` / `phantom_produces` | Match `produces` to what handlers emit, or omit `produces` and let it derive. |

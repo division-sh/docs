@@ -11,14 +11,18 @@ the agent roles it requires.
 
 ```yaml
 initial_state: new
-terminal_states: [closed, abandoned]
-states: [new, classified, assigned, resolved, closed, abandoned]
+terminal_states: [closed]
+states: [new, assigned, resolved, closed]
 ```
 
 An entity is in exactly one state, set by a handler's `advances_to`. Terminal states are
 absorbing, once reached, new events are rejected and timers are cancelled. A flow with
 `initial_state: null` and `states: []` is stateless. See
 [Gates, timers, and state](/concepts/gates-timers-and-state).
+
+Every declared state must be reachable: it is either the `initial_state` or the target of
+some `advances_to`. The analyzer flags states that nothing reaches (see
+[Analyzer checks](/reference/analyzer-checks)).
 
 ## Pins
 

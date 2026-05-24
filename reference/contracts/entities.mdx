@@ -30,6 +30,13 @@ order:
 - **The envelope is platform-owned.** The fields `id`, `current_state`, `revision`,
   `created_at`, `updated_at`, and `flow_instance` are implicit and must not be declared.
 
+## Writer coverage
+
+Every declared field must have an `initial` value, a writer (a handler `data_accumulation` or
+`compute`, or an agent `save_*` tool), or an explicit `_unused_reason`. A field with none of
+these fails `swarm verify` with `entity_writer_coverage`. This forces you to state intent
+rather than leave a field silently unset. See [Analyzer checks](/reference/analyzer-checks).
+
 ## Field options
 
 A field uses a terse form (`field_name: TypeName`) or a verbose block with:
