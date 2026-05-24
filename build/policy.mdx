@@ -33,6 +33,14 @@ timeout_hours: 48    # overrides the parent; max_retries stays 3
 
 Guards and prompt templates resolve a key by walking child → parent → root.
 
+```mermaid
+flowchart LR
+    R["root policy"] --> M["effective policy"]
+    P["parent policy"] --> M
+    C["child policy (wins on conflict)"] --> M
+    M --> U["guards and prompts read policy.X"]
+```
+
 ## Budget thresholds
 
 Cost control is configured here. When token spend crosses a declared percentage the platform

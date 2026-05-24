@@ -4,6 +4,18 @@ description: "Agent contracts in agents.yaml and behavioral instructions in prom
 icon: "robot"
 ---
 
+An agent is an LLM worker that reacts to events. When an event reaches its inbox, the platform
+loads the agent's prompt and tools; the agent reasons and calls tools; and it emits events. It
+never writes entity state directly: it emits, and a system node decides what to persist.
+
+```mermaid
+flowchart LR
+    A["event arrives"] --> B["session: prompt + tools loaded"]
+    B --> C["agent reasons, calls tools"]
+    C --> D["emits events"]
+    D --> E["a system node persists the result"]
+```
+
 ## The agent contract
 
 An agent is declared as a map entry in `agents.yaml`. The key is the agent id and the role

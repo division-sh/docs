@@ -33,6 +33,14 @@ Four tables together form a step-by-step audit trail of any run:
 Joined on `run_id` and ordered by time, these answer "what did entity X look like when event
 Y fired?" without reverse-engineering it from current state.
 
+```mermaid
+flowchart TD
+    R["run_id"] --> E["events: what happened"]
+    R --> M["entity_mutations: what changed"]
+    R --> T["agent_turns: how an agent reasoned"]
+    R --> D["event_deliveries: what was delivered"]
+```
+
 ## Replay
 
 Because everything is persisted, work can be re-delivered:

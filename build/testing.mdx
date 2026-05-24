@@ -4,6 +4,16 @@ description: "The static analyzer, test packages, and agent fixtures."
 icon: "vial"
 ---
 
+Swarm gives you three layers of testing, cheapest to most thorough: the static analyzer (no
+runtime), test packages (one handler, deterministic), and agent fixtures (a full event chain
+without spending tokens).
+
+```mermaid
+flowchart LR
+    A["swarm verify: static checks"] --> B["test package: one handler vs expected"]
+    B --> C["agent fixtures: full chain, scripted agents"]
+```
+
 ## The static analyzer
 
 `swarm verify` validates a contract bundle against the platform specification, the one

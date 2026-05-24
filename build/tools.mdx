@@ -4,8 +4,18 @@ description: "Declaring tools agents can call, plus MCP and native capabilities.
 icon: "wrench"
 ---
 
-The platform owns all tool schema serving, validation, and routing. Every tool belongs to
-one of three implementation classes.
+The platform owns all tool schema serving, validation, and routing. Every tool belongs to one
+of three implementation classes. Whatever the class, the platform validates each call against
+the tool's schema and routes it to the right executor:
+
+```mermaid
+flowchart TD
+    A["agent calls a tool"] --> V["platform validates the call"]
+    V --> R{"handler_type"}
+    R -->|platform_builtin| B["runtime handler"]
+    R -->|mcp| M["MCP server"]
+    R -->|http| H["HTTP executor"]
+```
 
 ## The three tool classes
 

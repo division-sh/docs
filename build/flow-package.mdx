@@ -7,6 +7,17 @@ icon: "folder-tree"
 A flow is a directory of YAML contracts plus agent prompts. The engine reads the package and
 executes it, no product-specific code.
 
+The files are not independent; they describe one running system from different angles. Events
+are the messages, the nodes and agents say who reacts to them, and the entity and schema say
+what data and states result:
+
+```mermaid
+flowchart LR
+    EV["events.yaml: message shapes"] -->|subscribed by| NA["nodes.yaml + agents.yaml: who reacts"]
+    NA -->|write fields| EN["entities.yaml: the data"]
+    NA -->|advance state| SC["schema.yaml: the lifecycle"]
+```
+
 ## Directory layout
 
 ```text

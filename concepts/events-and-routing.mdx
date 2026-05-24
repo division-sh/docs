@@ -23,6 +23,13 @@ defaults and no passthrough from the triggering event. We call this **producer-c
 Each event goes through the same fixed cycle. Understanding it explains most routing
 questions.
 
+```mermaid
+flowchart LR
+    A["validate payload"] --> B["persist to the event store"]
+    B --> C["resolve subscribers"]
+    C --> D["deliver to nodes and agents"]
+```
+
 <Steps>
   <Step title="Validate">
     The payload is checked against its `events.yaml` schema. An invalid event is logged and
