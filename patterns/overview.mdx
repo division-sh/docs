@@ -1,39 +1,182 @@
 ---
 title: "Handler patterns"
-description: "Ten reusable patterns for common orchestration shapes."
+description: "Reusable shapes for common orchestration problems."
 icon: "shapes"
 ---
 
-{/* STUB, outline only. Source: DEVELOPER-GUIDE "Patterns" (1–10). Each pattern: a short
-  problem statement + the YAML + 1–2 lines of explanation. Consider splitting into separate
-  pages if any pattern grows large. */}
+These patterns combine the [handler fields](/reference/handler-fields) into the shapes that
+come up most often. Each is a starting point, not a rule.
 
-## 1. Guard with escalation
-{/* TODO: on_fail: escalate:{event}; the four on_fail actions. */}
+## Guard with escalation
 
-## 2. Multi-gate pipeline
-{/* TODO: sets_gate across stages; clear_gates: true to reset. */}
+Block a handler and route the failure to a named event instead of rejecting it.
 
-## 3. Accumulate and compute
-{/* TODO: wait for N items, weighted_average, on_complete branches. */}
+```yaml
+request.received:
+  guard:
+    id: rate_limit
+    check: "entity.request_count < policy.max_requests_per_hour"
+    on_fail: escalate:rate_limit.exceeded
+  advances_to: processing
+```
 
-## 4. Fan out
-{/* TODO: items_from → per-item event → track completion with accumulate. */}
+`on_fail` is one of `reject` (default), `discard`, `kill`, or `escalate:{event}`.
 
-## 5. Rules-based routing
-{/* TODO: named conditions; "else"; mutually exclusive with on_complete. */}
+## Multi-gate pipeline
 
-## 6. Dynamic flow instances
-{/* TODO: create_flow_instance + wildcard subscriptions. */}
+Track sub-steps with gates, then reset them when re-entering a cycle.
 
-## 7. Timers
-{/* TODO: start_on/cancel_on; timer.* handler. */}
+```yaml
+review.completed:
+  sets_gate: g_reviewed
+  advances_to: approved
+  emit: approval.requested
 
-## 8. Cross-entity queries
-{/* TODO: query with group_by/filter/select/store_as. */}
+resubmission.requested:
+  clear_gates: true     # resets every gate on the entity
+  advances_to: draft
+```
 
-## 9. Payload transform
-{/* TODO: emit.fields built from entity/payload/policy via CEL. */}
+## Accumulate and compute
 
-## 10. Anti-bias routing
-{/* TODO: two pools for the same role; no shared context. */}
+Wait for several items, aggregate them, then branch on the result.
+
+```yaml
+score.received:
+  accumulate:
+    expected_from: entity.dimensions_requested
+    completion: all
+    dedup_by: payload.dimension
+  compute:
+    operation: weighted_average
+    keys:
+      dimension_key: dimension
+      score_keys: [score]
+    tiers:
+      - dimensions: [quality, speed, cost]
+        weight: 0.6
+      - dimensions: [innovation, scalability]
+        weight: 0.4
+    store_as: composite_score
+  on_complete:
+    - condition: "entity.composite_score >= policy.threshold"
+      advances_to: approved
+      emit: candidate.approved
+    - condition: "entity.composite_score < policy.threshold"
+      advances_to: rejected
+      emit: candidate.rejected
+```
+
+## Fan out
+
+Dispatch one event per item to an agent, then track completion with `accumulate`.
+
+```yaml
+batch.requested:
+  fan_out:
+    items_from: payload.items
+    target: worker-agent
+    emit:
+      event: item.assigned
+      broadcast: true
+  data_accumulation:
+    writes:
+      - target_field: expected_count
+        expression: "fan_out.count"
+```
+
+## Rules-based routing
+
+Dispatch on a payload field. `rules` is a list; the matched rule owns the emit.
+
+```yaml
+request.received:
+  rules:
+    - id: billing
+      condition: "payload.category == 'billing'"
+      advances_to: billing_review
+      emit:
+        event: billing.requested
+        broadcast: true
+    - id: technical
+      condition: "payload.category == 'technical'"
+      advances_to: tech_review
+      emit:
+        event: tech.requested
+        broadcast: true
+```
+
+`rules` and `on_complete` are mutually exclusive.
+
+## Dynamic flow instances
+
+Create a per-order or per-customer instance from a template at runtime.
+
+```yaml
+order.created:
+  action: create_flow_instance
+  template: fulfillment
+  instance_id_from: payload.order_id
+  config_from:
+    customer_name: payload.customer_name
+    order_total: payload.total
+```
+
+Observe all instances with a wildcard subscription such as `fulfillment` then `*` then
+`order.completed`.
+
+## Timers
+
+Start a durable timer on a state and cancel it on another.
+
+```yaml
+timers:
+  - id: payment_deadline
+    event: timer.payment_deadline
+    delay: "{{payment_deadline_hours}}h"
+    start_on: state:awaiting_payment
+    cancel_on: state:paid
+
+# handler for the timer event
+timer.payment_deadline:
+  advances_to: payment_overdue
+  emit: payment.overdue_notification
+```
+
+## Cross-entity queries
+
+Read across entities to build a report.
+
+```yaml
+timer.daily_report:
+  query:
+    - entities: tickets
+      group_by: state
+      count: true
+      store_as: tickets_by_state
+    - entities: tickets
+      filter: "priority == 'critical' && state != 'resolved'"
+      select: [ticket_id, subject]
+      store_as: open_critical
+  emit: report.daily_compiled
+```
+
+## Payload transform
+
+Build an output payload from entity state, payload, and policy with `emit.fields`.
+
+```yaml
+order.finalized:
+  emit:
+    event: invoice.requested
+    fields:
+      order_id: entity.order_id
+      total: entity.computed_total
+      customer: entity.customer_name
+```
+
+## Keep reviewers independent
+
+When two agents must not share context, give a role two pools with different subscriptions:
+route originals to one and appeals to the other. Same prompt, separate sessions, no shared
+context.
