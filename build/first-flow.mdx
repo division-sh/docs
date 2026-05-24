@@ -243,8 +243,25 @@ Every declared state is reachable, and every emitted event has a handler or a su
 
 ## Run it
 
-Boot the runtime against the bundle and trigger a ticket, then follow the trace. See the
-[Quickstart](/quickstart) for the commands.
+With Postgres running (see [Installation](/installation)), run the bundle from the repository
+root. `swarm run` boots a runtime in process, publishes the trigger, and streams the trace:
+
+```bash
+echo '{"ticket_id": "t-1", "subject": "Double charge", "body": "I was billed twice."}' > ticket.json
+
+swarm run --contracts ./ticket-flow --event ticket.created --payload ticket.json
+```
+
+The trace shows the ticket entity created, advanced to `new`, and `ticket.created` delivered
+to the classifier agent.
+
+<Note>
+  Unlike the deterministic flow in the [Quickstart](/quickstart), this flow has LLM agents, so
+  it advances past `new` only when a runtime that can answer them is configured: a real
+  provider (`SWARM_LLM_RUNTIME_MODE: api` with a credential) or scripted agent fixtures for
+  token-free runs (see [Testing](/build/testing)). The deterministic system-node steps run
+  either way.
+</Note>
 
 <Note>
   Emitted payloads are producer-complete: each declared field must be supplied by the emit

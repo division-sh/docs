@@ -1,77 +1,115 @@
 ---
 title: "Quickstart"
-description: "Validate a contract bundle and run a flow with the swarm CLI."
+description: "Create a minimal flow and run it end to end."
 icon: "rocket"
 ---
 
-This quickstart runs a flow end to end with the `swarm` CLI. `swarm run` boots a runtime
-in-process, publishes your trigger event, streams the run's trace, and shuts down when the
-run settles. There is no long-running server to manage.
+This quickstart creates a tiny flow and runs it. The flow is pure system-node logic, with no
+agents and no LLM, so it runs to completion without any provider credentials. You will verify
+it, boot a runtime, trigger it, and watch the trace reach a terminal state.
 
 <Note>
-  New to the contract model? Skim [Core concepts](/concepts/overview), or
-  [build a flow](/build/first-flow). This page assumes you already have a contract bundle.
+  Want an agent-backed flow built from scratch? Do [Build your first flow](/build/first-flow)
+  instead. It walks through a support-ticket flow with classifier and resolver agents.
 </Note>
 
 ## Prerequisites
 
-- The `swarm` binary on your PATH: see [Installation](/installation).
-- Postgres 16. The repository ships a Compose service for it.
-- A contract bundle (a directory with a `package.yaml` at its root).
-- Optional: an LLM credential. The default runtime mode is scripted (`cli_test`), so a first
-  run needs no provider key.
+- The `swarm` binary on your PATH and a clone of the repository (see [Installation](/installation)).
+- Postgres 16. The bundled Compose file provides it.
+
+Run the commands below from the repository root, so the default platform spec resolves.
 
 <Steps>
   <Step title="Start Postgres">
     ```bash
     docker compose up -d postgres
     ```
-
-    Any reachable Postgres 16 works; connection settings come from the repository's `.env`.
   </Step>
-  <Step title="Validate your contracts">
-    ```bash
-    swarm verify --contracts ./my-flow
+
+  <Step title="Create a minimal flow">
+    Five small files in a `greeting-flow/` directory. A system node creates an entity and
+    advances it to a terminal state.
+
+    ```yaml greeting-flow/package.yaml
+    name: greeting-flow
+    version: 1.0.0
+    platform_version: ">=1.6.0"
+    flows: []
     ```
 
-    `swarm verify` runs the static analyzer against files on disk, with no runtime needed. Fix
-    any error before running; a bundle that runs has passed this check.
-  </Step>
-  <Step title="Run a flow">
-    Write a JSON payload for the trigger event, then run it:
-
-    ```bash
-    echo '{"order_id":"o-123","priority":"high"}' > payload.json
-
-    swarm run --contracts ./my-flow --event order.created --payload payload.json
+    ```yaml greeting-flow/schema.yaml
+    initial_state: received
+    terminal_states: [done]
+    states: [received, done]
+    pins:
+      inputs:
+        events: [greeting.requested]
     ```
 
-    `swarm run` starts a runtime in-process, publishes `order.created`, and streams the run's
-    trace, events, deliveries, state changes, and agent turns, until the run settles.
+    ```yaml greeting-flow/events.yaml
+    greeting.requested:
+      swarm:
+        source: external
+      message: text
+    ```
+
+    ```yaml greeting-flow/nodes.yaml
+    greeter:
+      id: greeter
+      execution_type: system_node
+      subscribes_to: [greeting.requested]
+      event_handlers:
+        greeting.requested:
+          create_entity: true
+          advances_to: done
+    ```
+
+    ```yaml greeting-flow/agents.yaml
+    {}
+    ```
+
+    The empty `agents.yaml` is required because a flow must declare either agents or child
+    flows. This flow has neither, just one system node.
+  </Step>
+
+  <Step title="Verify the contracts">
+    ```bash
+    swarm verify --contracts ./greeting-flow
+    ```
+
+    Expect `verify ok`. The static analyzer runs the same checks the runtime runs at boot.
+  </Step>
+
+  <Step title="Run it">
+    Write a payload for the trigger event, then run the flow. `swarm run` boots a runtime in
+    process, publishes `greeting.requested`, and streams the run's trace until it settles.
+
+    ```bash
+    echo '{"message": "hello"}' > payload.json
+
+    swarm run --contracts ./greeting-flow --event greeting.requested --payload payload.json
+    ```
+
+    The trace shows `greeting.requested` arriving, the `greeter` node creating an entity, and
+    the entity advancing to `done` (a terminal state). The run then completes.
   </Step>
 </Steps>
-
-<Tip>
-  Run from the repository root so `swarm run` picks up `.env` (database settings) and the
-  default platform spec automatically. To run against an already-running runtime instead,
-  start [`swarm serve`](/installation) and use `swarm run --connect <url> …`.
-</Tip>
 
 ## What just happened
 
 1. `swarm verify` checked the bundle against the platform specification.
-2. `swarm run` started a runtime in-process, backed by Postgres.
-3. `order.created` was validated against its payload schema, persisted, and routed to its
-   subscribers by their declared subscriptions.
-4. A system node handled it in one atomic transaction: advancing state, writing fields, and
-   emitting follow-up events; agents reasoned and emitted events of their own.
-5. The trace streamed to your terminal, and the local runtime shut down when the run settled.
+2. `swarm run` started a runtime backed by Postgres and published your event.
+3. The `greeter` node handled `greeting.requested` in one transaction: it created an entity
+   and advanced it to `done`.
+4. Every step was persisted, which is why the trace could stream it and a crash could replay
+   it.
 
 ## Next steps
 
 <CardGroup cols={2}>
   <Card title="Build a flow" icon="wrench" href="/build/first-flow">
-    Author a contract bundle of your own.
+    A real flow with classifier and resolver agents.
   </Card>
   <Card title="Core concepts" icon="book" href="/concepts/overview">
     The model behind what you just ran.
