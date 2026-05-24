@@ -4,8 +4,23 @@ description: "Parent-child flows, pins, addressing, and dynamic instances."
 icon: "puzzle-piece"
 ---
 
-Flows nest recursively. A parent declares child flows; the engine walks the tree and turns
-the nested structure into one connected runtime.
+Flows nest recursively, and a larger system is built by composing smaller flows. A parent
+declares child flows, and the engine walks the tree into one connected runtime. Flows connect
+only through **pins**, the typed events at their edges, so a child can be reused or swapped
+without touching the parent's internals.
+
+```mermaid
+flowchart LR
+    subgraph parent [Parent flow]
+      A["emits order.created"]
+    end
+    subgraph child [Child fulfillment instance]
+      B["input pin: order.created"]
+      C["output pin: order.completed"]
+    end
+    A -->|output pin| B
+    C -->|subscription| A
+```
 
 ## Parent-child flows
 

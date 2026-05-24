@@ -4,8 +4,25 @@ description: "States, pins, required agents, and entity acquisition in schema.ya
 icon: "sitemap"
 ---
 
-`schema.yaml` is a flow's public surface: its lifecycle, the pins other flows wire to, and
-the agent roles it requires.
+A flow's **state machine** is the lifecycle of the entity moving through it. The entity sits
+in exactly one state at a time, and a handler moves it forward by setting `advances_to`.
+`schema.yaml` declares that lifecycle, along with the flow's public **pins** and the **agent
+roles** it needs.
+
+The support-ticket flow has this lifecycle:
+
+```mermaid
+stateDiagram-v2
+    [*] --> new: ticket.created
+    new --> assigned: ticket.classified
+    assigned --> resolved: ticket.resolved
+    assigned --> assigned: ticket.escalated
+    resolved --> closed: ticket.resolution_confirmed
+    closed --> [*]
+```
+
+Each arrow is a handler's `advances_to`, and the label is the event that triggers it. The
+self-arrow on `assigned` is the escalation retry loop.
 
 ## States
 

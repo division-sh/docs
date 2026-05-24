@@ -4,10 +4,24 @@ description: "Declaring what happens when an event arrives."
 icon: "gears"
 ---
 
-A handler declares what a system node does when an event arrives. Its fields execute in a
-fixed dependency graph, and the whole thing commits in one transaction. For the conceptual
-model see [System nodes and handlers](/concepts/system-nodes-and-handlers); for every field
-see the [handler reference](/reference/handler-fields).
+A handler is the recipe a system node runs when a matching event arrives. Its fields do not
+run in the order you write them; they run in a fixed pipeline and commit together in one
+transaction, so a crash never leaves a half-applied change.
+
+The common path through that pipeline:
+
+```mermaid
+flowchart LR
+    G[guard] --> W["write: advances_to, sets_gate, data_accumulation"]
+    W --> E[emit the next event]
+    E --> A["action (optional)"]
+```
+
+A guard can stop the handler; otherwise it writes to the entity, emits the next event, and
+optionally runs a platform action. The full pipeline adds accumulation, computation, and
+list-processing steps before the writes; see the
+[handler reference](/reference/handler-fields). For the conceptual model see
+[System nodes and handlers](/concepts/system-nodes-and-handlers).
 
 ## A handler, annotated
 

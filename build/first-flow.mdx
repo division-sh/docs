@@ -28,31 +28,28 @@ Before the files, three ideas. Everything in Swarm is built from them:
 Here is the whole flow as events moving between the orchestrator (deterministic) and the two
 agents (LLM):
 
-```text
-external
-   |
-   |  ticket.created
-   v
-[orchestrator] create the ticket, state -> new       [classifier] reads it,
-                                                       emits ticket.classified
-   |
-   |  ticket.classified
-   v
-[orchestrator] save category + priority, state -> assigned, emit ticket.assigned
-   |
-   |  ticket.assigned
-   v
-[resolver] emits ticket.resolved   OR   ticket.escalated
-   |                                          |
-   |  ticket.resolved                         |  ticket.escalated
-   v                                          v
-[orchestrator] save resolution,        [orchestrator] guard: under the limit?
- state -> resolved,                      count + 1, state -> assigned
- emit ticket.resolution_confirmed        (loops back to the resolver)
-   |
-   |  ticket.resolution_confirmed
-   v
-[orchestrator] state -> closed   (terminal)
+```mermaid
+sequenceDiagram
+    participant Ext as External
+    participant O as Orchestrator
+    participant C as Classifier
+    participant R as Resolver
+    Ext->>O: ticket.created
+    Ext->>C: ticket.created
+    Note over O: create ticket, state = new
+    C->>O: ticket.classified
+    Note over O: save category + priority, state = assigned
+    O->>R: ticket.assigned
+    alt resolver succeeds
+        R->>O: ticket.resolved
+        Note over O: save resolution, state = resolved
+        O->>O: ticket.resolution_confirmed
+        Note over O: state = closed
+    else resolver escalates
+        R->>O: ticket.escalated
+        Note over O: guard ok, count + 1, state = assigned
+        O->>R: ticket.assigned (retry)
+    end
 ```
 
 ## The files you will write
