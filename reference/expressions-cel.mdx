@@ -15,11 +15,30 @@ non-Turing-complete. For the conceptual intro see [Expressions](/concepts/expres
 | `entity` | Declared entity fields, `current_state`, `gates` | All conditions |
 | `payload` | The current event's payload fields | All conditions |
 | `policy` | Flow policy merged with root policy | All conditions |
-| `fan_out` | Fan-out metadata, e.g. `fan_out.count` | After a `fan_out` step |
+| `fan_out` | Fan-out metadata, e.g. `fan_out.count` | `data_accumulation` expressions |
 | `accumulated` | The received items from the current `accumulate` step | `on_complete`, `filter` |
 
 Declared entity fields are always readable at a type-valid value; an undeclared field
 reference is a contract error caught at boot.
+
+## Where each variable is available
+
+The five condition sites run at different points in the [handler pipeline](/reference/execution-model),
+so `accumulated` and `fan_out` are not usable everywhere. Referencing one where it is not
+available is a boot error.
+
+| Site | `entity` | `payload` | `policy` | `accumulated` | `fan_out` |
+|---|---|---|---|---|---|
+| `guard.check` | yes | yes | yes | no | no |
+| `rules.condition` | yes | yes | yes | no | no |
+| `on_complete.condition` | yes | yes | yes | yes | no |
+| `filter.condition` | yes | yes | yes | yes | no |
+| `data_accumulation.expression` | yes | yes | yes | no | yes |
+
+`accumulated` is only readable after accumulation completes (`on_complete`, `filter`), so it is
+absent in `guard` (runs before accumulation) and in `rules` (an alternative to `on_complete`).
+`fan_out.count` is populated after the fan-out step and is read only in
+`data_accumulation.expression`; in `on_complete`, read the entity field you wrote it to instead.
 
 ## Operators
 

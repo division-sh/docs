@@ -1,0 +1,121 @@
+---
+title: "Accumulation and projection"
+description: "Gathering many events into one entity, and copying accumulated items to a typed entity field."
+icon: "layer-group"
+---
+
+Some handlers must wait for several events before they act: collect every dimension score,
+every sub-task result, every vote. The `accumulate` step gathers arrivals for one entity and
+fires only when a completion condition is met. `materialize_from` then copies the gathered
+items into a typed entity field so the rest of the flow can read them.
+
+This page covers the behavior that is easy to get wrong. For the field list see
+[Handler fields](/reference/handler-fields); for how accumulation sits in the handler pipeline
+see [Handler execution model](/reference/execution-model).
+
+## The accumulate step
+
+```yaml
+example.dimension_scored:
+  accumulate:
+    into: scores                      # accumulator buffer name (a list<NamedType> on this node)
+    expected_from: entity.expected     # where the expected count/items live
+    completion: all                    # all | threshold | timeout
+    dedup_by: payload.dimension        # what makes an arrival distinct (see below)
+    on_complete:
+      - condition: "accumulated.size() >= policy.min"
+        advances_to: scored
+        emit: example.scoring_done
+    on_timeout:                        # optional: run with partial data when a timer fires
+      advances_to: scored
+```
+
+When the handler is reached, the platform records the arrival and then checks completion. If
+the condition is not met, **the handler stops there**: no state change, no emit, nothing else
+runs until a later arrival completes it.
+
+## Dedup defaults to the sender
+
+`dedup_by` decides what counts as a distinct arrival. It defaults to **`sender`** (the sending
+session's id). That default is wrong whenever one sender legitimately contributes several
+items, for example an agent emitting five dimension scores: the platform treats them as
+duplicates and **keeps only the first**.
+
+<Warning>
+  If you accumulate multiple items from the same sender, set `dedup_by` to the payload field
+  that distinguishes them (for example `dedup_by: payload.dimension`). With the default,
+  arrivals after the first are silently ignored.
+</Warning>
+
+## Completion modes
+
+| `completion` | Fires when |
+|---|---|
+| `all` | Every item in the expected list has arrived. |
+| `threshold` | The received count reaches a configured number. |
+| `timeout` | A timer fires, regardless of how many arrived (partial results). |
+
+The **expected count is not inferred**. It is read from entity state through `expected_from`,
+and some earlier handler must have written it, typically the handler that fanned the work out
+(write `fan_out.count` to an entity field with `data_accumulation`, then point `expected_from`
+at it).
+
+`on_timeout` is the branch the platform runs if the timer fires before completion. The partial
+accumulated data is available to it.
+
+## Accumulation is idempotent
+
+Duplicate arrivals (same `dedup_by` key, same entity) are ignored. The received set is a set,
+not a list, so crash recovery can replay events through the same tracking and reach the same
+result: already-received items are skipped and the accumulator stays consistent.
+
+## Accumulated items are not entity fields
+
+The gathered items live only in the accumulator. They are exposed as `accumulated.*`, and only
+inside `on_complete` conditions and `filter` expressions (both run after accumulation
+completes). They are **never** promoted to entity fields automatically, so `entity.*` cannot
+see them, and neither can a guard or an agent reading entity state.
+
+To keep a typed copy on the entity, declare `materialize_from`.
+
+## Projecting to an entity field with materialize_from
+
+`materialize_from` is declared on an **entity field** (in `entities.yaml`), naming the
+accumulator to copy from:
+
+```yaml
+# entities.yaml
+candidate:
+  scores:
+    type: list<DimensionScore>
+    materialize_from: scorer.scores     # <node_id>.<accumulate.into name>
+```
+
+The rules the analyzer enforces:
+
+- **Same flow, matching accumulator.** The source is `<node_id>.<accumulator_name>`, the node
+  must be in the same flow, and that node's handler must declare `accumulate.into` with that
+  name.
+- **Both sides are named-type lists.** Target and source must be `list<NamedType>` (or
+  `[NamedType]`). `jsonb`, `[text]`, and untyped targets are rejected.
+- **`project` only when the item types differ.** If the source and target item types are
+  identical, omit `project` (identity copy). If they differ, `project` is required and must
+  name **every** field of the target item type.
+- **`project` reads only `source.*`, `policy.*`, and literals.** Bindings to `entity.*`,
+  `payload.*`, `event.*`, `fan_out.*`, or `accumulated.*` are not allowed in `project`, and
+  `source.*` resolves only against declared fields of the source item type (accumulator
+  metadata such as `event_id` or `received_at` is not addressable).
+- **`materialize_from` is the sole writer of that field.** After the create-time `initial:`
+  value, nothing else may write it, not `data_accumulation`, not a `store_as`, not `clear`,
+  not an agent save tool. Any other authored write to the field is a boot error.
+
+### When the projection runs
+
+The projection writes a **full replacement list** after the matched `on_complete` branch's
+`data_accumulation`, and before `emit.fields`, so an emit in that handler sees the projected
+value. It does **not** run for incomplete accumulation, for the `on_timeout` branch, or when
+completion is reached with no matching `on_complete` rule.
+
+<Card title="Handler execution model" icon="diagram-project" href="/reference/execution-model">
+  Where accumulation, projection, and emit sit in the dependency graph, and what overrides what.
+</Card>

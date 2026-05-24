@@ -92,6 +92,8 @@
             "group": "Language reference",
             "pages": [
               "reference/handler-fields",
+              "reference/execution-model",
+              "reference/accumulation",
               "reference/expressions-cel",
               "reference/dialect-rules",
               "reference/analyzer-checks"

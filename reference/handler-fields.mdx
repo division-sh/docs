@@ -19,7 +19,9 @@ entity acquisition (create_entity | select_entity | select_or_create_entity)
 ```
 
 Two short-circuits stop a handler early: a failed `guard` runs its `on_fail` action, and an
-incomplete `accumulate` records the arrival and waits (outcome `waiting`).
+incomplete `accumulate` records the arrival and waits (outcome `waiting`). For the precedence
+rules (what overrides what, when projection runs, chain-depth and atomicity), see the
+[handler execution model](/reference/execution-model).
 
 ## Core vs extension fields
 
@@ -35,7 +37,11 @@ A stateful input-pin handler declares exactly one acquisition mode (more than on
 error):
 
 <ParamField path="create_entity" type="boolean">
-  Mint a fresh entity at `initial_state` before any other step. Prohibited with `accumulate`.
+  Mint a fresh entity at `initial_state` before any other step. The new entity gets an
+  auto-generated id and the inbound event's `entity_id` is **ignored** for state operations;
+  every declared field is materialized (its `initial:` value, else the type default) so guards
+  and conditions can read it immediately. Prohibited with `accumulate` (boot error). Allowed
+  with `fan_out`: one entity is created and every fanned-out event shares it.
 </ParamField>
 <ParamField path="select_entity" type="object">
   Resolve exactly one existing flow-owned entity by a declared business key (`by` maps entity
@@ -75,7 +81,8 @@ error):
   Set `entity.gates.{name}` to true.
 </ParamField>
 <ParamField path="clear_gates" type="boolean">
-  Reset all entity gates to false (runs before guard). All-or-nothing.
+  Reset gates to false (runs before guard). All-or-nothing, and **entity-wide**: it clears every
+  gate on the entity, not just the gates this node declares. Selective clearing is not current.
 </ParamField>
 <ParamField path="data_accumulation" type="object">
   Write fields to entity state. `writes` is a list; `source_event` defaults to the trigger
@@ -126,7 +133,8 @@ neither, while a pin-declared output that crosses a flow boundary must set `targ
 <ParamField path="accumulate" type="object">
   Wait for multiple arrivals. Fields: `into`, `expected_from`, `completion`
   (`all`, `threshold`, or `timeout`), `dedup_by` (default: sender session id), `on_complete`,
-  `on_timeout`.
+  `on_timeout`. The `dedup_by` default collapses multiple items from one sender; see
+  [Accumulation and projection](/reference/accumulation) for that and for `materialize_from`.
 </ParamField>
 <ParamField path="compute" type="object">
   Run a computation primitive. `operation` is one of `weighted_average`, `pick_or_average`,
