@@ -375,22 +375,26 @@ reachable, and every event has either a handler or a subscriber.
 
 ## What the contracts buy you
 
-A single LLM with a script is fine for a single task. The moment you want **many agents
-collaborating on something large and long-running**, two things break a script: the model's
-context fills up and it loses the plot, and the state you manage by hand drifts into
-half-applied, contradictory messes. Swarm is built for that regime. Here is what the contracts
-buy, with the flow you just wrote as the small example:
+A single LLM with a script is fine for one task. The trouble starts when you make the model
+*be* the system: tracking state, following rules exactly, and staying coherent across a long,
+multi-step job with many agents. LLMs are not good at that. They drift, they lose the plot as
+context fills, and an agent will happily report "the ticket is resolved" when it is not.
+Swarm's answer is to let LLMs do the judgment in small, targeted bursts and leave the rigid
+parts (state, rules, routing) to deterministic system nodes. Here is what that buys, with the
+flow you just wrote as the small example:
 
+- **Reliability: the model cannot fake the outcome.** An agent can *say* it resolved the
+  ticket, but saying so does not make it so. Agents only emit events; a deterministic system
+  node decides what is written and whether the ticket advances. It reaches `resolved` because
+  a handler advanced it after `ticket.resolved` arrived, never because the model asserted it.
+  Rules like the escalation cap are checks the platform runs every time, not instructions you
+  hope the model remembers. And because each transition commits atomically, the ticket is
+  always in exactly one declared state, never half-updated.
 - **Compose many agents, for as long as it takes.** Each agent is a small unit wired to the
   others only through typed events and pins, never one shared mega-prompt. You grow a system
   by adding roles and whole sub-flows (coordinator, managers, workers), not by enlarging a
   central script. This flow has two agents; the same model coordinates hundreds, and a run can
   span hours or days, surviving restarts along the way.
-- **The state never goes weird.** The thinking is done by LLMs, but the truth is owned by
-  deterministic system nodes. Every transition (guard, write, advance, emit) commits as one
-  atomic, rule-checked step, so a ticket is always in exactly one declared state with
-  consistent fields: no half-applied writes, no two writers racing, no "how did it get into
-  *this* state?" An LLM steering its own control flow gives you no such guarantee.
 - **No context explosion, and sharper agents.** A single agent, or a flat "everyone in one
   chat", drowns as the work grows: the context window fills and quality drops. Each Swarm
   agent runs in a scoped session that sees only its own events, so the classifier never
