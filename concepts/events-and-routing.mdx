@@ -66,6 +66,51 @@ a boot error), which keeps state authority unambiguous. Agents are not constrain
 You change who receives an event by editing subscriptions, never by touching its payload
 schema, and no LLM ever decides routing.
 
+## A worked example
+
+Say a ticket flow declares one event, a system node, and an agent that all touch
+`ticket.created`:
+
+```yaml events.yaml
+ticket.created:
+  ticket_id: text
+  subject: text
+```
+
+```yaml nodes.yaml
+ticket-router:
+  id: ticket-router
+  execution_type: system_node
+  subscribes_to: [ticket.created]
+  event_handlers:
+    ticket.created:
+      advances_to: triaging
+      emit: ticket.triaged       # internal event, no target needed
+```
+
+```yaml agents.yaml
+classifier-agent:
+  id: classifier-agent
+  role: classifier-agent
+  subscriptions: [ticket.created]
+  emit_events: [ticket.classified]
+```
+
+Nothing here declares routing; it is inferred from the two subscriptions. When
+`ticket.created` fires:
+
+1. The payload is validated against `events.yaml` and persisted.
+2. Subscribers resolve to `ticket-router` (a node) and `classifier-agent` (an agent), so this
+   is **dual delivery**.
+3. The node runs its handler in one transaction: it advances the ticket to `triaging` and
+   emits `ticket.triaged`. The agent independently receives `ticket.created` in its inbox,
+   reasons, and later emits `ticket.classified`.
+4. `ticket.triaged` and `ticket.classified` each enter the loop as new events and route to
+   their own subscribers.
+
+To send `ticket.created` somewhere else, you change a `subscribes_to` or `subscriptions`
+list. The event's payload schema does not move.
+
 ## Addressing
 
 References resolve by whether they contain a slash:
