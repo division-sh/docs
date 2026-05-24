@@ -1,20 +1,36 @@
 ---
 title: "Budget and cost"
-description: "Live token tracking, throttle, and emergency states."
+description: "Live token tracking, thresholds, throttle, and emergency states."
 icon: "wallet"
 ---
 
-{/* STUB, outline only. Sources: README "Architecture" (live budget tracking), policy. */}
+## Live spend tracking
 
-## Live budget tracking
+Token usage and cost are tracked in the `spend_ledger`, one row per agent invocation, with
+input tokens, output tokens, cost, model, and invocation type. Spend is attributable per
+entity and per actor.
 
-{/* TODO: token usage tracked per entity and per actor in real time. */}
+## Thresholds
 
-## Thresholds, throttle, emergency
+Budget monitoring is configured in `policy.yaml` as percentages. Crossing one emits
+`platform.budget_threshold_crossed` with a matching `level`:
 
-{/* TODO: declared thresholds escalate into throttle and emergency states; an emergency
-  raises a mailbox item. Where thresholds are declared (policy). */}
+```yaml policy.yaml
+budget_warning_percent: 60
+budget_throttle_percent: 80
+budget_emergency_percent: 95
+```
 
-## Inspecting spend
+| Level | Meaning |
+|---|---|
+| `warning` | Spend is approaching the limit. |
+| `throttle` | The runtime throttles further work. |
+| `emergency` | The runtime escalates; a mailbox item is raised for a human. |
 
-{/* TODO: which CLI/API surfaces report usage. TODO: confirm exact commands. */}
+If these policy keys are absent, budget monitoring is disabled.
+
+## Responding to an emergency
+
+An emergency raises a [mailbox](/operate/mailbox) item so a human can approve continued spend,
+pause the run, or stop it. Pausing ingress (`swarm control pause --all`) halts new work while
+you decide.

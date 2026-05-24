@@ -4,21 +4,41 @@ description: "Starting the engine, health, and the surfaces it exposes."
 icon: "play"
 ---
 
-{/* STUB, outline only. Sources: README "Architecture"/CLI, cmd/swarm (serve, health). */}
-
 ## swarm serve
 
-{/* TODO: starts runtime, API, health, and MCP surfaces. Ports (8070 healthz). */}
+`swarm serve` is the long-running runtime. It owns the API, health, and MCP listener. By
+default it binds `127.0.0.1:8081`, serving health, readiness, `/v1/rpc`, `/v1/ws`, and the
+MCP routes on one listener. (For one-shot local runs, `swarm run` boots a runtime in-process
+instead; see the [Quickstart](/quickstart).)
+
+```bash
+swarm serve --contracts ./my-flow
+```
 
 ## Boot verification
 
-{/* TODO: a bundle that boots has passed the static analyzer. What boot does (flow tree
-  walker, contract merger, boot sequence). Link to /reference/analyzer-checks. */}
+At boot the engine loads the bundle, runs it through the static analyzer, initializes the
+Postgres state stores, then starts system nodes and agents. If any `error`-severity check
+fails, boot aborts; there is no partial startup. A runtime that is up has passed the
+[analyzer](/reference/analyzer-checks).
 
 ## Health
 
-{/* TODO: swarm health / GET /healthz / health.subscribe over WebSocket. */}
+Two unauthenticated process probes are always available: `GET /healthz` (the process is
+alive) and `GET /readyz` (the runtime is ready: database up, contracts loaded). For an
+authenticated operator summary with runtime identity, use `swarm health` (the `health.check`
+method).
+
+## Pausing ingress
+
+`swarm control pause --all` pauses runtime ingress (the `runtime.pause` method), and
+`swarm control continue --all` resumes it. While paused, inbound events are persisted and
+held; read-only operator methods still work. Pausing emits `platform.paused`; resuming emits
+`platform.resumed`. Use this for maintenance windows. To pause a single run instead, name it:
+`swarm control pause <run-id>`.
 
 ## Surfaces
 
-{/* TODO: JSON-RPC API, WebSocket subscriptions, MCP gateway, CLI. Link to API reference. */}
+The runtime exposes one API (`/v1/rpc` for request/response, `/v1/ws` for subscriptions), the
+[MCP gateway](/reference/mcp-gateway), and the `swarm` CLI as a client. See the
+[API reference](/api-reference/introduction).

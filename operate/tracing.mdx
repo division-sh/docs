@@ -4,23 +4,38 @@ description: "Following causal traces and reading the flight recorder."
 icon: "magnifying-glass-chart"
 ---
 
-{/* STUB, outline only. Sources: README CLI, FLIGHT-RECORDER.md, cmd/swarm (trace, events,
-  conversations, status). */}
-
 ## Following a run
 
-{/* TODO: swarm trace [run-id] -f; typed filters; swarm runs; swarm status [run-id]. */}
+`swarm trace` prints or follows a run's causal trace: events, deliveries, state changes, and
+agent turns, in order.
+
+```bash
+swarm trace <run-id> -f
+```
+
+It accepts filters (`--event-name`, `--entity-id`, `--delivery-status`, `--subscriber-type`,
+`--since`, `--until`, `--limit`). The snapshot uses `run.trace`; `-f` opens a
+`run.subscribe_trace` stream. To list runs, use `swarm runs`.
+
+## Diagnosing why a run is stuck
+
+`swarm status <run-id>` (the `run.diagnose` method) interprets a run's state and reports the
+blocking layer and reason. It is the single answer to "why is this run not progressing?"
+
+## Inspecting the pieces
+
+| What | Command |
+|---|---|
+| Events | `swarm events list`, `swarm events follow`, `swarm event view <id>` |
+| Entities | `swarm entities list`, `swarm entity view <id>`, `swarm entity aggregate` |
+| Conversations | `swarm conversations list`, `swarm conversation view <id>`, `swarm conversation turn <id> <n>` |
+| Logs | `swarm logs [--follow]` |
+| Incidents | `swarm incidents` |
 
 ## The flight recorder
 
-{/* TODO: how to read the event → mutation → agent-turn → delivery timeline. The four tables
-  + mutation log. Link to /concepts/persistence-replay-and-fork. */}
-
-## Inspecting events, entities, conversations
-
-{/* TODO: swarm events {list,follow,view}; swarm entities {list,view,aggregate};
-  swarm conversations / conversation {view,turn}. */}
-
-## Drift detection
-
-{/* TODO: verify entity_state against the mutation log. */}
+A run's full history is four tables joined on `run_id`: `events` (what happened),
+`entity_mutations` (what changed, with before and after values), `agent_turns` (how an agent
+reasoned), and `event_deliveries` (what was delivered). Together they answer "what did entity
+X look like when event Y fired?" without reconstructing it from current state. See
+[Persistence, replay, and fork](/concepts/persistence-replay-and-fork).

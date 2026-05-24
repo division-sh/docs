@@ -1,32 +1,42 @@
 ---
 title: "Fork and replay"
-description: "Re-executing a run from a point in its history, with optional contract swap."
+description: "Redelivering events, recovering from crashes, and rewinding a run."
 icon: "code-fork"
 ---
 
-{/* STUB, outline only. Sources: FLIGHT-RECORDER.md, README, cmd/swarm (event replay,
-  agent replay). */}
+Because every event and state change is persisted, work can be redelivered or reconstructed.
 
-<Warning>
-  {/* TODO: reconcile shipping status before publishing. README "Try it" shows top-level
-    `swarm fork`; README "CLI" marks it "Shipping shortly"; FLIGHT-RECORDER notes the v1 CLI
-    contract retires top-level `swarm fork` in favor of a gated `swarm control run fork` /
-    API owner. State the actual current surface. */}
-</Warning>
+## Replaying an event
 
-## What fork does
+`swarm event replay <event-id>` (the `event.replay` method) redelivers a persisted event to
+its original subscribers, or a subset with `--subscriber`. It creates a new event with
+`source_event_id` lineage and fresh delivery rows, and records a synthetic audit event. Only
+terminal originals (delivered, failed, or dead-lettered) are replayable.
 
-{/* TODO: timestamp-based system fork, reconstruct full state at T, detect pending work,
-  create forked run with lineage, boot (optionally new contracts), resume. */}
+```bash
+swarm event replay <event-id>
+swarm event replay <event-id> --subscriber resolver-agent
+```
 
-## Forking a run
+## Replaying for an agent
 
-{/* TODO: the command/API; --at <event|timestamp>; --contracts <path>. */}
+`swarm agent replay <agent-id> --event-id <id>` is the same primitive scoped to one agent.
+`swarm agent replay-backlog <agent-id>` redelivers an agent's pending backlog, which is useful
+after a restart.
 
-## Replaying a single event
+## Crash recovery
 
-{/* TODO: swarm event replay <event-id>; agent replay / replay-backlog. */}
+On restart, the runtime replays any event that was persisted but not yet marked delivered.
+Idempotency keeps the result the same, so recovery does not double-process work.
 
-## Counterfactuals
+## Run-level fork
 
-{/* TODO: swap policy/prompt/contracts and compare against the original run. */}
+Fork reconstructs the full system state at a moment in time and resumes, optionally against a
+new contract bundle, so last week's failed run can be replayed against this week's fixed
+contracts.
+
+<Note>
+  The persistence and reconstruction plumbing is in place (the mutation log and the `runs` and
+  `run_fork_*` tables). The operator command surface is in progress; a dedicated run-fork
+  control surface is on the way. For now, use the event and agent replay primitives above.
+</Note>

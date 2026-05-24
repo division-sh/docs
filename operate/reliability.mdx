@@ -1,30 +1,49 @@
 ---
 title: "Reliability and failures"
-description: "Retries, dead letters, chain limits, incidents, and logs."
+description: "Retries, dead letters, chain limits, and incidents."
 icon: "shield-check"
 ---
 
-{/* STUB, outline only. Sources: DEVELOPER-GUIDE "Error Handling", README, cmd/swarm
-  (incidents, logs). */}
+The engine handles failures at each layer with explicit, bounded behavior.
 
-## Handler failures and retries
+## Retries
 
-{/* TODO: 3 retries, exponential backoff (1s/2s/4s). Transient retries; business failures
-  don't. */}
+| Failure | Policy |
+|---|---|
+| Handler execution | Up to 3 retries, exponential backoff (1s, 2s, 4s), for transient errors. The atomic boundary rolls back first. |
+| Agent session | Retried once, then dead-lettered. (Separate from the handler limit.) |
+| Timer | Treated as a regular event; same as handler retries. |
+| Event validation | Rejected, logged, not delivered, no retry. |
+
+Guard failures and business-logic errors are not retried. The handler retry base is
+configurable via `policy.yaml` `handler_retry_base_seconds`.
 
 ## Dead letters
 
-{/* TODO: after exhaustion → platform.dead_letter event; indexed and replayable. Dead-letter
-  payload shape. */}
+After retries are exhausted, or on a non-retryable error, the event lands in `dead_letters`
+with a `failure_type`:
+
+- `retry_exhausted`: retried the maximum number of times, all failed.
+- `handler_error`: a non-retryable validation, business-logic, or guard-escalated error.
+- `target_resolution_failed`: a pin-routed event could not resolve a recipient.
+- `chain_depth_exceeded`: the causal chain hit its limit (see below).
+
+A dead-letter record carries the original event and payload, route identities, the error
+message, retry count, chain depth, and handler node.
 
 ## Chain depth
 
-{/* TODO: max 50 chained emissions; prevents infinite loops; then dead letter. */}
+Each event carries a `chain_depth` counter. When an emit would exceed **50**, the emitted
+event is intercepted and dead-lettered with `failure_type: chain_depth_exceeded`. The
+triggering handler still succeeds: chain-depth overflow is an emission interception, not a
+handler failure, so the handler's other side effects still commit.
 
-## Guard-failure semantics
+## Terminal-state rejection
 
-{/* TODO: reject / discard / kill / escalate table. */}
+An event targeting an entity in a terminal state is rejected before any handler runs (outcome
+`terminal_reject`). This is unconditional.
 
 ## Incidents and logs
 
-{/* TODO: swarm incidents; swarm logs (list/follow); runtime.incidents / runtime.logs. */}
+`swarm incidents` aggregates failures by error code and component. `swarm logs [--follow]`
+queries or streams runtime logs. Both read through the runtime API.

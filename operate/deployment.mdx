@@ -1,31 +1,45 @@
 ---
 title: "Deployment"
-description: "Running Swarm in production: Postgres, configuration, and contract versioning."
+description: "Running Swarm in production: topology, Postgres, and versioning."
 icon: "server"
 ---
 
-{/* STUB, outline only. Sources: docker-compose.yml, Dockerfile.*, README "Project status". */}
-
 ## Topology
 
-{/* TODO: single Go binary + Postgres. Orchestrator + workspace containers. Single-deployment
-  scope today (no distributed execution / multi-tenant yet, see README "Project status"). */}
+Swarm runs as a single Go binary backed by Postgres. The bundled Compose file adds an
+orchestrator service and a Postgres service; dynamic per-entity and privileged workspaces are
+created as containers by runtime policy. Today the scope is a single deployment: distributed
+execution and multi-tenant isolation are not yet in scope.
 
 ## Postgres in production
 
-{/* TODO: sizing, backup, migrations, mutation log as source of truth (disaster recovery =
-  rebuild from log). */}
+Postgres is the substrate. Every event lands in the event store, every entity field change
+lands in the mutation log, and runs correlate it all by `run_id`. Because the mutation log is
+a complete record, entity state is a rebuildable projection: disaster recovery is rebuilding
+from the log. Size Postgres for your event and mutation volume, and back it up like the system
+of record it is.
 
 ## Configuration
 
-{/* TODO: link to /reference/configuration for env vars. */}
+Connection, credentials, runtime mode, and ports are set through environment variables; see
+[Configuration](/reference/configuration). The standalone binary serves on `127.0.0.1:8081`;
+the bundled Compose binds `:8070`.
+
+## Runtime storage
+
+`artifact_repo_commit` writes to a runtime-private root (`SWARM_ARTIFACT_ROOT`, default
+`/var/lib/swarm/artifacts`). It must be writable, persistent across restarts, and outside
+every agent-visible mount. Agents only ever see opaque `swarm-artifact://` URLs.
 
 ## Contract versioning
 
-{/* TODO: replay and fork make contract versioning a correctness concern. How to roll a new
-  contract bundle safely; fork last week's run against this week's contracts.
-  TODO: confirm the recommended versioning workflow with maintainers. */}
+A product declares a `platform_version` range in `package.yaml`; boot rejects a bundle whose
+range excludes the running platform. Because replay and fork depend on contracts,
+roll a new bundle deliberately, and use the persistence layer to reconstruct or fork past runs
+against the new contracts.
 
-## Destructive reset
+## Maintenance and reset
 
-{/* TODO: swarm control nuke, confirmation gate. When/why. */}
+Pause ingress for a maintenance window with `swarm control pause --all`, and resume with
+`swarm control continue --all`. `swarm control nuke` performs a destructive runtime reset;
+`--dry-run` previews the effect without changing state.

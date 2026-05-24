@@ -4,18 +4,38 @@ description: "Acting on pending human-in-the-loop decisions."
 icon: "inbox"
 ---
 
-{/* STUB, outline only. Sources: README CLI (control mailbox), cmd/swarm/control_mailbox.go,
-  OpenRPC mailbox.* methods. */}
+The mailbox is the durable human-in-the-loop queue. A handler writes an item with the
+`mailbox_write` action; an operator decides it; the decision resumes the flow. For the model,
+see [Human in the loop](/concepts/human-in-the-loop).
 
-## Listing pending items
+## Listing and inspecting
 
-{/* TODO: swarm control mailbox list / view <id>; mailbox.list / mailbox.get. */}
+```bash
+swarm mailbox list
+swarm mailbox view <mailbox-item-id>
+```
 
-## Approve, reject, defer
+`swarm mailbox list` (the `mailbox.list` method) filters by `status`, `run_id`, `type`, and
+`priority`. `swarm mailbox view` (the `mailbox.get` method) returns the full payload, the
+decision history, and a server-built decision sheet (the entity context and a preview of what
+happens downstream).
 
-{/* TODO: swarm control mailbox {approve,reject,defer} <id>; idempotency keys. */}
+## Deciding
+
+```bash
+swarm mailbox approve <id> [--decision-payload-json '{...}']
+swarm mailbox reject <id> --reason "..."
+swarm mailbox defer <id> --until 2026-06-01T00:00:00Z
+```
+
+- **Approve** emits the configured downstream event and resumes the flow.
+- **Reject** records a reason; no downstream event.
+- **Defer** postpones the item until a time.
+
+A decided item cannot be decided again (a second attempt returns a conflict). Pass an
+`--idempotency-key` to make a decision safely retryable.
 
 ## How a decision resumes a flow
 
-{/* TODO: the decision becomes an event; the waiting handler proceeds. Link to
-  /concepts/human-in-the-loop. */}
+Approvals on review, approval, and operational-decision items emit `mailbox.item_decided`,
+which the flow subscribes to in order to continue. The decision is an event like any other.
