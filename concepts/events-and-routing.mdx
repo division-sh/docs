@@ -14,10 +14,9 @@ An agent or system node emits an event, the platform validates and persists it, 
 handle it, and the events they emit continue the chain. Nothing else carries work, there is
 no shared memory and no direct function calls between actors.
 
-Every event has a typed payload schema in `events.yaml`. Payloads are **producer-complete**:
-the emitting site must populate every declared field through `emit.fields` (or an agent's
-emit tool). There are no payload defaults and no implicit passthrough from the triggering
-event.
+Every event has a typed payload schema in `events.yaml`. Whoever emits an event must populate
+every field it declares, through `emit.fields` or an agent's emit tool; there are no payload
+defaults and no passthrough from the triggering event. We call this **producer-complete**.
 
 ## The event lifecycle
 

@@ -6,10 +6,11 @@ icon: "user-check"
 
 ## Humans as a first-class actor
 
-Approvals, rejections, and deferrals flow through a durable **mailbox** using the same event
-model as everything else. A pending decision is just another event waiting for its handler,
-a human's, in this case. Autonomy is a dial, not a switch: you decide which transitions
-require judgment and route those to the mailbox, while everything else runs autonomously.
+Approvals, rejections, and deferrals flow through a durable **mailbox**, using the same event
+model as everything else: a pending decision is just another event, waiting for a handler that
+happens to be a human. You choose this per transition. A handler runs automatically unless it
+adds a `mailbox_write` action (shown below), which pauses it for a human decision; everything
+else stays autonomous. We call this: autonomy is a dial, not a switch.
 
 ## The mailbox
 

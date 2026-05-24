@@ -24,8 +24,10 @@ works for a demo and breaks in production:
   same code path.
 
 Swarm's premise is that the agents are usually fine; it is the wiring that fails. So the
-wiring is made deterministic and auditable: routing is derived from declared subscriptions,
-every transition is one transaction, and every event and state change is persisted.
+wiring is made deterministic and auditable: routing is [derived from declared
+subscriptions](/concepts/events-and-routing), each transition commits in [one
+transaction](/concepts/system-nodes-and-handlers), and every event and state change is
+persisted.
 
 ## Strong fit
 

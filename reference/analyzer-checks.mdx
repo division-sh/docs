@@ -54,8 +54,8 @@ disable an individual check.
 - **`payload_field_coverage`** (error). A `data_accumulation` write reads a source payload
   field that does not exist in the source event's schema.
 - **`emitted_event_payload_completeness`** (error). An emit site does not populate every field
-  the emitted event declares. *Rationale: payloads are producer-complete, so a consumer can
-  rely on every declared field being present.*
+  the emitted event declares. *Rationale: a consumer can rely on every declared field being
+  present.*
 - **`condition_payload_alignment`** (error). A CEL condition references `payload.X` where `X`
   is not declared in the triggering event's schema.
 - **`condition_policy_alignment`** (warning). A CEL condition references `policy.X` where `X`

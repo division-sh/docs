@@ -37,27 +37,27 @@ persisted, any run can be replayed turn by turn or forked from a point in its hi
 Swarm makes a few opinionated choices and holds them:
 
 <CardGroup cols={2}>
-  <Card title="Deterministic control loop" icon="route">
-    Routing is derived from declared subscriptions, not chosen by an LLM. Conditions use
-    CEL, strongly typed and non-Turing-complete.
+  <Card title="Deterministic control loop" icon="route" href="/concepts/events-and-routing">
+    Routing is derived from declared subscriptions, not chosen by an LLM. Guards and rules use
+    a strongly typed, non-Turing-complete expression language.
   </Card>
-  <Card title="One transaction per transition" icon="database">
+  <Card title="One transaction per transition" icon="database" href="/concepts/system-nodes-and-handlers">
     Guard, accumulate, compute, commit, emit: all-or-nothing. No partial state survives a
     crash.
   </Card>
-  <Card title="Isolated agents" icon="box">
+  <Card title="Isolated agents" icon="box" href="/concepts/agents-and-sessions">
     Each agent runs in a scoped session and sees only the events it subscribes to.
     Hierarchical addressing keeps context windows from exploding.
   </Card>
-  <Card title="Replayable and forkable" icon="clock-rotate-left">
+  <Card title="Replayable and forkable" icon="clock-rotate-left" href="/concepts/persistence-replay-and-fork">
     Every event and state mutation is persisted. Reconstruct any run, or fork it from any
     point against new contracts.
   </Card>
-  <Card title="Composable flows" icon="puzzle-piece">
+  <Card title="Composable flows" icon="puzzle-piece" href="/concepts/flows-and-entities">
     A flow is a self-contained package with typed input and output pins. Wire flows
     together without refactoring.
   </Card>
-  <Card title="Humans as a first-class actor" icon="user-check">
+  <Card title="Humans as a first-class actor" icon="user-check" href="/concepts/human-in-the-loop">
     Approvals, rejections, and deferrals flow through a durable mailbox. Autonomy is a
     dial, not a switch.
   </Card>
