@@ -28,6 +28,16 @@ A **flow instance** is one running copy. A static flow has a single instance at 
 dynamic instance gets a path that includes its instance id
 (`{template_id}/{instance_id}/{local_name}`).
 
+```yaml package.yaml
+flows:
+  - id: intake
+    flow: intake
+    mode: static       # one instance at boot
+  - id: order
+    flow: order
+    mode: template     # an instance per order, created at runtime
+```
+
 ## Entities
 
 An entity is a mutable document moving through a flow instance's state machine. It has:
@@ -44,6 +54,17 @@ concurrently.
 An entity's persistent fields are declared in the flow's **`entities.yaml`** contract, backed
 by the shared type system in `types.yaml`. (Earlier versions embedded an `entity_schema` in
 `package.yaml`; that is retired.)
+
+```yaml entities.yaml
+order:
+  status: text
+  total: numeric
+  placed_at:
+    type: timestamp
+    immutable: true
+```
+
+The `current_state` is not declared here; state is flow-scoped, in `schema.yaml`.
 
 ## Two identities
 

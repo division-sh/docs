@@ -13,6 +13,25 @@ emit, its tools, its model tier, and its conversation mode.
 Agents never write entity state directly. They emit events; a system node handler decides
 what gets written. This keeps state authority deterministic.
 
+```yaml agents.yaml
+resolver-agent:
+  id: resolver-agent
+  role: resolver-agent
+  model_tier: sonnet
+  subscriptions: [ticket.assigned]
+  emit_events: [ticket.resolved]
+  conversation_mode: session_per_entity
+  session_scope: entity
+  entity_writes:
+    ticket:
+      save: [resolution]
+```
+
+This agent receives `ticket.assigned`, keeps one session per ticket, and may emit
+`ticket.resolved` (which gives it an auto-generated `emit_ticket_resolved` tool). Its
+`entity_writes` let it write the `resolution` field through a generated
+`save_ticket_resolution` tool, the only entity write it is allowed.
+
 ## Isolation and hierarchical addressing
 
 Each agent runs in a scoped session and observes only the events it subscribes to. A

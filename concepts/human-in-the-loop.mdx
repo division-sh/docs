@@ -22,6 +22,18 @@ Each item carries a server-built **decision sheet**: the entity context and a pr
 what happens downstream, so an operator can decide without reconstructing the situation by
 hand.
 
+```yaml nodes.yaml
+# route a decision to a human instead of proceeding automatically
+refund.requested:
+  action:
+    id: mailbox_write
+    mailbox:
+      item_type: approval
+      severity: urgent
+      summary: "Refund exceeds the auto-approval limit"
+  advances_to: awaiting_approval
+```
+
 ## Decisions
 
 An operator acts on a pending item in one of three ways:
@@ -33,6 +45,13 @@ An operator acts on a pending item in one of three ways:
 A decided item cannot be decided again (a second attempt returns a conflict). Approvals on
 review, approval, and operational-decision items emit `mailbox.item_decided`, which the flow
 subscribes to in order to continue.
+
+```yaml nodes.yaml
+# the flow resumes when the operator approves
+mailbox.item_decided:
+  advances_to: refunding
+  emit: refund.issued
+```
 
 ## Budget escalations
 
