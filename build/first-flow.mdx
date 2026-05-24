@@ -4,14 +4,14 @@ description: "A support-ticket flow from an empty directory to a verified, runni
 icon: "rocket"
 ---
 
-You are building a support-ticket system: a ticket comes in, an agent classifies it, a
-system node routes it, another agent resolves or escalates it, and it closes. By the end you
-have a contract bundle that passes the static analyzer and runs.
+You are building a support-ticket system. A ticket comes in, an agent classifies it, a
+system node routes it to a resolver, and it closes. The lifecycle is
+`new -> assigned -> resolved -> closed`, with an escalation loop back to `assigned`. By the
+end you have a contract bundle that passes the static analyzer and boots.
 
 <Note>
-  The contracts below use only built-in scalar types (`text`, `integer`) so the bundle stays
-  self-contained. After writing them, always confirm with `swarm verify`, see
-  [Testing and verification](/build/testing).
+  Every contract below has been checked with `swarm verify`. The bundle uses only built-in
+  scalar types and a single root flow, so it stays self-contained.
 </Note>
 
 <Steps>
@@ -26,18 +26,16 @@ have a contract bundle that passes the static analyzer and runs.
   </Step>
 
   <Step title="Declare the state machine">
-    `schema.yaml` defines the lifecycle, the public pins, and the agent roles the flow
-    requires.
+    Declare only states the flow can actually reach. The analyzer flags any state that nothing
+    advances to.
 
     ```yaml schema.yaml
     initial_state: new
-    terminal_states: [closed, abandoned]
-    states: [new, classified, assigned, resolved, closed, abandoned]
+    terminal_states: [closed]
+    states: [new, assigned, resolved, closed]
     pins:
       inputs:
         events: [ticket.created]
-      outputs:
-        events: [ticket.resolved, ticket.abandoned]
     required_agents:
       - role: classifier-agent
         subscribes_to: [ticket.created]
@@ -49,8 +47,8 @@ have a contract bundle that passes the static analyzer and runs.
   </Step>
 
   <Step title="Declare the entity contract">
-    `entities.yaml` declares the typed fields handlers and agents may write. Fields are
-    declared directly under the entity type name.
+    Fields are declared directly under the entity type name. `escalation_count` needs an
+    `initial` value (or a writer), or the analyzer reports it as uncovered.
 
     ```yaml entities.yaml
     ticket:
@@ -58,15 +56,20 @@ have a contract bundle that passes the static analyzer and runs.
       priority: text
       resolution: text
       resolved_by: text
-      escalation_count: integer
+      escalation_count:
+        type: integer
+        initial: 0
     ```
   </Step>
 
   <Step title="Declare the events">
-    Payload fields go directly under the event name. There is no `payload:` wrapper.
+    Payload fields go directly under the event name; there is no `payload:` wrapper. The
+    trigger is produced outside the flow, so it is marked `swarm.source: external`.
 
     ```yaml events.yaml
     ticket.created:
+      swarm:
+        source: external
       ticket_id: text
       subject: text
       body: text
@@ -85,29 +88,32 @@ have a contract bundle that passes the static analyzer and runs.
     ticket.escalated:
       ticket_id: text
       reason: text
-    ticket.abandoned:
+    ticket.resolution_confirmed:
       ticket_id: text
-      reason: text
     ```
   </Step>
 
   <Step title="Declare the system node">
-    The orchestrator is deterministic: it routes events, writes fields, advances state, and
-    emits follow-up events. Each handler commits atomically.
+    The orchestrator is deterministic. The `ticket.created` handler declares
+    `create_entity: true` to mint the ticket entity; a stateful input-pin handler must declare
+    an acquisition mode or boot fails. Each handler commits atomically.
 
     ```yaml nodes.yaml
     ticket-orchestrator:
       id: ticket-orchestrator
       execution_type: system_node
+      produces:
+        - ticket.assigned
+        - ticket.resolution_confirmed
       subscribes_to:
         - ticket.created
         - ticket.classified
-        - ticket.resolved
         - ticket.escalated
-      produces:
-        - ticket.assigned
+        - ticket.resolved
+        - ticket.resolution_confirmed
       event_handlers:
         ticket.created:
+          create_entity: true
           advances_to: new
 
         ticket.classified:
@@ -125,7 +131,11 @@ have a contract bundle that passes the static analyzer and runs.
           guard:
             id: escalation_limit
             check: "entity.escalation_count < policy.max_escalations"
-            on_fail: kill
+            on_fail: reject
+          data_accumulation:
+            writes:
+              - target_field: escalation_count
+                expression: "entity.escalation_count + 1"
           advances_to: assigned
           emit: ticket.assigned
 
@@ -134,12 +144,17 @@ have a contract bundle that passes the static analyzer and runs.
             writes: [resolution, resolved_by]
             source_event: ticket.resolved
           advances_to: resolved
+          emit: ticket.resolution_confirmed
+
+        ticket.resolution_confirmed:
+          advances_to: closed
     ```
   </Step>
 
   <Step title="Declare the agents">
-    Agents subscribe to events, reason, and emit events. The classifier is stateless; the
-    resolver keeps one session per ticket and may write the `resolution` field.
+    Both agents run in `task` mode. They communicate by emitting events: the resolver puts the
+    resolution in the `ticket.resolved` payload, and the orchestrator handler writes it to the
+    entity. Agents do not write entity state directly.
 
     ```yaml agents.yaml
     classifier-agent:
@@ -157,13 +172,16 @@ have a contract bundle that passes the static analyzer and runs.
       model_tier: sonnet
       subscriptions: [ticket.assigned]
       emit_events: [ticket.resolved, ticket.escalated]
-      conversation_mode: session_per_entity
-      session_scope: entity
+      conversation_mode: task
       max_turns_per_task: 10
-      entity_writes:
-        ticket:
-          save: [resolution]
     ```
+
+    <Note>
+      To give the resolver one persistent session per ticket
+      (`conversation_mode: session_per_entity`, `session_scope: entity`), the agent must live in
+      a child flow, not the root. Entity and flow session scope require a flow-scoped agent. See
+      [Composing flows](/build/composition).
+    </Note>
   </Step>
 
   <Step title="Set policy">
@@ -192,9 +210,9 @@ have a contract bundle that passes the static analyzer and runs.
 
     You resolve assigned tickets.
 
-    Draft a resolution from the ticket body. If you are confident, save it and emit
-    `ticket.resolved`. If the issue needs account access or a human, emit `ticket.escalated`
-    with a reason.
+    Draft a resolution from the ticket body. If you are confident, emit `ticket.resolved` with
+    the resolution and your id. If the issue needs account access or a human, emit
+    `ticket.escalated` with a reason.
     ```
   </Step>
 
@@ -203,21 +221,35 @@ have a contract bundle that passes the static analyzer and runs.
     swarm verify --contracts ./ticket-flow
     ```
 
-    The analyzer checks payload coverage, state reachability, agent fulfillment, handler
-    fields, and CEL parsing. Fix any error before booting, a bundle that boots has passed
-    this pass.
+    Expect `verify ok`. The analyzer checks payload coverage, state reachability, agent
+    fulfillment, entity writer coverage, handler fields, and CEL parsing. (It may also print
+    informational `lint_evidence` notes, for example that a field has no internal reader; those
+    are not errors.)
   </Step>
 </Steps>
 
+## How the pieces connect
+
+- `ticket.created` arrives from outside. The orchestrator mints a ticket entity
+  (`create_entity`) and the classifier agent (subscribed to the same event) classifies it.
+- The classifier emits `ticket.classified`. The orchestrator writes the category and priority
+  and advances to `assigned`, emitting `ticket.assigned` for the resolver.
+- The resolver emits `ticket.resolved` (the orchestrator writes the resolution, advances to
+  `resolved`, and emits `ticket.resolution_confirmed`, which closes the ticket) or
+  `ticket.escalated` (the guard checks the escalation count, increments it, and routes back to
+  `assigned`).
+
+Every declared state is reachable, and every emitted event has a handler or a subscriber.
+
 ## Run it
 
-Boot the runtime against the bundle and trigger a ticket, then follow the trace, see the
+Boot the runtime against the bundle and trigger a ticket, then follow the trace. See the
 [Quickstart](/quickstart) for the commands.
 
 <Note>
   Emitted payloads are producer-complete: each declared field must be supplied by the emit
-  site (an agent's emit tool, or a handler's `emit.fields`). There is no implicit
-  entity or trigger-payload passthrough.
+  site (an agent's emit tool, or a handler's `emit.fields`). There is no implicit entity or
+  trigger-payload passthrough.
 </Note>
 
 ## What to read next

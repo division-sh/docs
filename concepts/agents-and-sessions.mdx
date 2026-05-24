@@ -32,6 +32,10 @@ This agent receives `ticket.assigned`, keeps one session per ticket, and may emi
 `entity_writes` let it write the `resolution` field through a generated
 `save_ticket_resolution` tool, the only entity write it is allowed.
 
+`session_per_entity` (and any non-`task` mode) requires the agent to be declared inside a
+flow, that is, a child flow. Entity and flow session scope are not available to a root-level
+agent; a single root flow uses `conversation_mode: task`.
+
 ## Isolation and hierarchical addressing
 
 Each agent runs in a scoped session and observes only the events it subscribes to. A
