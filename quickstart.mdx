@@ -16,7 +16,7 @@ it, boot a runtime, trigger it, and watch the trace.
 ## Prerequisites
 
 - The `swarm` binary on your PATH and a clone of the repository (see [Installation](/installation)).
-- Postgres 16. The bundled Compose file provides it.
+- Postgres 16, as a local install or a container (shown below).
 - An LLM credential configured (see [Installation](/installation)). The runtime validates one
   at boot even though this flow never calls an agent.
 
@@ -24,8 +24,13 @@ Run the commands below from the repository root, so the default platform spec re
 
 <Steps>
   <Step title="Start Postgres">
+    Any Postgres 16 works. A throwaway container, matching the connection settings in the
+    repository's `.env`:
+
     ```bash
-    docker compose up -d postgres
+    docker run -d --name swarm-postgres \
+      -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=swarm \
+      -p 5432:5432 postgres:16
     ```
   </Step>
 

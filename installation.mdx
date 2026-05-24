@@ -4,8 +4,8 @@ description: "Run Swarm with Docker Compose or build the binary from source."
 icon: "download"
 ---
 
-Swarm runs as a single Go binary backed by Postgres. The fastest way to run it is the
-bundled Docker Compose setup; you can also build the binary and bring your own Postgres.
+Swarm runs as a single Go binary backed by Postgres. Build the binary and run it against a
+Postgres container, or use Docker Compose for a fully containerized runtime.
 
 ## Requirements
 
@@ -37,9 +37,14 @@ bundled Docker Compose setup; you can also build the binary and bring your own P
     go build ./cmd/swarm
     ```
 
-    Run Postgres 16 and point the binary at it, then start the runtime:
+    Start Postgres (any 16; a container matching the repo's `.env` works), then start the
+    runtime:
 
     ```bash
+    docker run -d --name swarm-postgres \
+      -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=swarm \
+      -p 5432:5432 postgres:16
+
     swarm serve --contracts ./my-flow
     ```
 
