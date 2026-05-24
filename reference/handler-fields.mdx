@@ -98,17 +98,28 @@ writes:
 `value` and `expression` are mutually exclusive on one item. The constant key is `value`;
 `{target_field, literal}` is not valid.
 
+Writes persist to entity state, so a value written by one handler is readable as
+`entity.<field>` in later handlers, not only the one that wrote it. Within a single handler,
+guards and `expression` writes see `entity.*` as it stood before this handler's writes, while
+the emit step runs after the writes and sees the new values.
+
 ## Emit
 
 <ParamField path="emit" type="string or object">
-  Publish the follow-up event. A string for internal events; an object `{event, fields,
-  target, broadcast}` for pin-declared outputs. A handler top-level `emit` is valid only when
-  the handler has a single emit site.
+  Publish the follow-up event. The object form `{event, fields, target, broadcast}` populates
+  and routes it; the bare string form emits with an empty payload. A handler top-level `emit`
+  is valid only when the handler has a single emit site.
 </ParamField>
 
-`fields` is a map of output field name to CEL expression. A pin-declared output emit must set
-`target` (`sender`, `{instance_id}`, `{flow, match}`, or `{flow, match, allow_fanout}`) or
-`broadcast: true`.
+The emitted payload is producer-complete: `fields` must set every field the event declares,
+each as a CEL expression (typically `entity.*` or `payload.*`). Nothing is copied from the
+triggering event, so the bare string form is correct only for events with no payload fields.
+The analyzer accepts a bare emit of a field-carrying event, so the empty payload surfaces only
+at runtime; populate `fields` whenever the event carries data.
+
+`target` and `broadcast` are a separate, routing-only concern: an intra-flow emit needs
+neither, while a pin-declared output that crosses a flow boundary must set `target` (`sender`,
+`{instance_id}`, `{flow, match}`, or `{flow, match, allow_fanout}`) or `broadcast: true`.
 
 ## List processing and computation
 

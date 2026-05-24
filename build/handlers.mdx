@@ -31,7 +31,7 @@ ticket.classified:
     id: valid_category
     check: "payload.category in ['billing', 'technical', 'account']"
     on_fail: reject
-  data_accumulation:                       # 2. write fields from the payload
+  data_accumulation:                       # 2. write fields from the payload onto the entity
     writes:
       - source_field: category
         target_field: category
@@ -39,8 +39,31 @@ ticket.classified:
         target_field: priority
     source_event: ticket.classified
   advances_to: assigned                    # 3. advance the state
-  emit: ticket.assigned                    # 4. emit the follow-up event
+  emit:                                    # 4. emit the follow-up, populating its payload
+    event: ticket.assigned
+    fields:
+      category: entity.category
+      priority: entity.priority
 ```
+
+## How data moves between steps
+
+Three places hold data, and each is reached a different way. Knowing which is which prevents the
+most common authoring mistake:
+
+- **The entity** is the durable store. Write to it with `data_accumulation`; read it anywhere
+  with `entity.*`. Entity fields persist across handlers, so a value written when the ticket was
+  created is still readable when a later event arrives.
+- **The emitted payload** is how a handler hands data to the next subscriber. You build it with
+  `emit.fields`. It is neither the entity nor the triggering event: you populate it explicitly.
+- **An agent sees only the payload of the event delivered to it**, never the entity directly. So
+  that payload is the contract for what the agent can act on. If a resolver agent needs the
+  ticket body, the event that reaches it must carry the body.
+
+So a value flows like this: an event arrives, `data_accumulation` records what matters on the
+entity, and `emit.fields` reads from the entity to populate the next event. Guards and
+`data_accumulation` expressions read `entity.*` as it stood before this handler's writes; the
+emit step runs after the writes, so it sees them.
 
 ## Guards
 
@@ -114,13 +137,34 @@ data_accumulation:
 
 ## Emitting events
 
-Emit a string for internal events (`emit: ticket.assigned`). For a pin-declared output, the
-emit must resolve a target, `target: sender`, `target: {flow, match}`, or
-`broadcast: true`:
+An emitted event's payload is **producer-complete**: the handler must populate every field the
+event declares, through `emit.fields`. Nothing is copied automatically from the triggering
+event, and there are no defaults. Each entry in `fields` is a CEL expression, usually reading
+the entity you just wrote or the incoming `payload`:
+
+```yaml
+emit:
+  event: ticket.assigned        # declares fields: category, priority
+  fields:
+    category: entity.category   # read the fields this handler just wrote
+    priority: entity.priority
+```
+
+The bare string form, `emit: ticket.assigned`, emits with an **empty** payload. The analyzer
+accepts it, so the empty payload only shows up at runtime when a subscriber receives `{}`. Use
+the bare form only for events that declare no fields; reach for `fields` the moment an event
+carries data.
+
+**Targeting is a separate, routing-only concern.** Routing inside a flow comes from
+subscriptions, so an internal emit needs no target. A pin-declared output that crosses a flow
+boundary must resolve a recipient with `target` (`sender`, `{instance_id}`, `{flow, match}`) or
+opt out with `broadcast: true`:
 
 ```yaml
 emit:
   event: ticket.resolved
+  fields:
+    resolved_by: entity.resolved_by
   broadcast: true
 ```
 
