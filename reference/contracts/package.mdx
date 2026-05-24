@@ -4,17 +4,47 @@ description: "Flow identity, version, platform constraint, and child flows."
 icon: "id-card"
 ---
 
-{/* STUB, outline only. Source: platform-spec.md §package_yaml, §flow. */}
+`package.yaml` is the flow manifest. Together with `schema.yaml`, it is one of the two files
+every flow must have.
 
 ## Fields
 
-{/* TODO: name, version, description, platform (semver constraint), flows[] (id, flow, mode).
-  Use <ParamField> for each. */}
+<ParamField path="name" type="string" required>
+  The flow's name. If omitted on a child flow, it is derived from the directory name.
+</ParamField>
+<ParamField path="version" type="string" required>
+  Semver version of the flow package.
+</ParamField>
+<ParamField path="description" type="string">
+  Human-readable description.
+</ParamField>
+<ParamField path="platform_version" type="string">
+  A semver range (for example `">=1.6.0"`). Boot rejects the bundle if the running platform
+  version falls outside the range.
+</ParamField>
+<ParamField path="flows" type="list">
+  Child flows declared by this package. Each entry has `id`, `flow` (the child directory
+  under `flows/`), and `mode` (`static` or `template`).
+</ParamField>
 
 ## Child flows
 
-{/* TODO: the flows[] entries; mode: static | template. Link to /build/composition. */}
+A `static` child starts one instance at boot. A `template` child is loaded but not started;
+instances are created at runtime with the `create_flow_instance` action. See
+[Composing flows](/build/composition).
 
 ## Example
 
-{/* TODO: minimal + with-children examples. */}
+```yaml package.yaml
+name: order-platform
+version: 1.0.0
+description: Order intake and fulfillment.
+platform_version: ">=1.6.0"
+flows:
+  - id: intake
+    flow: intake
+    mode: static
+  - id: fulfillment
+    flow: fulfillment
+    mode: template
+```

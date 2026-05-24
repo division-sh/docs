@@ -4,16 +4,62 @@ description: "Tool definitions agents can call."
 icon: "wrench"
 ---
 
-{/* STUB, outline only. Source: DEVELOPER-GUIDE step 7, platform-guide.md §"Tool Model". */}
+`tools.yaml` declares custom tools. Every tool belongs to one of three implementation
+classes; the platform owns schema serving, validation, and routing.
 
-## Fields
+## Tool classes
 
-{/* TODO: handler_type, description, input_schema, output_schema. */}
+| `handler_type` | Served by | Notes |
+|---|---|---|
+| `platform_builtin` | the runtime | A fixed set shipped with the platform. |
+| `mcp` | an MCP server | Registered in `policy.yaml`; namespaced by prefix. |
+| `http` | the HTTP executor | Requires an `http` block. The default class. |
 
-## Handler types
+## Custom tool schema
 
-{/* TODO: workflow_registered vs platform/built-in. MCP-sourced tools. */}
+<ParamField path="description" type="string" required>
+  What the tool does.
+</ParamField>
+<ParamField path="handler_type" type="string">
+  `platform_builtin`, `mcp`, or `http`. Defaults to `http`.
+</ParamField>
+<ParamField path="input_schema" type="object">
+  Input fields (alias: `parameters`).
+</ParamField>
+<ParamField path="output_schema" type="object">
+  Output fields (alias: `returns`).
+</ParamField>
+<ParamField path="http" type="object">
+  For HTTP tools: `method`, `url`, and optional `headers`, `body`, `timeout_seconds`,
+  `retry`.
+</ParamField>
+<ParamField path="response_mapping" type="object">
+  For HTTP tools: maps response fields to output.
+</ParamField>
+<ParamField path="credentials" type="list">
+  For HTTP tools: credential keys resolved at call time.
+</ParamField>
+
+The fields `endpoint` and `type` are not accepted; use `http.url` and `handler_type`.
 
 ## Example
 
-{/* TODO. */}
+```yaml tools.yaml
+knowledge_base_search:
+  description: Search the support knowledge base.
+  handler_type: http
+  input_schema:
+    query: text
+    max_results: integer
+  http:
+    method: POST
+    url: "https://kb.internal/search"
+```
+
+<Warning>
+  `workflow_registered` and `api_call` are deprecated handler types. They still load
+  (`workflow_registered` normalizes to `http` when an `http` block is present), but new tools
+  should use `handler_type: http` or an MCP server.
+</Warning>
+
+See [Tools](/build/tools) for the authoring guide and the MCP client model.

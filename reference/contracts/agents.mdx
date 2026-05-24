@@ -1,24 +1,77 @@
 ---
 title: "agents.yaml"
-description: "Agent definitions: model tier, subscriptions, tools, and conversation mode."
+description: "Agent roles and their configuration."
 icon: "robot"
 ---
 
-{/* STUB, outline only. Source: platform-spec.md §agent_role, DEVELOPER-GUIDE step 6. */}
+`agents.yaml` declares agents as map entries keyed by id. The key is also the role name used
+to fulfill `required_agents`.
 
 ## Fields
 
-{/* TODO: id, model_tier, subscriptions[], emit_events[], tools[], conversation_mode,
-  max_turns_per_task, description. <ParamField> each. */}
-
-## Conversation modes
-
-{/* TODO: task | session | session_per_entity. */}
-
-## Agent role types
-
-{/* TODO: platform-spec §agent_role/types. */}
+<ParamField path="id" type="string" required>
+  The agent identifier (matches the map key).
+</ParamField>
+<ParamField path="role" type="string" required>
+  The role this agent fulfills; matches the map key.
+</ParamField>
+<ParamField path="model_tier" type="string">
+  Which model the agent runs on, for example `haiku` or `sonnet`.
+</ParamField>
+<ParamField path="subscriptions" type="list">
+  The events the agent receives. May be empty for coordinator roles.
+</ParamField>
+<ParamField path="emit_events" type="list">
+  The events the agent may emit. Each gets an auto-generated `emit_{event}` tool. Defaults to
+  empty.
+</ParamField>
+<ParamField path="conversation_mode" type="string">
+  `task` (default), `session`, or `session_per_entity`.
+</ParamField>
+<ParamField path="session_scope" type="string">
+  `global`, `flow`, or `entity`. Required for non-`task` modes; must form a valid pair with
+  `conversation_mode` or boot fails.
+</ParamField>
+<ParamField path="manager_fallback" type="string">
+  The escalation and hierarchy parent. Not a messaging grant.
+</ParamField>
+<ParamField path="max_turns_per_task" type="integer">
+  Turn budget before the session is terminated.
+</ParamField>
+<ParamField path="tools" type="list">
+  Declared tools, resolved against the merged registry.
+</ParamField>
+<ParamField path="permissions" type="list">
+  Platform permissions (see [Permissions](/reference/glossary)).
+</ParamField>
+<ParamField path="permissions_bundle" type="string">
+  A named permission set from policy; explicit `permissions` extend it.
+</ParamField>
+<ParamField path="entity_writes" type="object">
+  Which entity fields the agent's generated `save_*`/`update_*` tools may write, keyed by
+  entity type.
+</ParamField>
+<ParamField path="native_tools" type="object">
+  Host capabilities (`bash`, `web_search`, `file_io`), each a boolean. Default all false.
+</ParamField>
+<ParamField path="flow_data_access" type="list">
+  Immutable reference files under the flow's `data/` directory, read via `read_flow_data`.
+</ParamField>
 
 ## Example
 
-{/* TODO. */}
+```yaml agents.yaml
+validator-agent:
+  id: validator-agent
+  role: validator-agent
+  model_tier: haiku
+  subscriptions: [order.created]
+  emit_events: [order.validated]
+  conversation_mode: task
+  max_turns_per_task: 3
+  entity_writes:
+    order:
+      save: [status]
+```
+
+See [Defining agents and prompts](/build/agents-and-prompts) for the authoring guide.

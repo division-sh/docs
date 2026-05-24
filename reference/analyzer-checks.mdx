@@ -4,27 +4,52 @@ description: "The static-analysis checks run against every contract before boot.
 icon: "clipboard-check"
 ---
 
-{/* STUB, outline only. Sources: README "Architecture" (54 checks), DEVELOPER-GUIDE
-  "Boot Verification Checks", platform-spec.md, verify.py. */}
-
-<Warning>
-  {/* TODO: reconcile the check count. README says "54 contract checks"; DEVELOPER-GUIDE says
-    "19 checks" in one place and a 16-check table in another; BRIEF says "19 checks". Pin the
-    current number against verify.py / platform-spec.yaml before publishing. */}
-</Warning>
+Contract verification runs at boot, after loading all contracts and before starting any nodes
+or agents, and on demand with `swarm verify`. An `error` finding aborts boot; a `warning` is
+logged and boot continues. The authoritative list lives in `engine.boot_verification.checks`,
+stated as **43 primary checks plus 3 supplemental**.
 
 ## How verification runs
 
-{/* TODO: swarm verify --contracts; runs at boot too. Errors abort boot; warnings log. */}
+```bash
+swarm verify --contracts ./my-flow
+```
 
-## Check catalog
+All checks run on every boot; there is no mechanism to disable an individual check.
 
-{/* TODO: table of checks grouped by severity (error vs warning). From DEVELOPER-GUIDE:
-  error, payload fields, required agents, handler fields, tools, deprecated fields, CEL
-  parse, single node per event, dialect.
-  warning, event chains, prompts, policy conflicts, produces drift.
-  Add: state reachability, timer lifecycle, cycles, prompt linting (from README). */}
+## Key checks by severity
 
-## Common failures and fixes
+**Error (aborts boot):** `payload_field_coverage`, `entity_write_target_compliance`,
+`condition_payload_alignment`, `state_machine_coherence`, `required_agents_match`,
+`handler_field_compliance`, `invalid_field_detection`, `event_cycle_detection`,
+`dialect_compliance`, `single_node_per_event`, `config_from_payload_alignment`,
+`native_tools_valid`, `flow_data_access_validation`, `platform_namespace_violation`,
+`workspace_class_exists`, `agent_permission_validation`, `transition_reference_validation`,
+`condition_expression_validation`, `transition_ownership_validation`,
+`event_runtime_wiring_validation`, `timer_validation`, `write_pin_ownership_validation`,
+`gate_schema_validation`, `pin_target_resolution`, `missing_external_select_entity`.
 
-{/* TODO: map frequent analyzer errors to the dialect rule or contract field that fixes them. */}
+**Warning (logs, continues):** `event_chain_integrity`, `event_consumer_exists`,
+`event_producer_exists`, `condition_policy_alignment`, `tool_resolution`, `prompt_exists`,
+`produces_drift`, `policy_conflict_detection`, `phantom_produces`, `mcp_server_reachable`,
+`credential_key_exists`, `input_pin_wiring`, `redundant_in_topology_select_entity`,
+`semantic_drift_dead_event_schema`.
+
+## The static analyzer slices
+
+Separately from boot verification, the spec's `static_analyzer` section defines **13 promoted
+"Wave 1" slices** surfaced through `swarm verify`. Their authority levels are:
+
+- `hard_invalidity` (boot-fatal): 7 slices.
+- `semantic_drift_warning`: 4 slices.
+- `lint_evidence` (informational): 1 slice.
+- one verdict-dependent slice that can be error, warning, or ok.
+
+Some slice ids overlap with boot-verification checks by name (for example
+`pin_target_resolution`, `input_pin_wiring`, `entity_write_target_compliance`). The slices
+are scoped to Wave 1 and may not be widened without a spec change.
+
+<Note>
+  Older docs cited "16", "19", or "54" checks; those numbers are not supported by v1.6.0. Use
+  the authoritative "43 primary plus 3 supplemental" figure.
+</Note>

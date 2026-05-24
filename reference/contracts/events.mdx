@@ -4,20 +4,56 @@ description: "Event payload schemas and reserved metadata."
 icon: "bolt"
 ---
 
-{/* STUB, outline only. Source: platform-spec.md §events_yaml, §event_schema. */}
+`events.yaml` declares the payload schema for each event. It defines payload shapes, not
+routing; routing is derived from subscriptions in `nodes.yaml` and `agents.yaml`.
 
-## Event naming
+## Flat payload form
 
-{/* TODO: dotted names (ticket.created); the event_name format rules. */}
+Payload fields are declared directly under the event name. There is no `payload:` wrapper
+(that form is retired).
 
-## Payload schemas
+```yaml events.yaml
+order.created:
+  order_id: text
+  customer_email: text
+  total: numeric
+order.validated:
+  order_id: text
+```
 
-{/* TODO: payload field → type. Validation at entry. */}
+Field types are built-in scalars or named types from
+[`types.yaml`](/reference/contracts/types).
 
-## Reserved swarm: metadata
+## Producer-complete payloads
 
-{/* TODO: swarm.source / producer / consumer / status. */}
+Every declared field must be populated by the active emit site's `emit.fields`. There are no
+payload defaults, no implicit passthrough, and no undeclared fields. Missing or extra fields
+are contract violations.
 
-## Example
+## Reserved metadata
 
-{/* TODO. */}
+Event-level metadata lives under the reserved `swarm:` namespace:
+
+```yaml
+order.created:
+  swarm:
+    source: external          # produced outside the flow graph
+  order_id: text
+```
+
+<ParamField path="swarm.source" type="string">
+  Non-derivable external or platform producer proof.
+</ParamField>
+<ParamField path="swarm.consumer" type="string">
+  Non-derivable external sink proof.
+</ParamField>
+<ParamField path="swarm.status" type="string">
+  Lifecycle marker, for example `planned`.
+</ParamField>
+<ParamField path="swarm.producer" type="string">
+  Exceptional non-derivable producer proof, for example `mailbox_human`.
+</ParamField>
+
+Runtime-owned envelope fields (`event.source`, `event.target`, `event.target_set`, and
+others) are not author-declared; consumers read them through `event.*`. The `platform.`
+event prefix is reserved for the engine's own events.

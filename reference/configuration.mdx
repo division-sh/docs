@@ -1,21 +1,56 @@
 ---
 title: "Configuration"
-description: "Environment variables and runtime settings."
+description: "Environment variables and connection settings."
 icon: "gear"
 ---
 
-{/* STUB, outline only. Sources: .env, docker-compose.yml, internal/config. */}
+Swarm reads configuration from flags, environment variables, a CLI config file, and the
+repository `.env`. Credential values are never logged or persisted.
 
-## Environment variables
+## Connection and CLI
 
-{/* TODO: <ParamField> per var:
-  SWARM_CONTRACTS_HOST_DIR, CLAUDE_CODE_OAUTH_TOKEN / Anthropic API key, Postgres DSN,
-  ports (healthz 8070), etc. TODO: enumerate from internal/config. */}
+Resolution precedence is flag, then environment, then config file, then built-in default.
 
-## Provider selection
+<ParamField path="SWARM_API_SERVER" type="string">
+  API base URL for CLI commands. Default `http://127.0.0.1:8081`. Flag: `--api-server`.
+</ParamField>
+<ParamField path="SWARM_API_TOKEN / SWARM_API_TOKEN_FILE" type="string">
+  Bearer token (value or file). Flag: `--api-token-file`. Inline `--api-token` is not
+  accepted.
+</ParamField>
+<ParamField path="SWARM_CONTRACTS_PATH" type="string">
+  Contract bundle root for local file surfaces. Flag: `--contracts`.
+</ParamField>
 
-{/* TODO: Anthropic API mode vs Claude CLI subprocess mode. */}
+The CLI config file lives at `$XDG_CONFIG_HOME/swarm/config.yaml` (or via `SWARM_CONFIG`) and
+accepts `api_server` and `api_token_file`.
 
-## Ports and surfaces
+## Database
 
-{/* TODO: HTTP API, healthz, MCP. */}
+Postgres is the store. Connection settings are supplied through environment variables, which
+the repository `.env` sets for local development.
+
+<ParamField path="SWARM_DB_HOST / SWARM_DB_PORT / SWARM_DB_NAME / SWARM_DB_USER / SWARM_DB_PASSWORD / SWARM_DB_SSLMODE" type="string">
+  Postgres connection parameters.
+</ParamField>
+
+## Runtime mode and credentials
+
+<ParamField path="SWARM_LLM_RUNTIME_MODE" type="string">
+  How agents run: `cli_test` (scripted, no provider bill), `api` (a real provider), `mock`,
+  or `local`.
+</ParamField>
+<ParamField path="CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY" type="string">
+  Provider credential for `api` mode.
+</ParamField>
+
+## Storage and ports
+
+<ParamField path="SWARM_ARTIFACT_ROOT" type="string">
+  Runtime-private root for git repositories written by `artifact_repo_commit`. Default
+  `/var/lib/swarm/artifacts`. Never mounted into agent sessions.
+</ParamField>
+
+The standalone binary serves its HTTP listener on `127.0.0.1:8081` by default (health,
+readiness, `/v1/rpc`, `/v1/ws`, and the MCP routes). The bundled Compose file binds `:8070`
+instead. Postgres listens on `5432`.

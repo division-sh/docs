@@ -4,10 +4,62 @@ description: "Swarm vocabulary in one place."
 icon: "spell-check"
 ---
 
-{/* STUB, outline only. Source: README "Core concepts", platform-guide.md §1. Define each
-  term in one line; link to the concept page. */}
+**Flow.** A self-contained package of contracts with typed pins. The composition unit.
 
-{/* TODO: define, Flow, Entity, State, Terminal state, System node, Agent, Handler, Event,
-  Gate, Timer, Pin, Run, Fork, Replay, Mutation log, Flight recorder, Accumulator, Fan-out,
-  Mailbox, Session (task/session/session_per_entity), Static flow, Template flow, Flow
-  instance, CEL, Dead letter, Boot verification / static analyzer, Policy. */}
+**Flow instance.** One running copy of a flow. Static flows have one; template flows have
+many, created at runtime.
+
+**Entity.** A mutable document moving through a flow instance's state machine: state, gates,
+and typed fields. Declared in [`entities.yaml`](/reference/contracts/entities).
+
+**State.** A named state in a flow's machine. An entity is in exactly one at a time. Terminal
+states are absorbing.
+
+**System node.** Deterministic code that subscribes to events, runs a handler, advances
+state, and emits events. No LLM.
+
+**Agent.** An LLM session that subscribes to events, reasons, calls tools, and emits events.
+
+**Handler.** The unit of execution attached to an event on a system node. Runs as a
+dependency graph and commits atomically.
+
+**Event.** A typed message with a payload schema. The only communication primitive.
+
+**Gate.** A named boolean on an entity, set by a handler and checked by guards.
+
+**Timer.** A durable, time-based trigger that fires an event into the loop.
+
+**Pin.** A typed input or output of a flow, used to wire flows together.
+
+**Run.** A top-level execution context. Correlates events, deliveries, sessions, and turns by
+`run_id`.
+
+**Mutation log.** The per-field before-and-after record of entity changes (`entity_mutations`),
+the basis for the flight recorder and fork.
+
+**Flight recorder.** Events, mutations, agent turns, and deliveries joined on `run_id` to
+reconstruct a run.
+
+**Replay.** Redelivering a persisted event to its subscribers.
+
+**Fork.** Reconstructing system state at a moment in time and resuming, optionally against new
+contracts.
+
+**Mailbox.** The durable human-in-the-loop task queue. Decisions are approve, reject, defer.
+
+**Session.** An agent's execution context, scoped by `conversation_mode`: `task` (per event),
+`session` (persistent), or `session_per_entity`.
+
+**Flow scope key.** A flow's semantic namespace by position in the tree. Stable across
+instances. Distinct from the flow instance path.
+
+**CEL.** Common Expression Language. Strongly typed and non-Turing-complete; used for all
+guards, rules, and filters.
+
+**Dead letter.** Where an event lands after retry exhaustion, a target-resolution failure, or
+chain-depth overflow.
+
+**Static analyzer.** The boot-time and `swarm verify` checks that validate a bundle against
+the platform specification.
+
+**Policy.** Named configuration values referenced as `policy.*` and `{{variable}}`.

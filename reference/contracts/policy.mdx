@@ -1,19 +1,64 @@
 ---
 title: "policy.yaml"
-description: "Configuration values and inheritance rules."
+description: "Configuration values, budget thresholds, and inheritance."
 icon: "sliders"
 ---
 
-{/* STUB, outline only. Source: DEVELOPER-GUIDE step 8 & "Policy Inheritance". */}
+`policy.yaml` holds named configuration values for a flow. They are referenced in CEL as
+`policy.*` and in prompts as `{{variable}}`.
 
-## Shape
-
-{/* TODO: flat key/value map; referenced in CEL as policy.X. */}
+```yaml policy.yaml
+sla_hours: 24
+max_escalations: 3
+```
 
 ## Inheritance
 
-{/* TODO: child inherits parent; child overrides specific keys. */}
+Policy is hierarchical. A child flow inherits root and parent policy and overrides specific
+keys. Guards and prompt templates resolve a key by walking child to parent to root.
 
-## Reserved keys
+```yaml
+# parent policy.yaml
+timeout_hours: 24
+max_retries: 3
 
-{/* TODO: any platform-recognized policy keys (e.g., budget thresholds). TODO: confirm list. */}
+# child policy.yaml
+timeout_hours: 48    # overrides the parent; max_retries stays 3
+```
+
+## Budget thresholds
+
+Spend monitoring is configured here as percentages. Crossing one emits
+`platform.budget_threshold_crossed` with a matching `level`. If these keys are absent, budget
+monitoring is disabled.
+
+```yaml
+budget_warning_percent: 60
+budget_throttle_percent: 80
+budget_emergency_percent: 95
+```
+
+See [Budget and cost](/operate/budget-and-cost).
+
+## MCP servers
+
+```yaml
+mcp_servers:
+  postgres:
+    transport: http        # http or stdio
+    url: "https://mcp.internal/pg"
+    prefix: pg             # required, unique across servers
+    credentials_key: pg_token
+```
+
+See the [MCP gateway reference](/reference/mcp-gateway).
+
+## Workspace classes and permission bundles
+
+<ParamField path="workspace_classes" type="object">
+  Named workspace classes, each with a `description` and a `workspace_scope` (`per-agent` or
+  `per-flow-instance`). Every `workspace_class` an agent references must be defined here.
+</ParamField>
+<ParamField path="permission_bundles" type="object">
+  Named permission sets that agents can reference with `permissions_bundle`.
+</ParamField>

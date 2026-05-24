@@ -1,29 +1,75 @@
 ---
 title: "nodes.yaml"
-description: "System nodes, their subscriptions, handlers, timers, and entity schema."
+description: "System nodes, their handlers, and timers."
 icon: "gears"
 ---
 
-{/* STUB, outline only. Source: platform-spec.md §nodes_yaml, §node_specification. */}
+`nodes.yaml` declares the deterministic system nodes that orchestrate a flow. Each node is a
+map entry keyed by its id.
 
 ## Node fields
 
-{/* TODO: id, execution_type, description, subscribes_to[], produces[], event_handlers{},
-  timers[], entity_schema. */}
+<ParamField path="id" type="string" required>
+  The node identifier (matches the map key).
+</ParamField>
+<ParamField path="execution_type" type="string" required>
+  Must be `system_node`.
+</ParamField>
+<ParamField path="subscribes_to" type="list" required>
+  The events this node handles.
+</ParamField>
+<ParamField path="event_handlers" type="object" required>
+  A map of event name to handler declaration. See [Handler fields](/reference/handler-fields)
+  for every field a handler can declare.
+</ParamField>
+<ParamField path="produces" type="list">
+  The events the node emits. Optional; the platform derives it from the handler emit sites if
+  omitted. If present, the analyzer warns on drift (`produces_drift`).
+</ParamField>
+<ParamField path="state_schema" type="object">
+  Per-node state and accumulator fields, keyed by entity.
+</ParamField>
+<ParamField path="state_table" type="string">
+  The state table name for this node.
+</ParamField>
+<ParamField path="gate_state" type="object">
+  Gate field definitions.
+</ParamField>
+<ParamField path="timers" type="list">
+  Durable timers attached to this node (see below).
+</ParamField>
+<ParamField path="permissions" type="list">
+  Node permissions, for example `create_flow_instance`.
+</ParamField>
 
-## Handlers
-
-{/* TODO: the event_handlers map. Full field catalog lives at /reference/handler-fields,
-  link prominently. */}
+One event is handled by at most one system node (`single_node_per_event`); two nodes on the
+same event is a boot error.
 
 ## Timers
 
-{/* TODO: id, event, delay, start_on, cancel_on, recurring. */}
+```yaml
+timers:
+  - id: order_sla
+    event: timer.order_sla
+    delay: "{{sla_hours}}h"     # duration string or a policy reference
+    start_on: state:fulfilling  # state:<name>, event:<name>, or boot
+    cancel_on: state:fulfilled  # state:<name> or event:<name> (boot invalid)
+    recurring: false
+```
 
-## entity_schema
+Trigger values must be prefixed (`state:` or `event:`); a bare string is a boot error. See
+[Gates, timers, and state](/concepts/gates-timers-and-state).
 
-{/* TODO: fields and their types. */}
+## Example
 
-## Rules
-
-{/* TODO: one system node per event; produces list; dependency rules. */}
+```yaml nodes.yaml
+order-orchestrator:
+  id: order-orchestrator
+  execution_type: system_node
+  subscribes_to: [order.validated]
+  produces: [order.fulfilling]
+  event_handlers:
+    order.validated:
+      advances_to: fulfilling
+      emit: order.fulfilling
+```

@@ -1,0 +1,63 @@
+---
+title: "types.yaml"
+description: "Shared named types, enums, and lists."
+icon: "shapes"
+---
+
+`types.yaml` declares the shared types used by entity contracts and event payloads. Types are
+declared under a top-level `types:` map. The file is optional; a flow that uses only built-in
+scalars does not need it.
+
+```yaml types.yaml
+types:
+  Address:
+    line1: text
+    city: text
+    postal_code: text
+  LineItem:
+    sku: text
+    quantity: integer
+```
+
+## Built-in scalars
+
+`text`, `integer`, `numeric`, `boolean`, `timestamp`, `uuid`.
+
+## Composite types
+
+- **Named types** are composites with declared inner fields, as in `Address` above.
+- **Enums** are closed sets of allowed values.
+- **Lists** are ordered collections of a declared element type, written `[ElementType]`.
+
+```yaml
+types:
+  Priority:
+    enum: [critical, high, medium, low]
+  Cart:
+    items: [LineItem]
+```
+
+Reuse is compositional: a named type references other named types through its fields. There
+is no inheritance.
+
+## Field forms
+
+A field is declared in a terse form (`field_name: TypeName`) or a verbose block:
+
+```yaml
+total:
+  type: numeric
+  description: Order total in the account currency.
+```
+
+## Type defaults
+
+When a field has no `initial:` and no writer sets it, it materializes at its type default:
+`text` is `""`, `integer` and `numeric` are `0`, `boolean` is `false`, a list is `[]`, an
+enum is its first declared value, and `timestamp`/`uuid` are `null`. A named type
+materializes as an empty instance with each field at its own default.
+
+<Warning>
+  Retired type constructs (do not author): `jsonb` as a declared type, inline `type: object`
+  without a declared shape, `Optional<T>`, inheritance or `extends`, and recursive types.
+</Warning>

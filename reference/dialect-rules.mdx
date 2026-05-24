@@ -4,17 +4,53 @@ description: "The strict YAML conventions the analyzer enforces."
 icon: "ruler"
 ---
 
-{/* STUB, outline only. Source: DEVELOPER-GUIDE "Dialect Rules" (10 rules). */}
+The analyzer enforces a strict contract dialect. These rules are the ones authors most often
+trip on; the analyzer reports each as a `dialect_compliance` or related finding.
 
-{/* TODO: render the 10 rules as a checklist or table, each with a wrong/right example:
-  1. guards always {id, check}, never a bare string
-  2. on_complete is an ordered list, never a dict
-  3. conditions always prefixed payload./entity./policy.
-  4. on_complete vs rules mutually exclusive
-  5. advances_to is a single string, never a list
-  6. emit is a string or {event, fields}
-  7. data_accumulation.writes is a list of strings or {source_field, target_field} objects
-  8. dedup_by on accumulate tracks by content, not sender
-  9. clear_gates: true clears ALL gates, not selective
-  10. no self-emits: a handler must never emit its own trigger event
-*/}
+## Structural rules
+
+<Steps>
+  <Step title="Guards use an object, never a bare string">
+    A guard is `{id, check, on_fail}`. A bare string check is invalid.
+  </Step>
+  <Step title="on_complete is an ordered list">
+    `on_complete` is a YAML list, never a map. Conditions are evaluated top to bottom; the
+    first match wins.
+  </Step>
+  <Step title="on_complete and rules are mutually exclusive">
+    A handler uses one or the other, never both.
+  </Step>
+  <Step title="create_entity and accumulate cannot coexist">
+    A handler that mints an entity cannot also accumulate.
+  </Step>
+  <Step title="One entity-acquisition mode per handler">
+    Declare exactly one of `create_entity`, `select_entity`, `select_or_create_entity`.
+  </Step>
+  <Step title="advances_to is a single string">
+    Not a list.
+  </Step>
+  <Step title="A handler top-level emit needs a single emit site">
+    If the handler also declares `rules`, `on_complete`, `accumulate.on_timeout`, or
+    `fan_out` emit, a top-level `emit` is ambiguous and fails boot.
+  </Step>
+</Steps>
+
+## Field and value rules
+
+- **Conditions are prefixed.** Every CEL condition begins with `payload.`, `entity.`,
+  `policy.`, `accumulated.`, or `fan_out.`.
+- **`data_accumulation.writes` uses the canonical forms.** Direct (`field`), mapped
+  (`{source_field, target_field}`), literal (`{target_field, value}`), or computed
+  (`{target_field, expression}`). `value` and `expression` never coexist; the constant key is
+  `value`, not `literal`.
+- **`source_event` is the canonical key**, not `source`.
+- **`clear_gates: true` clears all gates.** Selective clearing is not supported.
+- **Events declare flat payloads.** Fields go directly under the event name; the `payload:`
+  wrapper is retired.
+- **Entity fields live in `entities.yaml`.** The retired `package.yaml.entity_schema` is not
+  accepted.
+
+## Retired fields
+
+`emits`, `payload_transform`, `fan_out.emit_per_item`, and `fan_out.emit_mapping` are retired.
+See [Handler fields](/reference/handler-fields) for replacements.

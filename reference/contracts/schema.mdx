@@ -1,28 +1,78 @@
 ---
 title: "schema.yaml"
-description: "State machine, pins, required agents, and entity schema."
+description: "State machine, pins, and required agents."
 icon: "sitemap"
 ---
 
-{/* STUB, outline only. Source: platform-spec.md §schema_yaml, §state, §pins, §required_agents,
-  §entity_schema. */}
+`schema.yaml` declares a flow's public surface: its lifecycle, the pins other flows wire to,
+and the agent roles it requires.
 
 ## State machine
 
-{/* TODO: initial_state, states[], terminal_states[]. */}
+<ParamField path="initial_state" type="string">
+  The state a new entity starts in. Set to `null` for a stateless flow.
+</ParamField>
+<ParamField path="states" type="list">
+  All states in the flow. Empty for a stateless flow.
+</ParamField>
+<ParamField path="terminal_states" type="list">
+  Absorbing states. Once an entity reaches one, new events for it are rejected and its timers
+  are cancelled.
+</ParamField>
 
 ## Pins
 
-{/* TODO: inputs.events[], outputs.events[]. */}
+Pins are the flow's public interface. Event pins declare what it accepts and emits; data pins
+declare which entity fields it reads and writes.
+
+```yaml
+pins:
+  inputs:
+    events: [order.created]
+    reads: [priority]
+  outputs:
+    events: [order.fulfilled, order.cancelled]
+    writes: [status, total]
+```
+
+No two flows may write the same data pin (a boot error). An emit of a pin-declared output
+event must resolve a target or set `broadcast: true`; see
+[Events and routing](/concepts/events-and-routing).
 
 ## Required agents
 
-{/* TODO: role, subscribes_to[], emits[], description. */}
+<ParamField path="required_agents" type="list">
+  The roles the flow needs. Each entry has `role`, `subscribes_to`, `emits`, and an optional
+  `description`.
+</ParamField>
 
-## auto_emit_on_create
+Fulfillment is checked at boot on two conditions: an agent in `agents.yaml` whose map key
+matches the `role`, and whose subscriptions and `emit_events` cover the declared
+`subscribes_to` and `emits`.
 
-{/* TODO: event + description for template-flow bootstrapping. */}
+## Other fields
+
+<ParamField path="instance_variables" type="object">
+  Variables populated at flow-instance creation via `config_from`, available to prompts as
+  `{{variable}}`.
+</ParamField>
+<ParamField path="auto_emit_on_create" type="object">
+  For template flows: an event the platform emits once a new instance is fully started.
+</ParamField>
 
 ## Example
 
-{/* TODO. */}
+```yaml schema.yaml
+initial_state: new
+terminal_states: [fulfilled, cancelled]
+states: [new, validated, fulfilling, fulfilled, cancelled]
+pins:
+  inputs:
+    events: [order.created]
+  outputs:
+    events: [order.fulfilled, order.cancelled]
+required_agents:
+  - role: validator-agent
+    subscribes_to: [order.created]
+    emits: [order.validated]
+```

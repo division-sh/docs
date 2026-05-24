@@ -1,26 +1,53 @@
 ---
 title: "CEL reference"
-description: "Context variables and supported expressions for guards, rules, and filters."
+description: "Context variables and operators for guards, rules, and filters."
 icon: "code"
 ---
 
-{/* STUB, outline only. Sources: platform-guide.md §"Expression Language", DEVELOPER-GUIDE
-  "Expressions (CEL)". Concept-level intro lives at /concepts/expressions. */}
+Swarm evaluates all guard checks, rule conditions, filter conditions, and `on_complete`
+branch conditions with [CEL](https://github.com/google/cel-spec). CEL is strongly typed and
+non-Turing-complete. For the conceptual intro see [Expressions](/concepts/expressions).
 
 ## Context variables
 
-{/* TODO: entity, payload, policy, accumulated, fan_out, with the shape of each. */}
+| Variable | Holds | Available in |
+|---|---|---|
+| `entity` | Declared entity fields, `current_state`, `gates` | All conditions |
+| `payload` | The current event's payload fields | All conditions |
+| `policy` | Flow policy merged with root policy | All conditions |
+| `fan_out` | Fan-out metadata, e.g. `fan_out.count` | After a `fan_out` step |
+| `accumulated` | The received items from the current `accumulate` step | `on_complete`, `filter` |
 
-## Supported operations
+Declared entity fields are always readable at a type-valid value; an undeclared field
+reference is a contract error caught at boot.
 
-{/* TODO: comparison, membership (in), boolean, arithmetic, .size(), field access.
-  TODO: confirm exactly which CEL extensions/functions the engine enables. */}
+## Operators
 
-## Where each context is available
+- Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- Logical: `&&`, `||`, `!`
+- Arithmetic: `+`, `-`, `*`, `/`
+- Membership: `in`, `contains`
+- String: `startsWith`, `endsWith`, `matches`
+- List: `size`, `exists`, `all`, `filter`, `map`
 
-{/* TODO: table, which variables are bound in guard vs rules vs filter vs emit.fields vs
-  compute/on_complete. */}
+## The prefix rule
 
-## Prefix requirement
+Every condition carries a context prefix: `payload.`, `entity.`, `policy.`, `accumulated.`,
+or `fan_out.`. A bare identifier is a dialect violation. See
+[Dialect rules](/reference/dialect-rules).
 
-{/* TODO: conditions must be prefixed payload./entity./policy. (dialect). */}
+## Examples
+
+```text
+entity.retry_count <= policy.max_retries
+payload.category == "billing"
+entity.kill_reason != null
+accumulated.size() >= policy.required_dimensions
+accumulated.filter(d, d.score >= policy.threshold).size() > 0
+```
+
+## Presence
+
+`has(entity.field)` is true for declared entity fields (redundant under universal presence,
+useful for dynamic maps). Comparing against `null` works; `timestamp` and `uuid` fields read
+`null` when unwritten, while most others read their non-null type default.

@@ -79,6 +79,8 @@
               "reference/contracts/overview",
               "reference/contracts/package",
               "reference/contracts/schema",
+              "reference/contracts/types",
+              "reference/contracts/entities",
               "reference/contracts/nodes",
               "reference/contracts/events",
               "reference/contracts/agents",

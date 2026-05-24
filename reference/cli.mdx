@@ -1,41 +1,100 @@
 ---
 title: "CLI reference"
-description: "Every swarm command and what it targets."
+description: "Every swarm command, grouped by what it targets."
 icon: "terminal"
 ---
 
-{/* STUB, outline only. Sources: README "CLI", cmd/swarm/*.go. Each command targets the
-  running orchestrator's v1 RPC unless noted. Consider generating from `swarm --help`. */}
+Every command that reads or changes runtime state calls the v1 API at `/v1/rpc` or `/v1/ws`.
+The one exception is `swarm verify`, which validates contract files on disk and needs no
+running runtime.
+
+## Global flags
+
+| Flag | Purpose |
+|---|---|
+| `--api-server <url>` | API base URL. Also `SWARM_API_SERVER`; default `http://127.0.0.1:8081`. |
+| `--api-token-file <path>` | Bearer token file. Also `SWARM_API_TOKEN` / `SWARM_API_TOKEN_FILE`. |
+| `--contracts <path>` | Contract bundle root. Also `SWARM_CONTRACTS_PATH`. |
+| `--json` | Machine-readable output (one JSON document, or NDJSON when streaming). |
+| `--quiet` | Only the load-bearing value. Mutually exclusive with `--json`. |
+| `--no-color` | Disable color. Also `NO_COLOR`. |
+| `--log-level <debug\|info\|warn\|error>` | Diagnostic verbosity (default `info`). |
+
+Resolution precedence for connection settings is flag, then environment, then config file
+(`$XDG_CONFIG_HOME/swarm/config.yaml`), then built-in default. See
+[Configuration](/reference/configuration).
 
 ## Runtime
 
-{/* TODO: serve, verify, version, completion <shell>. */}
+| Command | Targets | Purpose |
+|---|---|---|
+| `swarm serve` | local | Start the runtime, API, health, and MCP listener. |
+| `swarm run` | RPC + local | Start (or reattach to) a run and stream its trace. |
+| `swarm verify` | local | Validate a contract bundle on disk. |
+| `swarm version [--server]` | local / `health.check` | Print binary version; `--server` adds runtime identity. |
+| `swarm completion <shell>` | local | Generate shell completion. |
+
+`swarm run` without `--connect` boots a runtime in-process; with `--connect <url>` it drives a
+running one. It takes `--event <name>` and `--payload <file>`.
 
 ## Runs
 
-{/* TODO: run, runs, status [run-id], trace [run-id] (-f), health. */}
+| Command | Method | Purpose |
+|---|---|---|
+| `swarm runs` | `run.list` | List runs. |
+| `swarm status [run-id]` | `run.diagnose` | Diagnose one run (why it is not progressing). |
+| `swarm trace [run-id]` | `run.trace` / `run.subscribe_trace` | Print or follow (`-f`) a run's causal trace. |
+| `swarm health` | `health.check` | Authenticated operator health summary. |
 
-## Events
+## Events and entities
 
-{/* TODO: events {list,follow,view}, event {replay,view}, publish <event>. */}
-
-## Entities
-
-{/* TODO: entities {list,view,aggregate}. */}
+| Command | Method | Purpose |
+|---|---|---|
+| `swarm events list` | `event.list` | Query the event store (folds in dead-letter inspection). |
+| `swarm events follow` | `event.subscribe` | Stream events live. |
+| `swarm event view <id>` | `event.get` | One event with delivery detail. |
+| `swarm event replay <id>` | `event.replay` | Redeliver an event to its subscribers. |
+| `swarm event publish <event>` | `event.publish` | Publish one event (`--payload-json`); allocates a run if none given. |
+| `swarm entities list` | `entity.list` | List entities. |
+| `swarm entity view <id>` | `entity.get` | One entity with fields, gates, accumulator. |
+| `swarm entity aggregate` | `entity.aggregate` | Counts grouped by a field. |
 
 ## Agents and conversations
 
-{/* TODO: agents, agent {view,restart,directive,replay,replay-backlog};
-  conversations, conversation {view,turn}. */}
+| Command | Method | Purpose |
+|---|---|---|
+| `swarm agents list` | `agent.list` | List agents and status. |
+| `swarm agent view <id>` | `agent.get` | One agent's status and session refs. |
+| `swarm agent restart <id>` | `agent.restart` | Restart an agent session. |
+| `swarm agent replay <id> --event-id <id>` | `agent.replay` | Redeliver one event to an agent. |
+| `swarm agent replay-backlog <id>` | `agent.replay_backlog` | Redeliver an agent's pending backlog. |
+| `swarm agent directive <id> "<msg>"` | `agent.send_directive` | Send a directive to a running agent. |
+| `swarm conversations list` | `conversation.list` | List conversation summaries. |
+| `swarm conversation view <session-id>` | `conversation.get` | Full session with all turns. |
+| `swarm conversation turn <session-id> <n>` | `conversation.get_turn` | One turn in depth. |
 
 ## Control and diagnostics
 
-{/* TODO: incidents, logs, control mailbox {list,view,approve,reject,defer}, control nuke. */}
+| Command | Method | Purpose |
+|---|---|---|
+| `swarm control pause <run-id> \| --all` | `run.pause` / `runtime.pause` | Halt a run, or runtime ingress. |
+| `swarm control continue <run-id> \| --all` | `run.continue` / `runtime.resume` | Resume a run, or ingress. |
+| `swarm control stop <run-id> \| --all` | `run.stop` | Stop a run (or all, with confirmation). |
+| `swarm control nuke` | `runtime.nuke` | Destructive runtime reset (`--dry-run` previews). |
+| `swarm mailbox list` | `mailbox.list` | List mailbox items. |
+| `swarm mailbox view <id>` | `mailbox.get` | One item with its decision sheet. |
+| `swarm mailbox approve\|reject\|defer <id>` | `mailbox.*` | Decide a pending item. |
+| `swarm logs [--follow]` | `runtime.logs` / `runtime.subscribe_logs` | Query or follow runtime logs. |
+| `swarm incidents` | `runtime.incidents` | Aggregated incidents by error code and component. |
 
-## Fork
+## Exit codes
 
-{/* TODO: fork, confirm shipping status / final surface (see /operate/fork-and-replay). */}
+`0` success, `2` CLI validation or misuse, `3` runtime or transport error, `4` auth or
+missing token, `5` resource not found, `6` resource state or idempotency conflict, `7` run
+terminal failed or cancelled, `130` interrupted or detached.
 
-<Tip>
-  {/* TODO: consider auto-generating this page from `swarm --help` output to prevent drift. */}
-</Tip>
+<Note>
+  Run-level fork is not yet a CLI command; the top-level `swarm fork` is not available while a
+  gated run-fork surface is in progress. Use `swarm event replay` and `swarm agent replay`
+  for event-level replay today. See [Fork and replay](/operate/fork-and-replay).
+</Note>

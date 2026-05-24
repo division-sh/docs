@@ -4,29 +4,162 @@ description: "Every field a handler can declare, in dependency-graph order."
 icon: "list-tree"
 ---
 
-{/* STUB, outline only. Source: platform-spec.md §handler_specification (the authoritative
-  list), DEVELOPER-GUIDE "Reference". This is the densest reference page, one subsection per
-  field with shape, semantics, and an example. */}
+A handler's fields execute in a fixed dependency graph, not source order, and the whole
+handler commits in one transaction. This page catalogs every field. For the conceptual model
+see [System nodes and handlers](/concepts/system-nodes-and-handlers).
 
-## Dependency graph
+## Execution order
 
-{/* TODO: the canonical order, guard → accumulate → compute → on_complete/rules →
-  {advances_to, sets_gate, data_accumulation} → emit.fields → emit.event → action. */}
+```text
+entity acquisition (create_entity | select_entity | select_or_create_entity)
+  -> query -> clear_gates -> guard -> accumulate -> filter -> reduce -> count -> compute
+    -> branch selection (on_complete / rules)
+      -> { advances_to, sets_gate, data_accumulation }   (independent of each other)
+        -> projection -> emit.fields -> emit.event -> action -> clear
+```
 
-## Core fields vs. extension fields
+Two short-circuits stop a handler early: a failed `guard` runs its `on_fail` action, and an
+incomplete `accumulate` records the arrival and waits (outcome `waiting`).
 
-{/* TODO: platform-spec §core_vs_extensions. */}
+## Core vs extension fields
 
-## Field catalog
+**Core** (most handlers): `guard`, `advances_to`, `sets_gate`, `data_accumulation`, `emit`,
+`rules`, `on_complete`.
 
-{/* TODO: one <Accordion> or subsection per field:
-  description, guard, accumulate, compute, on_complete, rules, advances_to, sets_gate,
-  clear_gates, data_accumulation, emit, fan_out, filter, reduce, count, group_by, query,
-  clear, action (create_flow_instance, record_evidence, mailbox_write), from.
-  Include canonical data_accumulation shape (direct writes vs source/target mapping). */}
+**Extension** (specialized): `accumulate`, `compute`, `fan_out`, `filter`, `reduce`, `count`,
+`query`, `clear`, `clear_gates`, `action`.
 
-## Enumerations
+## Entity acquisition
 
-{/* TODO: guard on_fail (reject/discard/kill/escalate); reduce operations
-  (weighted_average, pick_or_average, sum, min, max, count); accumulate completion modes
-  (all, threshold, timeout). */}
+A stateful input-pin handler declares exactly one acquisition mode (more than one is a boot
+error):
+
+<ParamField path="create_entity" type="boolean">
+  Mint a fresh entity at `initial_state` before any other step. Prohibited with `accumulate`.
+</ParamField>
+<ParamField path="select_entity" type="object">
+  Resolve exactly one existing flow-owned entity by a declared business key (`by` maps entity
+  fields to `payload.*` references). Zero or multiple matches fail closed.
+</ParamField>
+<ParamField path="select_or_create_entity" type="object">
+  Resolve one active match, or deterministically mint one from the declared key.
+</ParamField>
+
+## Guard
+
+<ParamField path="guard" type="object">
+  A check (or list of checks) evaluated before the handler proceeds. Fields: `id`, `check`
+  (a CEL expression), and `on_fail`. `on_fail` is one of `reject` (default), `kill`,
+  `discard`, or `escalate:{event}`.
+</ParamField>
+
+## Branching
+
+<ParamField path="on_complete" type="list">
+  An ordered list of `{condition, advances_to, emit}`. The first matching condition wins.
+  Used after accumulation or computation.
+</ParamField>
+<ParamField path="rules" type="list">
+  A list of named branches matched against the payload. Each has `id`, `condition`, and
+  optional `emit`, `advances_to`, and `data_accumulation`. The matched rule owns the emit.
+</ParamField>
+
+`on_complete` and `rules` are mutually exclusive.
+
+## State and data
+
+<ParamField path="advances_to" type="string">
+  Set `entity.current_state` to a target state.
+</ParamField>
+<ParamField path="sets_gate" type="string">
+  Set `entity.gates.{name}` to true.
+</ParamField>
+<ParamField path="clear_gates" type="boolean">
+  Reset all entity gates to false (runs before guard). All-or-nothing.
+</ParamField>
+<ParamField path="data_accumulation" type="object">
+  Write fields to entity state. `writes` is a list; `source_event` defaults to the trigger
+  event. Each write item is one of four forms (see below).
+</ParamField>
+
+### data_accumulation write forms
+
+```yaml
+writes:
+  - category                          # direct:   payload.category -> entity.category
+  - source_field: pri                 # mapped:   payload.pri -> entity.priority
+    target_field: priority
+  - target_field: source              # literal:  a constant
+    value: "support"
+  - target_field: attempts            # computed: a CEL expression
+    expression: "entity.attempts + 1"
+```
+
+`value` and `expression` are mutually exclusive on one item. The constant key is `value`;
+`{target_field, literal}` is not valid.
+
+## Emit
+
+<ParamField path="emit" type="string or object">
+  Publish the follow-up event. A string for internal events; an object `{event, fields,
+  target, broadcast}` for pin-declared outputs. A handler top-level `emit` is valid only when
+  the handler has a single emit site.
+</ParamField>
+
+`fields` is a map of output field name to CEL expression. A pin-declared output emit must set
+`target` (`sender`, `{instance_id}`, `{flow, match}`, or `{flow, match, allow_fanout}`) or
+`broadcast: true`.
+
+## List processing and computation
+
+<ParamField path="accumulate" type="object">
+  Wait for multiple arrivals. Fields: `into`, `expected_from`, `completion`
+  (`all`, `threshold`, or `timeout`), `dedup_by` (default: sender session id), `on_complete`,
+  `on_timeout`.
+</ParamField>
+<ParamField path="compute" type="object">
+  Run a computation primitive. `operation` is one of `weighted_average`, `pick_or_average`,
+  `sum`, `min`, `max`, `count`; plus `tiers`/`keys`/`params` and `store_as`.
+</ParamField>
+<ParamField path="filter" type="object">
+  Keep items matching a condition. Fields: `items_from`, `condition`, `store_as`.
+</ParamField>
+<ParamField path="reduce" type="object">
+  Aggregate items to a single value. Same `operation` set as `compute`.
+</ParamField>
+<ParamField path="count" type="object">
+  Count items matching a condition. Fields: `items_from`, `condition`, `store_as`.
+</ParamField>
+<ParamField path="fan_out" type="object">
+  Emit one event per item. Fields: `items_from`, `target`, `emit`. Writes `fan_out.count` to
+  handler context.
+</ParamField>
+<ParamField path="query" type="object or list">
+  Pre-fetch cross-entity data. Fields: `entities`, `filter`, `group_by`, `count`, `select`,
+  `store_as`. Runs before `clear_gates`.
+</ParamField>
+<ParamField path="clear" type="object">
+  Reset accumulator or state buckets. `targets` is a list. Runs last.
+</ParamField>
+
+## Actions
+
+<ParamField path="action" type="string or object">
+  Invoke a platform action. One of `create_flow_instance`, `record_evidence`,
+  `mailbox_write`, or `artifact_repo_commit`.
+</ParamField>
+
+- **`create_flow_instance`** requires `template`, `instance_id_from`, and `config_from`.
+- **`record_evidence`** appends the payload to an accumulator; requires `evidence_target`
+  (defaults to the node id).
+- **`mailbox_write`** materializes a mailbox row; declared under `action.mailbox` with
+  `item_type`, `severity` (`normal`/`urgent`/`critical`), `summary`, and an explicit
+  `payload`.
+- **`artifact_repo_commit`** commits allowlisted files to a local git repo and exposes a
+  `swarm-artifact://` URL; declared under `action.artifact_repo`.
+
+<Warning>
+  Retired handler fields: `emits` (use `emit`), `payload_transform` (use `emit.fields`),
+  `fan_out.emit_per_item` and `fan_out.emit_mapping` (use `fan_out.emit`). Selective
+  `clear_gates: [gate]` is not current; gate clearing is all-or-nothing.
+</Warning>

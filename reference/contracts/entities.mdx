@@ -1,0 +1,68 @@
+---
+title: "entities.yaml"
+description: "The typed entity contract a flow owns."
+icon: "table"
+---
+
+`entities.yaml` declares the persistent typed fields of the entity a flow owns. It is the
+authority for what persists in entity state.
+
+<Warning>
+  This replaces the retired `package.yaml.entity_schema`. The older model (embedded schema,
+  grouped field sections, `jsonb` fields, inline `nullable:`) is no longer accepted.
+</Warning>
+
+```yaml entities.yaml
+order:
+  status: text
+  total: numeric
+  shipping_address: Address
+  placed_at:
+    type: timestamp
+    immutable: true
+```
+
+## Rules
+
+- **One entity type per flow.** A flow declares at most one entity type.
+- **State is not declared here.** State is flow-scoped, declared in `schema.yaml`;
+  `entity.current_state` is implicit. Declaring a state field is a contract error.
+- **The envelope is platform-owned.** The fields `id`, `current_state`, `revision`,
+  `created_at`, `updated_at`, and `flow_instance` are implicit and must not be declared.
+
+## Field options
+
+A field uses a terse form (`field_name: TypeName`) or a verbose block with:
+
+<ParamField path="type" type="string" required>
+  A built-in scalar or a named type from [`types.yaml`](/reference/contracts/types).
+</ParamField>
+<ParamField path="initial" type="any">
+  An explicit create-time value, overriding the type default.
+</ParamField>
+<ParamField path="immutable" type="boolean">
+  When true, the field cannot be written after creation.
+</ParamField>
+<ParamField path="description" type="string">
+  Documentation for the field.
+</ParamField>
+
+## Accumulator projection
+
+A field may declare `materialize_from: {node_id}.{accumulator_name}` to hold a runtime-written
+typed copy of a same-flow node accumulator. The target must be a list of a named type. When
+the source and target item types differ, a `project:` mapping naming every target field is
+required. A `materialize_from` field is the sole runtime writer after `initial:`; any other
+authored write to it is invalid, and it is not agent-writable.
+
+## Companion field pattern
+
+There is no `Optional<T>`. To distinguish "not yet written" from "written at the type
+default", declare a boolean companion field:
+
+```yaml
+score: numeric
+has_scored:
+  type: boolean
+  initial: false
+```

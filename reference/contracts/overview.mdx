@@ -4,27 +4,48 @@ description: "The authoritative spec for the YAML contract files."
 icon: "file-contract"
 ---
 
-{/* STUB, outline only. Source of truth: Swarm/docs/specs/swarm-platform/platform/platform-spec.md
-  and contracts/platform-spec.yaml. Keep this section in sync with the platform spec version. */}
-
 Contracts are validated by the static analyzer before the runtime boots, so this section is
 effectively Swarm's language reference. Each page documents one contract file: every field,
-its type, and its constraints.
+its type, and its constraints. This reference tracks platform specification **v1.6.0**.
 
-{/* TODO: state the platform spec version this reference tracks (README says v1.3.0). */}
+For the authoritative source, see `platform-spec.yaml` in the Swarm repository. Where this
+reference and the spec disagree, the spec wins.
 
 ## The files
 
 <CardGroup cols={2}>
-  <Card title="package.yaml" icon="id-card" href="/reference/contracts/package" />
-  <Card title="schema.yaml" icon="sitemap" href="/reference/contracts/schema" />
-  <Card title="nodes.yaml" icon="gears" href="/reference/contracts/nodes" />
-  <Card title="events.yaml" icon="bolt" href="/reference/contracts/events" />
-  <Card title="agents.yaml" icon="robot" href="/reference/contracts/agents" />
-  <Card title="tools.yaml" icon="wrench" href="/reference/contracts/tools" />
-  <Card title="policy.yaml" icon="sliders" href="/reference/contracts/policy" />
+  <Card title="package.yaml" icon="id-card" href="/reference/contracts/package">
+    Flow identity, version, and child flows.
+  </Card>
+  <Card title="schema.yaml" icon="sitemap" href="/reference/contracts/schema">
+    State machine, pins, and required agents.
+  </Card>
+  <Card title="types.yaml" icon="shapes" href="/reference/contracts/types">
+    Shared named types, enums, and lists.
+  </Card>
+  <Card title="entities.yaml" icon="table" href="/reference/contracts/entities">
+    The typed entity contract a flow owns.
+  </Card>
+  <Card title="nodes.yaml" icon="gears" href="/reference/contracts/nodes">
+    System nodes, handlers, and timers.
+  </Card>
+  <Card title="events.yaml" icon="bolt" href="/reference/contracts/events">
+    Event payload schemas.
+  </Card>
+  <Card title="agents.yaml" icon="robot" href="/reference/contracts/agents">
+    Agent roles and their configuration.
+  </Card>
+  <Card title="tools.yaml" icon="wrench" href="/reference/contracts/tools">
+    Tool definitions agents can call.
+  </Card>
+  <Card title="policy.yaml" icon="sliders" href="/reference/contracts/policy">
+    Configuration values and inheritance.
+  </Card>
 </CardGroup>
 
 ## Cross-cutting references
 
-{/* TODO: link to handler-fields, expressions-cel, dialect-rules, analyzer-checks. */}
+The fields shared across handlers and expressions have their own pages:
+[handler fields](/reference/handler-fields), the [CEL reference](/reference/expressions-cel),
+the [dialect rules](/reference/dialect-rules), and the
+[analyzer checks](/reference/analyzer-checks).

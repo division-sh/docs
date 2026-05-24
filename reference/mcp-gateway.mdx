@@ -1,18 +1,46 @@
 ---
 title: "MCP gateway"
-description: "Swarm both exposes and consumes the Model Context Protocol."
+description: "Swarm both consumes and exposes the Model Context Protocol."
 icon: "plug"
 ---
 
-{/* STUB, outline only. Sources: README "Architecture" (MCP gateway), internal/runtime/mcp. */}
+Swarm speaks the Model Context Protocol on both sides: it consumes tools from upstream MCP
+servers, and it exposes its own MCP surface so external tools can drive a runtime.
 
-## Driving Swarm over MCP
+## Consuming upstream servers
 
-{/* TODO: external tools can drive a runtime over MCP. What's exposed; how to connect. */}
+Register MCP servers in `policy.yaml` under `mcp_servers`. Swarm acts as the client.
 
-## Consuming upstream MCP servers
+```yaml policy.yaml
+mcp_servers:
+  postgres:
+    transport: http          # http or stdio
+    url: "https://mcp.internal/pg"
+    prefix: pg               # required, unique across servers
+    credentials_key: pg_token
+  files:
+    transport: stdio
+    command: mcp-files
+    args: ["--root", "/data"]
+    prefix: fs
+```
 
-{/* TODO: agents pull tool definitions from upstream MCP servers without code changes.
-  How to register an upstream server; how it maps into tools.yaml. */}
+At boot, Swarm connects to each server, lists its tools, and registers them under the
+server's `prefix` (so a tool `list_tables` on the `pg` server becomes `pg.list_tables`). An
+agent references the prefixed name in its `tools` list.
 
-{/* TODO: confirm exact configuration surface from internal/runtime/mcp. */}
+An unreachable server logs a warning and is skipped; it does not abort boot. An HTTP
+connection is maintained for the platform lifetime with exponential backoff reconnect; a
+stdio process is spawned at boot and respawned on unexpected exit.
+
+## Exposing the runtime over MCP
+
+`swarm serve` binds an MCP listener (the `/mcp` and `/tools/` routes on the runtime's HTTP
+listener). External tools can drive the runtime through it. The standalone binary serves this
+on `127.0.0.1:8081` by default.
+
+## Tool resolution
+
+An agent only sees the tools in its `tools` list (plus universal, emit, and generated entity
+tools), regardless of how many tools a server exposes. The contract is the filter, not the
+source. See [Tools](/build/tools).
