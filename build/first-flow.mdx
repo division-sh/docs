@@ -12,6 +12,12 @@ You will build a **support-ticket system**: a ticket arrives, an agent classifie
 deterministic orchestrator routes it to a resolver agent, and it closes. If the resolver
 cannot solve it, the ticket loops back and tries again until it hits a limit.
 
+<Tip>
+  That is more declaration than you would write to script an LLM directly. If you are already
+  wondering whether it is worth it, jump to
+  [What the contracts buy you](#what-the-contracts-buy-you), then come back.
+</Tip>
+
 ## The mental model
 
 Before the files, three ideas. Everything in Swarm is built from them:
@@ -366,6 +372,42 @@ Trace one ticket through the diagram at the top:
 Notice the division of labor throughout: agents decide *what* (classify, resolve, escalate);
 the orchestrator decides *what gets written and what happens next*. Every declared state is
 reachable, and every event has either a handler or a subscriber.
+
+## What the contracts buy you
+
+That is a lot of YAML for something you could sketch as an LLM and a script in an afternoon.
+So why the ceremony? Here is what it buys, using the flow you just wrote:
+
+- **It survives a crash.** If the process dies after the resolver answers but before the
+  ticket closes, a script loses the in-flight work and re-runs from the top, paying for those
+  LLM calls again. Swarm persisted every event and state change in one transaction, so the
+  ticket resumes from where it was, not from `new`.
+- **Every ticket is auditable and replayable.** "Why was this ticket closed, and on whose
+  call?" is a query, not log archaeology: the event log, the before/after of every field, and
+  each agent's turn are all recorded and tied to the run. You can replay a run, or fork it and
+  re-run it against fixed contracts.
+- **The wiring is checked before it runs.** `swarm verify` already caught the bugs a script
+  hides until production: a state nothing reaches, a payload field that does not exist, an
+  agent role with no agent, an event with no handler. A boot that succeeds has passed that.
+- **It scales past the demo.** The classifier and resolver never share a context window, and
+  thousands of tickets run through the same contract in parallel, each in its own scoped
+  state. A "put every agent in one chat" script loses the plot long before that.
+- **The escalation cap is enforced, not hoped for.** The guard
+  `entity.escalation_count < policy.max_escalations` is a deterministic check the platform runs
+  every time, not a counter you trust the model to respect.
+- **A human step is one line away.** To require approval before closing, add a `mailbox_write`
+  action; the decision becomes just another event. No queue, persistence, or resume code to
+  build.
+
+The YAML is the price. Crash recovery, audit, replay, boot-time validation, agent isolation,
+and human-in-the-loop are what it buys, and you wrote no code for any of them.
+
+### When a script is the better call
+
+Be honest about the fit. For a single LLM call, a short conversation, or a workflow you will
+rewrite next week, a plain script is the right tool and Swarm is overkill. The contracts pay
+off when the work is long-running, spans several agents, has to be reproducible or crash-safe,
+or runs at volume. See [Why Swarm](/why-swarm) for the full picture.
 
 ## Run it
 
