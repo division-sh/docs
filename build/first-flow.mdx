@@ -165,29 +165,31 @@ Create them one at a time.
       ticket_id: text
       subject: text
       body: text
-    ticket.classified:
-      ticket_id: text
+    ticket.classified:                # the classifier's verdict
       category: text
       priority: text
-    ticket.assigned:
-      ticket_id: text
+    ticket.assigned:                  # what the resolver needs to act
       category: text
       priority: text
     ticket.resolved:
-      ticket_id: text
       resolution: text
       resolved_by: text
     ticket.escalated:
-      ticket_id: text
       reason: text
     ticket.resolution_confirmed:
-      ticket_id: text
+      resolved_by: text
     ```
 
     Fields go directly under the event name (there is no `payload:` wrapper). `swarm.source:
     external` tells the analyzer that `ticket.created` comes from outside, so it does not
     expect something inside the flow to produce it. Whatever emits an event must fill **every**
-    field it declares; there are no defaults. See [Events and routing](/concepts/events-and-routing).
+    field it declares; there are no defaults and no automatic copy from the triggering event.
+
+    Notice each event carries only what its handler needs: `ticket.created` brings the raw text
+    from outside, but the internal events pass just the structured verdict (`category`,
+    `priority`) and the result. The platform identifies the ticket by its entity, so there is no
+    need to thread a `ticket_id` field through every event. See
+    [Events and routing](/concepts/events-and-routing).
   </Step>
 
   <Step title="Write the orchestrator (nodes.yaml)">
@@ -224,9 +226,13 @@ Create them one at a time.
                 target_field: priority
             source_event: ticket.classified
           advances_to: assigned
-          emit: ticket.assigned        # hand off to the resolver
+          emit:                        # hand off to the resolver, with a payload
+            event: ticket.assigned
+            fields:                    # fill every field ticket.assigned declares
+              category: entity.category    # read from the ticket we just wrote
+              priority: entity.priority
 
-        ticket.escalated:              # the resolver gave up
+        ticket.escalated:              # the resolver bounced it back
           guard:
             id: escalation_limit
             check: "entity.escalation_count < policy.max_escalations"
@@ -236,14 +242,21 @@ Create them one at a time.
               - target_field: escalation_count
                 expression: "entity.escalation_count + 1"   # count this attempt
           advances_to: assigned        # send it back to the resolver
-          emit: ticket.assigned
+          emit:
+            event: ticket.assigned
+            fields:
+              category: entity.category
+              priority: entity.priority
 
         ticket.resolved:               # the resolver succeeded
           data_accumulation:
             writes: [resolution, resolved_by]   # short form: same name on payload and entity
             source_event: ticket.resolved
           advances_to: resolved
-          emit: ticket.resolution_confirmed
+          emit:
+            event: ticket.resolution_confirmed
+            fields:
+              resolved_by: entity.resolved_by
 
         ticket.resolution_confirmed:   # finish up
           advances_to: closed          # terminal
@@ -264,6 +277,13 @@ Create them one at a time.
     - **`ticket.resolved`** saves the resolution and emits `ticket.resolution_confirmed`. Here
       the short `writes: [resolution, resolved_by]` form copies same-named payload fields.
     - **`ticket.resolution_confirmed`** advances to `closed`, a terminal state.
+
+    **Filling the emitted payload.** When a handler emits an event that carries fields, it must
+    populate every one: there are no defaults and nothing is copied automatically from the
+    triggering event. That is why `ticket.classified` uses the object form of `emit`, with a
+    `fields` map, instead of the bare `emit: ticket.assigned`. Each value is a small expression,
+    here `entity.category` and `entity.priority`, reading the ticket fields the same handler just
+    wrote. (The bare string form is only for events that declare no payload fields.)
 
     Exactly one system node may handle a given event, which keeps state changes unambiguous.
     `produces` is the list of events this node emits; the analyzer checks it matches the
@@ -335,12 +355,18 @@ Create them one at a time.
     ```markdown prompts/resolver-agent.md
     # Resolver
 
-    You resolve assigned tickets.
+    You resolve assigned tickets. Decide from the ticket category:
 
-    Draft a resolution from the ticket body. If you are confident, emit `ticket.resolved` with
-    the resolution and your id. If the issue needs account access or a human, emit
-    `ticket.escalated` with a reason.
+    - If the category is `billing` or `account`, the issue needs account access or identity
+      checks, so emit `ticket.escalated` with a short reason.
+    - Otherwise (`technical` or `feature`), emit `ticket.resolved` with a brief standard
+      resolution for that category and your id in `resolved_by`.
     ```
+
+    The resolver decides from `category` because that is what `ticket.assigned` carries. An
+    agent acts on the event payload it receives, so the payload is the contract for what each
+    agent can see: the classifier reads the raw `subject` and `body` from `ticket.created`, while
+    the resolver works from the structured verdict.
   </Step>
 
   <Step title="Verify">
@@ -421,25 +447,76 @@ consistent, or it runs at volume. See [Why Swarm](/why-swarm) for the full pictu
 
 ## Run it
 
-With Postgres running (see [Installation](/installation)), run the bundle from the repository
-root. `swarm run` boots a runtime in process, publishes the trigger, and streams the trace:
+With Postgres running (see [Installation](/installation)) and an LLM runtime configured (the
+agents need one to answer), run the bundle. `swarm run` boots a runtime in process, publishes
+the trigger, and streams the trace:
 
 ```bash
 export SWARM_API_TOKEN=dev-token        # any value; required by every command but `swarm verify`
 
-echo '{"ticket_id": "t-1", "subject": "Double charge", "body": "I was billed twice."}' > ticket.json
+echo '{"ticket_id": "t-42", "subject": "Export button is greyed out", "body": "The CSV export button on the reports page is greyed out and I cannot click it."}' > ticket.json
 swarm run --contracts ./ticket-flow --event ticket.created --payload ticket.json
 ```
 
-The trace shows the ticket created, advanced to `new`, and `ticket.created` delivered to the
-classifier agent.
+<Note>
+  This flow has LLM agents, so it advances past `new` only when a runtime that can answer them
+  is configured: a real provider (`SWARM_LLM_RUNTIME_MODE=api` with `ANTHROPIC_API_KEY`) or the
+  Claude CLI runtime (`SWARM_LLM_RUNTIME_MODE=cli_test`). The deterministic system-node steps
+  run either way; the agent steps wait until a runtime is present.
+</Note>
+
+## Watch one run
+
+Here is the trace from a real run of this bundle, lightly cleaned (internal `platform.*` log
+lines removed, IDs shortened) and annotated. It is the whole flow on one screen, the abstract
+pieces made concrete:
+
+```text
+swarm runtime ready   contracts=./ticket-flow nodes=1 agents=2 events=6 listener=:8081
+run started: run_id=82a6350e… status=running
+
+trace ticket.created    delivered     subscriber=node/__runtime_replay_scope__   # 1
+trace ticket.created    in_progress   subscriber=agent/classifier-agent          # 2
+trace platform.agent_started          subscriber=node/__runtime_replay_scope__
+trace ticket.classified delivered     subscriber=node/__runtime_replay_scope__   # 3
+trace ticket.assigned   in_progress   subscriber=agent/resolver-agent            # 4
+trace ticket.resolved   delivered     subscriber=node/__runtime_replay_scope__   # 5
+trace ticket.resolution_confirmed     subscriber=node/__runtime_replay_scope__   # 6
+```
+
+What each numbered line is doing, mapped back to the four ideas:
+
+1. **`ticket.created` is published and persisted.** The event is written to the log before
+   anything runs, so the run can be replayed from here. The orchestrator (the one system node)
+   handles it in a single transaction: it mints the ticket and advances it to `new`. No
+   separate "state changed" line appears because the transition *is* the handler, committed
+   atomically.
+2. **Same event, delivered to the classifier agent.** Routing came only from subscriptions:
+   both the orchestrator and `classifier-agent` subscribe to `ticket.created`, so both receive
+   it. `in_progress` means the agent's LLM turn is running.
+3. **The classifier emits `ticket.classified`.** The orchestrator handles it, writes `category`
+   and `priority` onto the ticket, advances to `assigned`, and emits `ticket.assigned`. One
+   event in, one transition, one event out.
+4. **`ticket.assigned` is delivered to the resolver.** It carries the `category` the
+   orchestrator projected with `emit.fields`, which is all the resolver needs to decide.
+5. **The resolver emits `ticket.resolved`.** (This was a `technical` ticket, so the resolver
+   resolved it; a `billing` or `account` ticket would emit `ticket.escalated` here, and the
+   guard you wrote would cap the retries.) The orchestrator saves the resolution and advances to
+   `resolved`.
+6. **`ticket.resolution_confirmed` closes the loop.** Its handler advances the ticket to
+   `closed`, a terminal state, and the run goes quiet.
+
+Every line is an event moving between the deterministic orchestrator and the LLM agents,
+exactly the [sequence diagram](#the-mental-model) at the top, now with real timestamps behind
+it. The agents only ever *emitted*; a system node decided what each event changed and what
+fired next.
 
 <Note>
-  Unlike the deterministic flow in the [Quickstart](/quickstart), this flow has LLM agents, so
-  it advances past `new` only when a runtime that can answer them is configured: a real
-  provider (`SWARM_LLM_RUNTIME_MODE: api` with a credential) or scripted agent fixtures for
-  token-free runs (see [Testing](/build/testing)). The deterministic system-node steps run
-  either way.
+  Want to see the other branch? Send a ticket the classifier will label `billing` or `account`
+  (for example, subject "I was double charged"). The resolver emits `ticket.escalated`, the
+  orchestrator's guard checks `escalation_count < max_escalations`, increments the count, and
+  re-emits `ticket.assigned`, the retry loop, until the cap rejects it. The LLM keeps proposing;
+  the deterministic guard decides when to stop.
 </Note>
 
 ## What to read next
