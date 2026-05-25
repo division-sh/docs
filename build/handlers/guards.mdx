@@ -22,7 +22,8 @@ change.
 
 ## Multiple checks
 
-For more than one condition, use `checks` (a list); all must pass:
+When a guard has several conditions, write them as a list under `checks` instead of one long
+`&&` expression. Each entry carries its own `id`:
 
 ```yaml
 guard:
@@ -33,6 +34,17 @@ guard:
       check: "entity.locked == false"
   on_fail: reject
 ```
+
+The reason to split them is the failure report. When a guard fails, the trace and the
+dead-letter record the `id` of the check that failed, so you can see *which* condition blocked
+the handler instead of just learning that some combined expression came back false. This is why
+real contracts use `checks` to assert identity and idempotency on a callback, one named clause at
+a time.
+
+The list is evaluated top to bottom and stops at the first failure, so every check must pass for
+the guard to pass. There is one `on_fail` for the whole guard; an individual check cannot set its
+own. If you supply `checks`, the singular `check` is ignored, so use one form or the other, not
+both.
 
 ## on_fail
 

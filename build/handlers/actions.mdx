@@ -131,6 +131,22 @@ field). `incident.closed` moves the incident to its terminal state. The accumula
 the durable audit trail.
 </Accordion>
 
+## Binding values in action blocks
+
+The next two actions, `mailbox_write` and `artifact_repo_commit`, take field values that can be
+either a constant or a reference, and you say which with an explicit key:
+
+- `{ ref: payload.x }` reads a path (`payload.*`, `entity.*`, `event.*`).
+- `{ literal: "review_request" }` is a constant.
+- `{ cel: "entity.a + entity.b" }` is a computed expression (`expression:` is an accepted alias).
+
+Give exactly one. The trap worth internalizing: a **bare scalar in these blocks is a literal**, not
+a reference. `content: entity.body` commits a file whose contents are the text `entity.body`; you
+almost always mean `content: { ref: entity.body }`. This is the opposite of
+[`emit.fields`](/build/handlers/emitting), where a bare scalar is evaluated as an expression. When
+in doubt inside an action block, be explicit. ([Handler fields](/reference/handler-fields)
+collects how every block treats a bare scalar in one table.)
+
 ## mailbox_write
 
 Put a decision in front of a human. The runtime materializes a durable mailbox row and the flow
@@ -146,7 +162,7 @@ refund.requested:
       severity: urgent               # normal | urgent | critical
       summary: "Refund needs manager approval"
       payload:
-        amount: entity.amount        # only declared fields are copied
+        amount: { ref: entity.amount }   # a reference; a bare scalar here is a literal
   advances_to: awaiting_approval
 ```
 
@@ -207,7 +223,7 @@ refund-desk:
           severity: urgent
           summary: "Refund needs manager approval"
           payload:
-            amount: entity.amount
+            amount: { ref: entity.amount }
       advances_to: awaiting_approval
     refund.approved:                 # 2a. human approved
       select_entity:
@@ -242,11 +258,11 @@ report.ready:
     artifact_repo:
       provider: local_git            # the only provider
       repo_id: reports
-      request_id: payload.report_id  # idempotency key
+      request_id: { ref: payload.report_id }  # idempotency key (a reference, not a literal)
       allowed_paths: ["reports/summary.md"]
       files:
         - path: "reports/summary.md"
-          content: entity.body
+          content: { ref: entity.body }       # the file's contents come from the entity field
           content_type: markdown     # yaml | json | markdown | text
       output:                        # bind the result to entity fields
         repo_url: repo_url
@@ -316,11 +332,11 @@ report-publisher:
         artifact_repo:
           provider: local_git
           repo_id: reports
-          request_id: payload.report_id
+          request_id: { ref: payload.report_id }
           allowed_paths: ["reports/summary.md"]
           files:
             - path: "reports/summary.md"
-              content: entity.body
+              content: { ref: entity.body }
               content_type: markdown
           output:
             repo_url: repo_url

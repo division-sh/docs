@@ -65,6 +65,20 @@ accumulated.size() >= policy.required_dimensions
 accumulated.filter(d, d.score >= policy.threshold).size() > 0
 ```
 
+## Cross-entity count
+
+`query_entities(<field> <op> <value>).count` returns how many flow-owned entities match a single
+comparison, for use inside a condition. The operator is one of `==`, `!=`, `>=`, `<=`, `>`, `<`,
+and the value is a literal or a resolved reference (`payload.*`, `event.*`):
+
+```text
+query_entities(request_id == payload.request_id).count == 1
+```
+
+This is for cardinality assertions, most often idempotency: accept the event only when exactly
+one entity already carries its `request_id`. The predicate is a single comparison, not a compound
+expression, and only `.count` is exposed.
+
 ## Presence
 
 `has(entity.field)` is true for declared entity fields (redundant under universal presence,

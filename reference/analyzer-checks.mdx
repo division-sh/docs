@@ -77,6 +77,13 @@ disable an individual check.
   `initial_state` through any transition. *Rationale: an unreachable state is dead, usually a
   leftover or a missing transition. (This is a warning, not a boot-abort, but it almost always
   signals a mistake.)*
+- **`node_state_schema_typed_counterpart`** (error, with an informational variant). A node's
+  `state_schema` field uses an unsupported type, names a type not declared in `types.yaml`, or is
+  `jsonb` while a typed counterpart for that field exists downstream (switch it to the declared
+  named type instead of `jsonb`). When the field is `jsonb` and no typed counterpart exists, the
+  finding drops to informational (`lint_evidence`): confirm the untyped shape is intended.
+  *Rationale: keep node scratch state typed where a type already exists, so it does not drift from
+  the entity or event it mirrors.*
 
 ## Entities
 

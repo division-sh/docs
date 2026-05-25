@@ -26,6 +26,7 @@ resolver-agent:
   id: resolver-agent
   role: resolver-agent
   model_tier: sonnet
+  permissions_bundle: worker
   manager_fallback: support-coordinator
   subscriptions: [ticket.assigned]
   emit_events: [ticket.resolved, ticket.escalated]
@@ -44,9 +45,11 @@ resolver-agent:
 | `emit_events` | The events it may emit (each gets an auto-generated `emit_*` tool). |
 | `conversation_mode` | `task`, `session`, or `session_per_entity`. |
 | `session_scope` | `global`, `flow`, or `entity`: required for non-`task` modes. |
-| `manager_fallback` | The escalation/hierarchy parent. Not a messaging grant. |
+| `permissions_bundle` | A named permission set from `policy.yaml`; combined with any inline `permissions`. See [Tools](/build/tools). |
+| `manager_fallback` | The escalation/hierarchy parent. Omit (or set `null`) for a top-level coordinator, which then resolves to the runtime default. Not a messaging grant. |
 | `entity_writes` | Which entity fields the agent's generated `save_*`/`update_*` tools may write. |
 | `max_turns_per_task` | Turn budget before the session is terminated. |
+| `type` | Optional classification label (defaults to `generic`); used to tag agents, for example by division. Does not change tool or permission gating. |
 
 `conversation_mode` and `session_scope` must form a valid pair (for example,
 `session_per_entity` requires `session_scope: entity`); invalid combinations fail at boot.

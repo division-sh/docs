@@ -55,8 +55,9 @@ error):
 
 <ParamField path="guard" type="object">
   A check (or list of checks) evaluated before the handler proceeds. Fields: `id`, `check`
-  (a CEL expression), and `on_fail`. `on_fail` is one of `reject` (default), `kill`,
-  `discard`, or `escalate:{event}`.
+  (a CEL expression), `checks` (a list of `{id, check}` for multiple named conditions; all must
+  pass, and it supersedes the singular `check`), and `on_fail`. `on_fail` is one of `reject`
+  (default), `kill`, `discard`, or `escalate:{event}`.
 </ParamField>
 
 ## Branching
@@ -176,6 +177,24 @@ neither, while a pin-declared output that crosses a flow boundary must set `targ
   `payload`.
 - **`artifact_repo_commit`** commits allowlisted files to a local git repo and exposes a
   `swarm-artifact://` URL; declared under `action.artifact_repo`.
+
+## Value bindings across blocks
+
+Several blocks take field values, but they do not share one grammar. The thing that bites people
+is what a **bare scalar** means, which is decided per block:
+
+| Block | A bare scalar `foo: payload.x` is | Explicit forms |
+|---|---|---|
+| `emit.fields`, `emit.target.match` | a CEL expression (so `payload.x` resolves) | `{ ref }`, `{ literal }`, `{ cel }` |
+| `mailbox.*`, `artifact_repo.*` | a **literal string** | `{ ref }`, `{ literal }`, `{ cel }` (a reference needs `ref:`) |
+| `config_from` (`create_flow_instance`) | a **reference path** | reference strings only |
+| `data_accumulation.writes` | a direct copy from `source_event` | `value:` (literal), `expression:` (CEL), `{source_field, target_field}` (mapped) |
+
+In the `{ ref / literal / cel }` object form, give exactly one key; `expression:` is an accepted
+alias for `cel:`. The practical rule: in `emit.fields`, `emit.target.match`, and `config_from` a
+bare path resolves, but in the `mailbox` and `artifact_repo` blocks a bare path is a constant
+string, so write `{ ref: ... }` when you mean a reference. See
+[Actions](/build/handlers/actions) for worked examples.
 
 <Warning>
   Retired handler fields: `emits` (use `emit`), `payload_transform` (use `emit.fields`),

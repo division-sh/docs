@@ -65,6 +65,58 @@ Tools are namespaced by the server's `prefix` (`pg.list_tables`), and an agent r
 prefixed name in its `tools` list. An unreachable server logs a warning at boot and does not
 abort the boot. See the [MCP gateway reference](/reference/mcp-gateway).
 
+## Permissions
+
+`tools` and `native_tools` cover what an agent may *call*. A separate list, `permissions`, covers
+what it may *do to shared platform state*: hire or reconfigure other agents, change routing,
+write to the mailbox, request a human decision, schedule a timer. These are verbs such as
+`agent_hire`, `agent_fire`, `agent_reconfigure`, `configure_routing`, `message_flow`,
+`mailbox_send`, `human_task_request`, `human_task_decide`, and `schedule`.
+
+Rather than repeat the same list on every agent, name a **permission bundle** defined once in
+`policy.yaml`:
+
+```yaml policy.yaml
+permission_bundles:
+  coordinator:
+    description: Top-level flow coordinator
+    permissions: [agent_hire, agent_fire, agent_reconfigure, configure_routing, message_flow, mailbox_send, human_task_request, schedule]
+  worker:
+    description: Does the work, talks to its manager
+    permissions: [message_flow, mailbox_send]
+```
+
+An agent references the bundle by name, and may add agent-specific grants inline:
+
+```yaml agents.yaml
+analysis-agent:
+  permissions_bundle: worker        # the named set from policy.yaml
+  permissions: [schedule]           # optional, added on top of the bundle
+```
+
+The effective permission set is the bundle plus the inline list, deduplicated. Naming a bundle
+that `policy.yaml` does not define is a boot error.
+
+### The tools a permission unlocks
+
+Most of these permissions gate a platform-builtin tool of the same name: hold the permission and
+the tool is offered to the agent, lack it and the tool is not.
+
+| Tool | What it does |
+|---|---|
+| `agent_hire` | Spawn a new agent at runtime under the caller's management, used to add a worker or a shard. |
+| `agent_fire` | Tear down an agent the caller manages. |
+| `agent_reconfigure` | Update a managed agent's configuration in place. |
+| `human_task_request` | Open a task for a human (a mailbox item) and wait on the result. |
+| `human_task_decide` | Record a human's decision on a task. |
+| `schedule` | Schedule a future timer event. |
+
+The three `agent_*` tools are constrained by the hierarchy: a caller can only hire, fire, or
+reconfigure agents it manages, so a worker cannot reorganize its coordinator. A few permissions
+gate other platform surfaces rather than a callable tool, such as `configure_routing` (adjust
+routing at runtime) and `approve_spend` (clear a budget hold). And two messaging tools need no
+permission at all: `agent_message` and `mailbox_send` are universal, granted to every agent.
+
 ## Native capabilities
 
 `bash`, `web_search`, and `file_io` are not declared in `tools.yaml`; they are host

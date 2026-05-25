@@ -112,6 +112,18 @@ The one rule to know: if a single input pin could match outputs from **more than
 fails as ambiguous, and you disambiguate with an explicit `target` (below) or a scoped
 subscription. Auto-wiring only works when the match is unique.
 
+A **scoped subscription** qualifies the event with the producer flow's path, so the receiver
+takes that one flow's output and nothing else:
+
+```yaml
+# subscribe to mailbox.review_requested, but only the copy the validation flow emits
+subscribes_to:
+  - validation/mailbox.review_requested
+```
+
+The form is `<producer-flow>/<event>`. For a template child with many instances, the
+instance-wildcard form `<flow>/*/<event>` (below) addresses them all.
+
 ## Pattern 2: spawn a template instance
 
 A template child does not exist until you create one. A handler mints an instance with the
