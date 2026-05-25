@@ -5,3 +5,6 @@
 # Draft content
 drafts/
 *.draft.mdx
+
+# Local working artifacts (not docs content)
+student-journal.md
