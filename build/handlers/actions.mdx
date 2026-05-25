@@ -1,13 +1,21 @@
 ---
 title: "Actions"
-description: "Platform operations a handler can run: create_flow_instance, record_evidence, mailbox_write, artifact_repo_commit."
+description: "Platform operations a handler can run, each with a complete minimal flow."
 icon: "bolt"
 ---
 
 An `action` runs a platform-provided operation as a near-final step of the handler (after the
-writes and the emit). There are exactly four; product-specific actions are not supported. In
-every case `action` is the **name** (a string), and the action's parameters are **sibling
-fields** of the handler, not nested under `action`.
+writes and the emit). There are exactly four; product-specific actions are not supported.
+
+`action` comes in two forms, and which one an action uses depends on its parameters:
+
+- **Name plus sibling fields**, when the parameters are simple. `create_flow_instance` and
+  `record_evidence` write `action: <name>` and put their parameters next to it on the handler.
+- **An object `{ id, <block> }`**, when the action carries a structured config block.
+  `mailbox_write` nests its config under `action.mailbox`, and `artifact_repo_commit` under
+  `action.artifact_repo`.
+
+Every example below passes `swarm verify`.
 
 ## create_flow_instance
 
@@ -24,65 +32,303 @@ order.paid:
   advances_to: fulfilling
 ```
 
-This is the spawn half of cross-flow composition; see [Composing flows](/build/composition) for
-the full round trip, including how the child returns a result.
+This is the spawn half of cross-flow composition, so its "whole flow" is two flows. The complete
+worked example, including how the child returns a result, is in
+[Composing flows](/build/composition).
 
 ## record_evidence
 
-Append the event payload to an entity accumulator, building an audit trail. It is append-only
-and never replaces:
+Append the triggering event's payload to an entity accumulator, building an audit trail. It is
+append-only and never replaces; `evidence_target` names the accumulator:
 
 ```yaml
 evidence.submitted:
+  select_entity:
+    by:
+      incident_id: payload.incident_id
   action: record_evidence
-  evidence_target: evidence.items    # the accumulator field to append to
-  emit:
-    event: evidence.recorded
-    broadcast: true
+  evidence_target: evidence.items
 ```
+
+<Accordion title="A complete minimal flow">
+An incident log: open an incident, append evidence to it, then close it.
+
+```yaml package.yaml
+name: incident-log
+version: 1.0.0
+description: Append evidence to an incident, then close it.
+platform_version: ">=1.6.0"
+flows: []
+```
+
+```yaml schema.yaml
+initial_state: open
+terminal_states: [closed]
+states: [open, closed]
+pins:
+  inputs:
+    events: [incident.opened, evidence.submitted, incident.closed]
+```
+
+```yaml entities.yaml
+incident:
+  incident_id: text
+  title: text
+```
+
+```yaml events.yaml
+incident.opened:
+  swarm: { source: external }
+  incident_id: text
+  title: text
+evidence.submitted:
+  swarm: { source: external }
+  incident_id: text
+  finding: text
+  severity: text
+incident.closed:
+  swarm: { source: external }
+  incident_id: text
+```
+
+```yaml nodes.yaml
+incident-recorder:
+  id: incident-recorder
+  execution_type: system_node
+  subscribes_to: [incident.opened, evidence.submitted, incident.closed]
+  event_handlers:
+    incident.opened:                 # 1. create the incident
+      create_entity: true
+      data_accumulation:
+        writes: [incident_id, title]
+        source_event: incident.opened
+    evidence.submitted:              # 2. append each finding to the accumulator
+      select_entity:
+        by:
+          incident_id: payload.incident_id
+      action: record_evidence
+      evidence_target: evidence.items
+    incident.closed:                 # 3. close it
+      select_entity:
+        by:
+          incident_id: payload.incident_id
+      advances_to: closed
+```
+
+**What happens:** `incident.opened` mints the incident and records its id and title.
+Each `evidence.submitted` selects that incident by `incident_id` and appends its payload to the
+`evidence.items` accumulator (the accumulator is created on first use; you do not declare it as a
+field). `incident.closed` moves the incident to its terminal state. The accumulated evidence is
+the durable audit trail.
+</Accordion>
 
 ## mailbox_write
 
 Put a decision in front of a human. The runtime materializes a durable mailbox row and the flow
-waits for the decision to come back as an event. The parameters live under a sibling `mailbox`
-block; `item_type` and `summary` are required, `severity` defaults to `normal`:
+waits for the decision to come back as an event. The config nests under `action.mailbox`;
+`item_type` and `summary` are required, `severity` defaults to `normal`:
 
 ```yaml
 refund.requested:
-  action: mailbox_write
-  mailbox:
-    item_type: refund_approval
-    severity: urgent                 # normal | urgent | critical
-    summary: "Refund over the policy limit needs a manager"
-    payload:
-      amount: entity.amount          # only declared fields are copied
+  action:
+    id: mailbox_write
+    mailbox:
+      item_type: refund_approval
+      severity: urgent               # normal | urgent | critical
+      summary: "Refund needs manager approval"
+      payload:
+        amount: entity.amount        # only declared fields are copied
   advances_to: awaiting_approval
 ```
 
-The row is idempotent per triggering event, so a replayed delivery does not create a duplicate.
-See [Human in the loop](/concepts/human-in-the-loop) for the model and
-[Mailbox](/operate/mailbox) for the operator side.
+<Accordion title="A complete minimal flow">
+A refund desk: route a large refund to a human, then resume on their decision.
+
+```yaml package.yaml
+name: refund-approval
+version: 1.0.0
+description: Route large refunds to a human, resume on their decision.
+platform_version: ">=1.6.0"
+flows: []
+```
+
+```yaml schema.yaml
+initial_state: requested
+terminal_states: [approved, rejected]
+states: [requested, awaiting_approval, approved, rejected]
+pins:
+  inputs:
+    events: [refund.requested, refund.approved, refund.rejected]
+```
+
+```yaml entities.yaml
+refund:
+  refund_id: text
+  amount: numeric
+```
+
+```yaml events.yaml
+refund.requested:
+  swarm: { source: external }
+  refund_id: text
+  amount: numeric
+refund.approved:
+  swarm: { source: external }
+  refund_id: text
+refund.rejected:
+  swarm: { source: external }
+  refund_id: text
+```
+
+```yaml nodes.yaml
+refund-desk:
+  id: refund-desk
+  execution_type: system_node
+  subscribes_to: [refund.requested, refund.approved, refund.rejected]
+  event_handlers:
+    refund.requested:                # 1. open a mailbox item, then wait
+      create_entity: true
+      data_accumulation:
+        writes: [refund_id, amount]
+        source_event: refund.requested
+      action:
+        id: mailbox_write
+        mailbox:
+          item_type: refund_approval
+          severity: urgent
+          summary: "Refund needs manager approval"
+          payload:
+            amount: entity.amount
+      advances_to: awaiting_approval
+    refund.approved:                 # 2a. human approved
+      select_entity:
+        by:
+          refund_id: payload.refund_id
+      advances_to: approved
+    refund.rejected:                 # 2b. human rejected
+      select_entity:
+        by:
+          refund_id: payload.refund_id
+      advances_to: rejected
+```
+
+**What happens:** `refund.requested` creates the refund, writes a pending row to the mailbox,
+and parks the entity in `awaiting_approval`. The flow does nothing else until an operator decides
+(see [Mailbox](/operate/mailbox)). The decision arrives as `refund.approved` or
+`refund.rejected`, which selects the refund by id and advances it to a terminal state. The
+mailbox row is idempotent per triggering event, so a replayed delivery does not duplicate it.
+</Accordion>
 
 ## artifact_repo_commit
 
 Commit service-owned files to a local git repository and expose them at a `swarm-artifact://`
-URL. The parameters live under a sibling `artifact_repo` block; paths must be allowlisted and
-relative (absolute paths and traversal are rejected):
+URL. This is the most involved action: paths must be allowlisted and relative, each file needs a
+`content_type`, and an `output` block must bind the runtime's result fields to entity fields. The
+config nests under `action.artifact_repo`:
 
 ```yaml
 report.ready:
-  action: artifact_repo_commit
-  artifact_repo:
-    provider: local_git              # the only provider
-    repo_id: reports
-    request_id: payload.report_id     # idempotency key
-    allowed_paths: ["reports/"]
-    files:
-      - path: reports/{{report_id}}.md
-        content: entity.report_body
+  action:
+    id: artifact_repo_commit
+    artifact_repo:
+      provider: local_git            # the only provider
+      repo_id: reports
+      request_id: payload.report_id  # idempotency key
+      allowed_paths: ["reports/summary.md"]
+      files:
+        - path: "reports/summary.md"
+          content: entity.body
+          content_type: markdown     # yaml | json | markdown | text
+      output:                        # bind the result to entity fields
+        repo_url: repo_url
+        current_ref: current_ref
+        file_manifest: file_manifest
+        status: commit_status
+        failure_reason: failure_reason
+        last_request_id: last_request_id
+        last_source_event_id: last_source_event_id
   advances_to: published
 ```
 
-Reusing a `request_id` with the same content is a safe repeat; reusing it with different content
-fails closed. The success and failure payloads are strict and may not override runtime-owned
-result fields; see [Handler fields](/reference/handler-fields) for the full field list.
+<Accordion title="A complete minimal flow">
+A report publisher: commit a generated report to a git-backed repo.
+
+```yaml package.yaml
+name: report-publisher
+version: 1.0.0
+description: Commit a generated report to a git-backed artifact repo.
+platform_version: ">=1.6.0"
+flows: []
+```
+
+```yaml schema.yaml
+initial_state: ready
+terminal_states: [published]
+states: [ready, published]
+pins:
+  inputs:
+    events: [report.ready]
+```
+
+```yaml entities.yaml
+report:
+  report_id: text
+  body: text
+  # bound by the action's output block; initial "" satisfies writer coverage
+  repo_url: { type: text, initial: "" }
+  current_ref: { type: text, initial: "" }
+  file_manifest: { type: text, initial: "" }
+  commit_status: { type: text, initial: "" }
+  failure_reason: { type: text, initial: "" }
+  last_request_id: { type: text, initial: "" }
+  last_source_event_id: { type: text, initial: "" }
+```
+
+```yaml events.yaml
+report.ready:
+  swarm: { source: external }
+  report_id: text
+  body: text
+```
+
+```yaml nodes.yaml
+report-publisher:
+  id: report-publisher
+  execution_type: system_node
+  subscribes_to: [report.ready]
+  event_handlers:
+    report.ready:
+      create_entity: true
+      data_accumulation:
+        writes: [report_id, body]
+        source_event: report.ready
+      action:
+        id: artifact_repo_commit
+        artifact_repo:
+          provider: local_git
+          repo_id: reports
+          request_id: payload.report_id
+          allowed_paths: ["reports/summary.md"]
+          files:
+            - path: "reports/summary.md"
+              content: entity.body
+              content_type: markdown
+          output:
+            repo_url: repo_url
+            current_ref: current_ref
+            file_manifest: file_manifest
+            status: commit_status
+            failure_reason: failure_reason
+            last_request_id: last_request_id
+            last_source_event_id: last_source_event_id
+      advances_to: published
+```
+
+**What happens:** `report.ready` creates the report entity and records its body, then commits
+`reports/summary.md` to the `reports` repo. The `output` block writes the commit's result (the
+repo URL, the new ref, a file manifest, status) back onto the entity, so later handlers can read
+where the artifact landed. `request_id` makes the commit idempotent: the same id with the same
+content is a safe repeat, while the same id with different content fails closed. For the full
+field list (provenance, limits, success/failure events) see
+[Handler fields](/reference/handler-fields).
+</Accordion>
