@@ -57,6 +57,10 @@ so that entity's state and data cannot be corrupted by a race, while events for 
 entities run concurrently. That is what lets one flow carry hundreds or thousands of entities in
 parallel without any author-managed concurrency.
 
+This multiplicity has a knock-on effect: because a flow holds many entities at once, an event
+arriving from another flow cannot just go "to the flow," it has to say which entity it is for.
+That is the core of why cross-flow wiring needs targets; see [Composing flows](/build/composition).
+
 ## Pins: a flow's public interface
 
 A flow keeps most of its events and data private. What it chooses to expose, it exposes through

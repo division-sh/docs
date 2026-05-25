@@ -29,6 +29,19 @@ flowchart LR
     F2 -->|"parent route"| OR
 ```
 
+## Why crossing a boundary needs a target
+
+Inside a flow, an event just goes to its subscribers. Across a boundary it is not that simple,
+and the reason is multiplicity: **a flow is not a single recipient.** A static flow can hold many
+entities at once (one ticket flow, thousands of tickets), and a template flow can have many live
+instances (one per order). So "send `fulfillment.completed` to the orders flow" is ambiguous:
+*which* order?
+
+Every cross-flow hop therefore has to answer one question, **which entity, in which instance**,
+the event is for. `target`, the parent route, and a receiver-side `select_entity` are just
+different ways to answer it. That question is the whole reason wiring across flows takes more
+than a subscription, and it is worth keeping in mind as you read the rest of this page.
+
 ## Declare the children
 
 A parent lists its children in `package.yaml`, each with a mode:
@@ -153,8 +166,9 @@ automatically, no target needed. (Inside an event chain you can also reply to wh
 with `target: sender`.)
 
 The parent receives it on a handler, and here is the key move: the parent must **re-attach to
-the right order**, because the event arrived at the `orders` flow, not at a specific order
-entity. It does that with `select_entity`, using the key the child carried in the payload:
+the right order**, because the event arrived at the `orders` flow, which holds many orders, not
+at a specific one. It does that with `select_entity`, using the key the child carried in the
+payload:
 
 ```yaml orders/nodes.yaml
 fulfillment.completed:
