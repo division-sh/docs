@@ -36,6 +36,11 @@ This agent receives `ticket.assigned`, keeps one session per ticket, and may emi
 flow, that is, a child flow. Entity and flow session scope are not available to a root-level
 agent; a single root flow uses `conversation_mode: task`.
 
+(If "root" and "child" are new here: a Swarm system is a tree of flows. The top one is the
+**root**; a flow it nests is a **child**. A standalone single flow is a root, which is why it is
+limited to `task` sessions. [Composing flows](/build/composition) covers how flows nest; you only
+need the root-vs-child distinction for the rule above.)
+
 ## Isolation and hierarchical addressing
 
 Each agent runs in a scoped session and observes only the events it subscribes to. A

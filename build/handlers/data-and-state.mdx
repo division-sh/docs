@@ -63,14 +63,81 @@ publish.requested:
   advances_to: published
 ```
 
-Declare the gate in the node's `gate_state`. To reset, `clear_gates: true` clears **every** gate
-on the entity (it is entity-wide, not scoped to this node), which is how you re-enter a cycle:
+Every gate a node sets must be declared in that node's `gate_state` (a map of gate name to its
+starting value):
+
+```yaml
+doc-node:
+  gate_state:
+    g_reviewed: false        # declare each gate the node uses
+  event_handlers:
+    ...
+```
+
+To reset, `clear_gates: true` clears **every** gate on the entity (it is entity-wide, not scoped
+to this node), which is how you re-enter a cycle:
 
 ```yaml
 resubmission.requested:
   clear_gates: true
   advances_to: draft
 ```
+
+<Accordion title="A complete flow: declare, set, guard, clear a gate">
+A doc that must be reviewed before it can publish. The gate is declared once, set on approval,
+required by the publish guard, and cleared if changes are requested. This passes `swarm verify`.
+
+```yaml schema.yaml
+initial_state: draft
+terminal_states: [published]
+states: [draft, in_review, published]
+pins:
+  inputs:
+    events: [doc.submitted, review.approved, changes.requested, publish.requested]
+```
+
+```yaml entities.yaml
+doc:
+  doc_id: text
+  title: text
+```
+
+```yaml nodes.yaml
+doc-node:
+  id: doc-node
+  execution_type: system_node
+  subscribes_to: [doc.submitted, review.approved, changes.requested, publish.requested]
+  gate_state:
+    g_reviewed: false              # 1. declare the gate
+  event_handlers:
+    doc.submitted:
+      create_entity: true
+      data_accumulation:
+        writes: [doc_id, title]
+        source_event: doc.submitted
+      advances_to: in_review
+    review.approved:                # 2. set it
+      select_entity: { by: { doc_id: payload.doc_id } }
+      sets_gate: g_reviewed
+    publish.requested:              # 3. guard on it
+      select_entity: { by: { doc_id: payload.doc_id } }
+      guard:
+        id: must_be_reviewed
+        check: "entity.gates.g_reviewed == true"
+        on_fail: reject
+      advances_to: published
+    changes.requested:              # 4. clear it to send the doc back
+      select_entity: { by: { doc_id: payload.doc_id } }
+      clear_gates: true
+      advances_to: draft
+```
+
+**What happens:** a submitted doc waits in `in_review`. `publish.requested` is rejected until
+`review.approved` has set `g_reviewed`, so a doc cannot skip review. If `changes.requested`
+arrives, `clear_gates` drops the gate and sends the doc back to `draft`, which means it has to be
+re-approved before it can publish again. (The events declare a `swarm.source: external` line,
+omitted here for brevity.)
+</Accordion>
 
 See [Gates, timers, and state](/concepts/gates-timers-and-state) for the model behind states and
 gates.
