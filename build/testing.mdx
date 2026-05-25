@@ -14,6 +14,14 @@ flowchart LR
     B --> C["agent fixtures: full chain, scripted agents"]
 ```
 
+<Note>
+  Of the three, **`swarm verify` is the layer you run directly today.** Test packages and agent
+  fixtures are the format the platform's own conformance suite uses; they are exercised through
+  the Go test harness (`go test ./internal/runtime/swarmflowtest`), not a CLI command. There is no
+  `swarm test` yet. So read the two sections below as the *shape* your tests take, with the runner
+  still developer-side.
+</Note>
+
 ## The static analyzer
 
 `swarm verify` validates a contract bundle against the platform specification, the one

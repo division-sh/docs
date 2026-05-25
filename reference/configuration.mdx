@@ -73,3 +73,16 @@ or persisted.
   Runtime-private root for git repositories written by `artifact_repo_commit`. Default
   `/var/lib/swarm/artifacts`. Never mounted into agent sessions.
 </ParamField>
+
+## Budget caps
+
+The `budget_*_percent` thresholds in `policy.yaml` are percentages of a monthly USD cap, set in
+the `budget:` configuration section. A scope is monitored only when its cap is above zero. See
+[Budget and cost](/operate/budget-and-cost).
+
+```yaml
+budget:
+  global_monthly_cap: 500       # USD per month across the deployment
+  per_entity_monthly_cap: 5     # USD per month per entity
+  system_monthly_cap: 100       # USD per month for platform/system work
+```

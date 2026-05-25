@@ -29,6 +29,25 @@ budget_emergency_percent: 95
 
 If these policy keys are absent, budget monitoring is off entirely.
 
+## The cap the percentages measure against
+
+A percentage needs something to be a percentage *of*. That something is a **monthly cap in US
+dollars**, and the spend it tracks is the real cost of the LLM calls (the `cost_usd` totals in
+the spend ledger), not a token count. You set the cap in the budget configuration, at whichever
+scope you want to limit:
+
+```yaml
+budget:
+  global_monthly_cap: 500       # USD per month across the whole deployment
+  per_entity_monthly_cap: 5     # USD per month for any single entity
+  system_monthly_cap: 100       # USD per month for platform/system work
+```
+
+A scope is only watched when its cap is set above zero, so you can limit, say, per-entity spend
+without a global cap. With `global_monthly_cap: 500`, a `budget_warning_percent: 60` warns once
+this month's real spend crosses $300. With no caps set, there is nothing to take a percentage of,
+and monitoring stays off. See [Configuration](/reference/configuration).
+
 ## Responding to an emergency
 
 At the emergency threshold the runtime does not just warn you, it **pauses all agent sessions on

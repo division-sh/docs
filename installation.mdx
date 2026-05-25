@@ -48,9 +48,10 @@ Postgres container, or use Docker Compose for a fully containerized runtime.
     swarm serve --contracts ./my-flow
     ```
 
-    `swarm serve` is the runtime, API, health, and MCP startup owner, reachable at
-    **`http://127.0.0.1:8081`** by default. It needs Postgres, an API token
-    (`SWARM_API_TOKEN`), and an LLM credential (see below). CLI commands target that same
+    `swarm serve` is the long-running runtime, the API, health, and MCP startup owner, reachable
+    at **`http://127.0.0.1:8081`** by default. (The [Quickstart](/quickstart)'s `swarm run` is the
+    one-shot, in-process alternative; `serve` is what you operate.) It needs Postgres, an API
+    token (`SWARM_API_TOKEN`), and an LLM credential (see below). CLI commands target that same
     address; point them elsewhere with `--api-server`. See
     [Configuration](/reference/configuration).
   </Tab>

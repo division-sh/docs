@@ -94,7 +94,9 @@ Run the commands below from the repository root, so the default platform spec re
 
   <Step title="Run it">
     Set an API token, write a payload for the trigger event, then run the flow. `swarm run`
-    boots a runtime in process, publishes `greeting.requested`, and streams the run's trace.
+    boots a runtime in process, publishes `greeting.requested`, and streams the run's trace. It
+    is the one-shot way to run a flow; for a long-running server you operate, use `swarm serve`
+    (see [Running the runtime](/operate/running-the-runtime)).
 
     ```bash
     export SWARM_API_TOKEN=dev-token        # any value; the local runtime and CLI share it
