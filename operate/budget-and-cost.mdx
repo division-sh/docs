@@ -23,14 +23,15 @@ budget_emergency_percent: 95
 
 | Level | Meaning |
 |---|---|
-| `warning` | Spend is approaching the limit. |
-| `throttle` | The runtime throttles further work. |
-| `emergency` | The runtime escalates; a mailbox item is raised for a human. |
+| `warning` | Spend is approaching the limit. No action is taken. |
+| `throttle` | The runtime cuts back: it reduces how many agents run at once and defers non-critical work. |
+| `emergency` | The runtime pauses all agent sessions and raises a mailbox item for a human. |
 
-If these policy keys are absent, budget monitoring is disabled.
+If these policy keys are absent, budget monitoring is off entirely.
 
 ## Responding to an emergency
 
-An emergency raises a [mailbox](/operate/mailbox) item so a human can approve continued spend,
-pause the run, or stop it. Pausing ingress (`swarm control pause --all`) halts new work while
-you decide.
+At the emergency threshold the runtime does not just warn you, it **pauses all agent sessions on
+its own** and raises a [mailbox](/operate/mailbox) item, so spend stops before a human is even in
+the loop. From there a person can approve continued spend, pause the run, or stop it. Pausing
+ingress (`swarm control pause --all`) also halts new work while you decide.

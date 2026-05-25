@@ -15,12 +15,56 @@ instead; see the [Quickstart](/quickstart).)
 swarm serve --contracts ./my-flow
 ```
 
+The loopback default means the runtime is only reachable from the same machine. To accept
+connections from elsewhere, bind a public address on purpose (for example
+`--health-addr 0.0.0.0:8081`); the loopback default is there so you do not expose the API by
+accident.
+
+A few flags matter for operations:
+
+- **`--shutdown-grace <duration>`** (default `30s`) is how long shutdown waits for in-flight work
+  to finish before it cancels what is left and exits.
+- **`--no-require-bundle-match`** turns off a safety check. Normally, if a run is still active and
+  was started from a different contract bundle than the one you are now booting, `swarm serve`
+  refuses to start, so you do not quietly process an old run with new contracts. This flag lifts
+  that check for recovery or development.
+- **`--abandon-active-runs`** is destructive: at startup it cancels every run that was still
+  `running` or `paused` and dead-letters their in-flight work. Use it to get a clean slate after a
+  crash, not against runs you care about. (It cancels work; it does not delete data or stop
+  containers. That is `swarm control nuke`.)
+- **`--dev`** bundles the loose settings for local work: it turns on `--abandon-active-runs` and
+  `--no-require-bundle-match`, makes boot verbose, and deletes the per-entity workspace containers
+  when the runtime shuts down. Handy locally, but not something to point at state you want to keep.
+
 ## Boot verification
 
 At boot the engine loads the bundle, runs it through the static analyzer, initializes the
 Postgres state stores, then starts system nodes and agents. If any `error`-severity check
 fails, boot aborts; there is no partial startup. A runtime that is up has passed the
 [analyzer](/reference/analyzer-checks).
+
+## Run lifecycle
+
+A **run** is one execution of your flow. It moves through a few states you will see in
+`swarm runs` and `swarm status`:
+
+- **running** — work is in progress.
+- **completed** — the run finished cleanly. This happens only when *every* entity has reached a
+  terminal state *and* no events are still waiting to be delivered. An open timer counts as
+  pending work, so a run with a timer still ticking stays `running` until that timer fires or is
+  cancelled.
+- **failed** — something broke at the platform level (the database went away, the contract bundle
+  was corrupt). A failed *handler* or *agent* does **not** fail the run: it becomes a
+  [dead letter](/operate/reliability) and the run keeps going. So a run can reach `completed` with
+  dead letters inside it. Watch dead letters separately rather than trusting run status to surface
+  logic errors.
+- **paused** — held by `swarm control pause` (below).
+- **stalled** — still `running` but not making progress. `swarm status <run-id>` reports this and
+  names the blocking layer and reason.
+
+One thing about querying: entity state is scoped to the current run. `swarm entities` and the
+entity query tools see the entities in the run you are looking at, not across past runs, so any
+"have I seen this before?" check spanning runs has to be built explicitly.
 
 ## Health
 
@@ -31,11 +75,17 @@ method).
 
 ## Pausing ingress
 
-`swarm control pause --all` pauses runtime ingress (the `runtime.pause` method), and
-`swarm control continue --all` resumes it. While paused, inbound events are persisted and
-held; read-only operator methods still work. Pausing emits `platform.paused`; resuming emits
-`platform.resumed`. Use this for maintenance windows. To pause a single run instead, name it:
-`swarm control pause <run-id>`.
+`swarm control pause --all` pauses runtime ingress (the `runtime.pause` method); `swarm control
+continue --all` resumes it. While paused, new events are still accepted and saved, but they wait
+in the queue and are delivered once when you resume. Work already mid-flight finishes its current
+step, and read-only operator methods keep working, but live tool and MCP calls are refused until
+you resume. Pausing emits `platform.paused`; resuming emits `platform.resumed`. Use it for
+maintenance windows.
+
+Note what `--all` does and does not do. `pause --all` gates *new* ingress; it does not reach into
+each running run and freeze it in place. To act on one run, name it: `swarm control pause
+<run-id>`. `stop --all` works differently again, it stops each active run one at a time rather
+than flipping a single ingress switch, so it asks for confirmation.
 
 ## Surfaces
 
