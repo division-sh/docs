@@ -1,0 +1,61 @@
+---
+title: "Guards"
+description: "Block a handler unless a condition holds, and choose what happens when it fails."
+icon: "shield-halved"
+---
+
+A guard blocks the handler unless its [CEL](/reference/expressions-cel) check passes. It is the
+first decision in the handler, after the entity is acquired.
+
+```yaml
+ticket.classified:
+  guard:
+    id: valid_category
+    check: "payload.category in ['billing', 'technical', 'account']"
+    on_fail: reject
+  advances_to: assigned
+```
+
+The `check` reads `entity`, `payload`, and `policy`. A guard reads the entity **before** this
+handler's own writes, so it reflects what earlier handlers left, not what this one is about to
+change.
+
+## Multiple checks
+
+For more than one condition, use `checks` (a list); all must pass:
+
+```yaml
+guard:
+  checks:
+    - id: in_window
+      check: "entity.retry_count < policy.max_retries"
+    - id: not_locked
+      check: "entity.locked == false"
+  on_fail: reject
+```
+
+## on_fail
+
+`on_fail` chooses what happens when a check fails. It defaults to `reject`.
+
+| `on_fail` | Behavior |
+|---|---|
+| `reject` (default) | Stop. The event is marked rejected. |
+| `discard` | Drop silently. For expected filtering you do not want recorded as a failure. |
+| `kill` | Advance the entity to a terminal state. |
+| `escalate:{event}` | Emit an escalation event instead of proceeding. |
+
+`escalate` routes the failure somewhere useful instead of just stopping:
+
+```yaml
+request.received:
+  guard:
+    id: rate_limit
+    check: "entity.request_count < policy.max_requests_per_hour"
+    on_fail: escalate:rate_limit.exceeded
+  advances_to: processing
+```
+
+When a guard fails, the handler stops: no state change, no data writes, no emit. Guard failures
+are business logic, not transient errors, so they are not retried. See the
+[execution model](/reference/execution-model) for where the guard sits in the pipeline.

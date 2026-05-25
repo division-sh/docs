@@ -1,0 +1,76 @@
+---
+title: "Writing data and advancing state"
+description: "Record fields on the entity, move it between states, and set or clear gates."
+icon: "database"
+---
+
+Once a handler has passed its guard, it records data on the entity and moves the entity through
+its state machine.
+
+## Writing data with data_accumulation
+
+`data_accumulation` writes fields onto the entity. `writes` is a list, and each item takes one
+of four forms:
+
+```yaml
+ticket.classified:
+  data_accumulation:
+    writes:
+      - category                              # direct:   payload.category -> entity.category
+      - source_field: pri                     # mapped:   payload.pri -> entity.priority
+        target_field: priority
+      - target_field: source                  # literal:  a constant value
+        value: "support"
+      - target_field: attempts                # computed: a CEL expression
+        expression: "entity.attempts + 1"
+    source_event: ticket.classified           # defaults to the triggering event
+```
+
+`value` and `expression` are mutually exclusive on one item, and the literal key is `value`,
+not `literal`. The direct and mapped forms read from `source_event` (the triggering event by
+default), and that event must declare every field they reference.
+
+What you write here **persists**: a value written by one handler is readable as `entity.<field>`
+in later handlers, not just this one. See the
+[execution model](/reference/execution-model) for the read/write ordering within a handler.
+
+## Advancing state
+
+`advances_to` moves the entity to another state. The target must be one of the flow's declared
+states, and `advances_to` is the only thing that changes an entity's state:
+
+```yaml
+ticket.resolution_confirmed:
+  advances_to: closed        # a terminal state
+```
+
+## Gates
+
+A gate is a named boolean checkpoint on the entity. `sets_gate` raises one; a later guard reads
+it as `entity.gates.<name>`:
+
+```yaml
+review.completed:
+  sets_gate: g_reviewed
+  advances_to: approved
+```
+
+```yaml
+publish.requested:
+  guard:
+    id: must_be_reviewed
+    check: "entity.gates.g_reviewed == true"
+  advances_to: published
+```
+
+Declare the gate in the node's `gate_state`. To reset, `clear_gates: true` clears **every** gate
+on the entity (it is entity-wide, not scoped to this node), which is how you re-enter a cycle:
+
+```yaml
+resubmission.requested:
+  clear_gates: true
+  advances_to: draft
+```
+
+See [Gates, timers, and state](/concepts/gates-timers-and-state) for the model behind states and
+gates.

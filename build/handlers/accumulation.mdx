@@ -1,0 +1,122 @@
+---
+title: "Accumulation and computation"
+description: "Wait for many events, aggregate collected items, and fan work out: accumulate, compute, filter, reduce, count, fan_out, query."
+icon: "layer-group"
+---
+
+These steps handle work that spans more than one event or more than one item. They run in the
+handler pipeline before the writes, and most handlers use none of them. For the deep rules
+behind accumulation (deduplication, completion, and copying results to a typed entity field),
+see [Accumulation and projection](/reference/accumulation).
+
+## accumulate: wait for several events
+
+`accumulate` gathers arrivals for one entity and fires only when a completion condition is met.
+The expected count is read from entity state through `expected_from`:
+
+```yaml
+score.received:
+  accumulate:
+    expected_from: entity.dimensions_requested   # how many to wait for
+    completion: all                              # all | threshold | timeout
+    dedup_by: payload.dimension                  # what makes an arrival distinct
+  on_complete:
+    - condition: "accumulated.size() >= policy.min"
+      advances_to: scored
+      emit: scoring.done
+```
+
+Until completion, the handler records the arrival and stops. One thing to watch: `dedup_by`
+defaults to the **sender**, which silently collapses several items from one sender into one; set
+it to the distinguishing payload field. That default and the `materialize_from` projection are
+covered in [Accumulation and projection](/reference/accumulation).
+
+## compute: aggregate into one value
+
+`compute` runs a built-in aggregation and stores the result on the entity (`store_as` names an
+entity field):
+
+```yaml
+scoring.complete:
+  compute:
+    operation: weighted_average    # weighted_average | pick_or_average | sum | min | max | count
+    store_as: entity.composite
+    keys:
+      dimension_key: dimension
+      score_keys: [score]
+    tiers:
+      - dimensions: [quality, speed, cost]
+        weight: 0.6
+      - dimensions: [innovation, scalability]
+        weight: 0.4
+```
+
+## filter, reduce, count: process a list
+
+These operate on a list (an entity field or a payload list) and store a result. Their
+conditions reference each element as `item`:
+
+```yaml
+items.submitted:
+  filter:
+    items_from: payload.items
+    condition: "item.score > 50"
+    store_as: entity.passing          # the items that matched
+```
+
+```yaml
+scores.ready:
+  reduce:
+    items_from: entity.scores
+    operation: weighted_average
+    store_as: entity.composite        # one aggregated value
+```
+
+```yaml
+items.submitted:
+  count:
+    items_from: payload.items
+    condition: "item.active == true"
+    store_as: entity.active_count      # how many matched
+```
+
+## fan_out: one event per item
+
+`fan_out` emits one event per item in a list. Each emitted payload is built with `fields`, where
+`item` is the current element. Record how many you dispatched (`fan_out.count`) so a later
+`accumulate` knows what to wait for:
+
+```yaml
+batch.requested:
+  fan_out:
+    items_from: payload.items
+    emit:
+      event: item.assigned
+      broadcast: true
+      fields:
+        item: item
+  data_accumulation:
+    writes:
+      - target_field: expected_count
+        expression: "fan_out.count"
+```
+
+`fan_out.count` is only available to `data_accumulation` in the same handler.
+
+## query: read across entities
+
+`query` pre-fetches data from other entities, for reports or cross-entity decisions:
+
+```yaml
+timer.daily_report:
+  query:
+    entities: tickets
+    group_by: state
+    count: true
+  emit:
+    event: report.compiled
+    broadcast: true
+```
+
+A `query` can also `filter`, `select` specific fields, and `store_as` a named result; see
+[Handler fields](/reference/handler-fields) for the full option list.

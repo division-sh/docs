@@ -1,0 +1,88 @@
+---
+title: "Actions"
+description: "Platform operations a handler can run: create_flow_instance, record_evidence, mailbox_write, artifact_repo_commit."
+icon: "bolt"
+---
+
+An `action` runs a platform-provided operation as a near-final step of the handler (after the
+writes and the emit). There are exactly four; product-specific actions are not supported. In
+every case `action` is the **name** (a string), and the action's parameters are **sibling
+fields** of the handler, not nested under `action`.
+
+## create_flow_instance
+
+Spin up a new instance of a template flow, passing data in through `config_from`:
+
+```yaml
+order.paid:
+  action: create_flow_instance
+  template: fulfillment              # a flow declared mode: template
+  instance_id_from: payload.order_id # the new instance's id
+  config_from:
+    order_id: payload.order_id       # values the child reads as config
+    address: payload.ship_to
+  advances_to: fulfilling
+```
+
+This is the spawn half of cross-flow composition; see [Composing flows](/build/composition) for
+the full round trip, including how the child returns a result.
+
+## record_evidence
+
+Append the event payload to an entity accumulator, building an audit trail. It is append-only
+and never replaces:
+
+```yaml
+evidence.submitted:
+  action: record_evidence
+  evidence_target: evidence.items    # the accumulator field to append to
+  emit:
+    event: evidence.recorded
+    broadcast: true
+```
+
+## mailbox_write
+
+Put a decision in front of a human. The runtime materializes a durable mailbox row and the flow
+waits for the decision to come back as an event. The parameters live under a sibling `mailbox`
+block; `item_type` and `summary` are required, `severity` defaults to `normal`:
+
+```yaml
+refund.requested:
+  action: mailbox_write
+  mailbox:
+    item_type: refund_approval
+    severity: urgent                 # normal | urgent | critical
+    summary: "Refund over the policy limit needs a manager"
+    payload:
+      amount: entity.amount          # only declared fields are copied
+  advances_to: awaiting_approval
+```
+
+The row is idempotent per triggering event, so a replayed delivery does not create a duplicate.
+See [Human in the loop](/concepts/human-in-the-loop) for the model and
+[Mailbox](/operate/mailbox) for the operator side.
+
+## artifact_repo_commit
+
+Commit service-owned files to a local git repository and expose them at a `swarm-artifact://`
+URL. The parameters live under a sibling `artifact_repo` block; paths must be allowlisted and
+relative (absolute paths and traversal are rejected):
+
+```yaml
+report.ready:
+  action: artifact_repo_commit
+  artifact_repo:
+    provider: local_git              # the only provider
+    repo_id: reports
+    request_id: payload.report_id     # idempotency key
+    allowed_paths: ["reports/"]
+    files:
+      - path: reports/{{report_id}}.md
+        content: entity.report_body
+  advances_to: published
+```
+
+Reusing a `request_id` with the same content is a safe repeat; reusing it with different content
+fails closed. The success and failure payloads are strict and may not override runtime-owned
+result fields; see [Handler fields](/reference/handler-fields) for the full field list.

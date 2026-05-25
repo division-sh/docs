@@ -1,0 +1,56 @@
+---
+title: "Emitting events"
+description: "Populate and send the next event with emit and emit.fields."
+icon: "paper-plane"
+---
+
+A handler continues the flow by emitting the next event. An emitted event's payload is
+**producer-complete**: the handler must populate every field the event declares, through
+`emit.fields`. Nothing is copied automatically from the triggering event, and there are no
+defaults. Each entry in `fields` is a CEL expression, usually reading the entity you just wrote
+or the incoming `payload`:
+
+```yaml
+ticket.classified:
+  advances_to: assigned
+  emit:
+    event: ticket.assigned        # declares fields: category, priority
+    fields:
+      category: entity.category   # read the fields this handler just wrote
+      priority: entity.priority
+```
+
+The bare string form, `emit: ticket.assigned`, emits with an **empty** payload. The analyzer
+accepts it, so the empty payload only shows up at runtime when a subscriber receives `{}`. Use
+the bare form only for events that declare no fields; use `fields` the moment an event carries
+data.
+
+## Targeting
+
+Routing inside a flow comes from subscriptions, so an internal emit needs no target. An emit
+that **crosses a flow boundary** (a pin-declared output) must resolve a recipient with `target`
+or opt out with `broadcast: true`:
+
+```yaml
+emit:
+  event: order.fulfilled
+  fields:
+    order_id: entity.order_id
+  target: sender          # reply to whoever sent the triggering event
+```
+
+```yaml
+emit:
+  event: ticket.resolved
+  fields:
+    resolved_by: entity.resolved_by
+  broadcast: true         # deliberately fan out to all subscribers
+```
+
+Cross-flow targeting (`target: { instance_id }`, `target: { flow, match }`, the parent route)
+is its own topic; see [Composing flows](/build/composition) and
+[Events and routing](/concepts/events-and-routing).
+
+A handler's top-level `emit` is valid only when the handler has a single emit site. If the
+handler also branches with `rules` or `on_complete`, the emit moves onto the branch; a
+handler-level `emit` alongside `rules` is a boot error. See [Branching](/build/handlers/branching).

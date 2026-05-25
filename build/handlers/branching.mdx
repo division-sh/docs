@@ -1,0 +1,66 @@
+---
+title: "Branching"
+description: "Take different paths with on_complete or rules."
+icon: "code-branch"
+---
+
+A handler can take different paths. Swarm has two ways to do it, and they are mutually
+exclusive: pick by *what you are branching on*.
+
+## rules: dispatch on the payload
+
+`rules` routes on the incoming payload, for example by category. It is an ordered list of named
+branches; the first whose `condition` matches wins, and that rule owns the emit:
+
+```yaml
+request.received:
+  rules:
+    - id: billing
+      condition: "payload.category == 'billing'"
+      advances_to: billing_review
+      emit:
+        event: billing.requested
+        broadcast: true
+    - id: technical
+      condition: "payload.category == 'technical'"
+      advances_to: tech_review
+      emit:
+        event: tech.requested
+        broadcast: true
+```
+
+Each rule can carry its own `advances_to`, `sets_gate`, `data_accumulation`, and `emit`. When
+`rules` is present, the matched rule owns the emit, so a handler-level `emit` alongside `rules`
+is a boot error. Handler-level `data_accumulation` still runs and supplements the matched rule's
+writes; a rule's value for a field overrides the handler-level default for that field. See the
+[execution model](/reference/execution-model) for the precedence rules.
+
+## on_complete: decide after computing
+
+`on_complete` decides *after* the handler has gathered or computed something, for example once
+enough scores have accumulated. It is an ordered list, and the first matching condition wins:
+
+```yaml
+score.received:
+  accumulate:
+    expected_from: entity.dimensions_requested
+    completion: all
+  on_complete:
+    - condition: "entity.composite_score >= policy.threshold"
+      advances_to: approved
+      emit: candidate.approved
+    - condition: "entity.composite_score < policy.threshold"
+      advances_to: rejected
+      emit: candidate.rejected
+```
+
+`on_complete` must be a YAML **list** (ordered), not a map, because order is the tie-breaker.
+
+## Choosing between them
+
+- Use **`rules`** when the branch depends on the **incoming payload** (type dispatch).
+- Use **`on_complete`** when the branch depends on **what the handler produced** (after
+  `accumulate` or `compute`).
+
+`accumulated.*` is readable in `on_complete` conditions but not in `rules` conditions, since
+rules run before accumulation. See [Accumulation and computation](/build/handlers/accumulation).

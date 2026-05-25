@@ -42,12 +42,24 @@
               "build/flow-package",
               "build/first-flow",
               "build/state-machine",
-              "build/handlers",
               "build/agents-and-prompts",
               "build/tools",
               "build/policy",
               "build/composition",
               "build/testing"
+            ]
+          },
+          {
+            "group": "Handlers",
+            "pages": [
+              "build/handlers",
+              "build/handlers/entity-acquisition",
+              "build/handlers/guards",
+              "build/handlers/data-and-state",
+              "build/handlers/emitting",
+              "build/handlers/branching",
+              "build/handlers/accumulation",
+              "build/handlers/actions"
             ]
           },
           {

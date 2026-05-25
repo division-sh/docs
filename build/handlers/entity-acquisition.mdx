@@ -1,0 +1,63 @@
+---
+title: "Getting the entity"
+description: "How a handler gets the entity it acts on: create_entity, select_entity, select_or_create_entity."
+icon: "inbox"
+---
+
+Every handler runs against one entity, the record moving through the flow. Most handlers inherit
+it from the event that triggered them and declare nothing. But the handler that receives a
+flow's **first** event has no entity yet, so it must say where one comes from. Declare exactly
+one of the three modes (declaring none on a stateful input-pin handler is a boot error, and
+declaring more than one is also a boot error).
+
+## create_entity
+
+Mint a new entity at the flow's initial state. Use it when the event starts a new item in this
+flow (a fresh ticket arriving):
+
+```yaml
+ticket.created:
+  create_entity: true
+  advances_to: new
+```
+
+The new entity gets an auto-generated id, and the inbound event's `entity_id` is ignored for
+state operations. Every declared field is materialized (its `initial:` value, else the type
+default), so a guard in the same handler can read any field immediately. `create_entity` cannot
+be combined with `accumulate` (a single accumulator must target one entity, but `create_entity`
+mints a new one each time). It can be combined with `fan_out`: one entity is created, and every
+fanned-out event shares it.
+
+## select_entity
+
+Attach to one existing entity, matched by a business key. The `by` map pairs entity fields with
+`payload.*` values from the triggering event:
+
+```yaml
+fulfillment.completed:
+  select_entity:
+    by:
+      order_id: payload.order_id     # find the order whose order_id matches
+  advances_to: shipped
+```
+
+Exactly one entity must match. Zero matches or more than one both fail closed, rather than the
+handler guessing. This is the mode you use when a result arrives from another flow and has to
+re-attach to the right entity; see [Composing flows](/build/composition).
+
+## select_or_create_entity
+
+Resolve one existing entity by the key, or mint a fresh one from that key if none matches. Use
+it when an event might be the first the flow has seen for a given key, or a follow-up:
+
+```yaml
+order.event_received:
+  select_or_create_entity:
+    by:
+      order_id: payload.order_id
+  advances_to: active
+```
+
+<Card title="Flows and entities" icon="diagram-project" href="/concepts/flows-and-entities">
+  What an entity is, and why a flow can hold many of them at once.
+</Card>
