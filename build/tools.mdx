@@ -77,21 +77,23 @@ native_tools:
   file_io: true
 ```
 
-The field is the authorization gate, and it is a **separate channel** from both `tools` and
-`permissions`. Permissions govern platform operations (shared state, routing, mailbox); native
-tools govern local execution (host shell, web, filesystem). If `native_tools.bash` is `true`, the
-agent gets `bash`, with no matching permission entry required.
+`native_tools` is its own switch, separate from both `tools` and `permissions`. They cover
+different things: `permissions` are about what an agent may do to shared platform state (routing,
+the mailbox, entity writes), while `native_tools` are about what it may do on the host machine
+(run a shell command, search the web, read or write files). So you do not also add a permission
+for `bash` anywhere; turning on `native_tools.bash` is the whole grant.
 
-On the shipped Claude CLI runtime these three are **provider-native**: the platform will not
-inject a fallback to satisfy them, so a capability the runtime cannot provide **fails closed**
-rather than being silently downgraded. In particular, setting `policy.web_search_provider` does
-**not** satisfy `native_tools.web_search` on the CLI runtime; the capability still has to be
-provider-native.
+One thing to know on the Claude CLI runtime: there, `bash`, `web_search`, and `file_io` come from
+the CLI itself, and the platform will not stand in a substitute. If you turn one on and the
+runtime cannot provide it, you get a clear error at startup rather than an agent that quietly
+runs without it. (Setting `policy.web_search_provider` does not count as providing `web_search`
+here; it has to come from the CLI.)
 
 ## Flow reference data
 
-A flow-scoped agent can read immutable deploy-time files shipped under its flow package's
-`data/` directory by declaring `flow_data_access`:
+Sometimes an agent needs to read a fixed file you ship with the flow: a prompt template, a
+lookup table, a list of things to skip. Put the file under the flow package's `data/` directory
+and list it in the agent's `flow_data_access`:
 
 ```yaml
 flow_data_access:
@@ -99,11 +101,11 @@ flow_data_access:
   - templates/review.md
 ```
 
-That generates a `read_flow_data` tool for the agent, restricted to exactly the declared
-filenames. This is static contract data (templates, lookup tables), not entity state, not
-mutable, and not native file I/O; it ships and versions with the contract bundle. The
-authorization is `flow_data_access` itself, so it needs no `permissions` entry and is not granted
-through `tools`. Root or project-scoped agents cannot declare it.
+The agent then gets a `read_flow_data` tool that can open exactly those files and nothing else.
+These files are read-only and travel with your contracts, so they change when you redeploy, not
+while the flow is running. That makes them right for reference data, not for entity state or
+scratch files the agent writes. As with `native_tools`, listing the file is the whole grant: no
+`permissions` entry, and it is not part of `tools`. Only flow-scoped agents can use it.
 
 ## Default-deny
 

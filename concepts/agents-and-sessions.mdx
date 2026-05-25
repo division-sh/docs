@@ -56,12 +56,11 @@ agent (or each flow instance) gets its own `/workspace`, invisible to the others
   `session_scope: entity`. The agent builds context for one entity over multiple turns.
 - **`stateless`**: an alias for `task`.
 
-`session_scope` (`global`, `flow`, `entity`) pairs with the mode and is validated at boot, with
-no inference and no fallback: a non-`task` mode must declare a `session_scope` (omitting it is a
-boot error), and the pairing is fixed (`session` takes `global` or `flow`; `session_per_entity`
-takes `entity`). Two placement rules follow from scope: `session_scope: flow` needs a
-flow-scoped agent (a root agent cannot use it), and `session_scope: entity` needs a stateful flow
-(one with an `initial_state`).
+`session_scope` (`global`, `flow`, or `entity`) has to match the mode, as the bullets above
+show. The platform checks the pairing at boot and never guesses, so a non-`task` agent that
+leaves `session_scope` off will not boot. Two more rules depend on where the agent lives: `flow`
+scope only works for an agent inside a flow (a root agent cannot use it), and `entity` scope only
+works in a flow that has entities (one with an `initial_state`).
 
 ## The tools an agent can call
 
