@@ -26,12 +26,11 @@ hand.
 ```yaml nodes.yaml
 # route a decision to a human instead of proceeding automatically
 refund.requested:
-  action:
-    id: mailbox_write
-    mailbox:
-      item_type: approval
-      severity: urgent
-      summary: "Refund exceeds the auto-approval limit"
+  action: mailbox_write
+  mailbox:
+    item_type: approval
+    severity: urgent
+    summary: "Refund exceeds the auto-approval limit"
   advances_to: awaiting_approval
 ```
 
