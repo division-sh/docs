@@ -43,8 +43,7 @@ ticket.classified:
 
 ## How data moves between steps
 
-Three places hold data, and each is reached a different way. Knowing which is which prevents the
-most common authoring mistake:
+Three places hold data, and each is reached a different way:
 
 - **The entity** is the durable store. Write to it with `data_accumulation`; read it anywhere
   with `entity.*`. Entity fields persist across handlers, so a value written when the ticket was
@@ -222,8 +221,8 @@ As a flow gets more capable, handlers gain a few more tools. They are introduced
 in depth elsewhere:
 
 - **Wait for several events before acting** with `accumulate` (completion conditions,
-  deduplication, and copying the gathered items to a typed entity field). This has a footgun or
-  two; see [Accumulation and projection](/reference/accumulation).
+  deduplication, and copying the gathered items to a typed entity field). See
+  [Accumulation and projection](/reference/accumulation), including how `dedup_by` defaults.
 - **Compute over collected data** with `compute`, `filter`, `reduce`, and `count`. See
   [Handler fields](/reference/handler-fields).
 - **Run a platform action** with `action`. The common one is `mailbox_write`, which puts a

@@ -9,9 +9,8 @@ the tree into one connected runtime. Flows connect *only* through **pins**, the 
 fields at their edges, so a child can be reused or swapped without touching the parent's
 internals.
 
-The part that trips people up is not declaring children, it is the **round trip**: getting work
-into a child and getting a result back out to the right place. This page works one example
-end to end. The parent is an `orders` flow; it has a `notify` child (one instance, wired at
+Beyond declaring children, composition is mostly the **round trip**: getting work into a child
+and getting a result back out to the right place. This page works one example end to end. The parent is an `orders` flow; it has a `notify` child (one instance, wired at
 boot) and a `fulfillment` child (one instance per order, created at runtime).
 
 ```mermaid
@@ -148,8 +147,8 @@ emit:
 
 ## The return path
 
-This is the hard half. The child has its own state and its own entity; when it finishes, it
-sends a result back as an **output pin** event:
+The child has its own state and its own entity; when it finishes, it sends a result back as an
+**output pin** event:
 
 ```yaml fulfillment/nodes.yaml
 fulfillment.packed:

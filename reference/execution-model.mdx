@@ -5,9 +5,9 @@ icon: "diagram-project"
 ---
 
 A handler's fields do not run in the order you write them. The engine runs them in a fixed
-**dependency graph** and commits the whole thing in one transaction. Most surprises when
-authoring handlers come from not knowing that order, or from one field quietly overriding
-another. This page is the precise model.
+**dependency graph** and commits the whole thing in one transaction. That order, and the way
+some fields override others, are not visible in the YAML you write. This page is the precise
+model.
 
 ## The dependency graph
 
@@ -38,7 +38,7 @@ together, their relative order is irrelevant.
 
 ## What overrides what
 
-This is where the foot-guns are. Read these as a unit:
+These rules interact, so read them as a unit:
 
 - **Guards see pre-handler state.** A guard evaluates entity state as it stood *before* this
   handler's writes. A `data_accumulation` write in the same handler does not affect that
