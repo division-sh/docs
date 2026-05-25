@@ -50,6 +50,22 @@ default. Per-workspace mounts extend the isolation to the filesystem and process
 agent (or each flow instance) gets its own `/workspace`, invisible to the others. See
 [Agent workspaces and isolation](/reference/workspaces) for the mounts and scoping.
 
+## Sharding: one role, many instances
+
+When a single agent would be a bottleneck (it has to score 52 categories, or review 200 files),
+you run the role in parallel. A system node splits the workload and dispatches a slice to each of
+several instances of the agent, called **shards** (named `<agent>-shard-1`, `-shard-2`, and so
+on), then gathers the results with [`accumulate`](/build/handlers/accumulation). You write the
+partitioning and the merge; the platform provides the dispatch, the per-shard routing, and the
+completion tracking. The [fan-out pattern](/patterns/overview) is the shape this takes.
+
+The runtime keeps the parallelism from running away: there are caps on shards per job and on how
+many run at once, a per-shard timeout and budget, bounded retries, and a circuit breaker. Those
+settings are in [Configuration](/reference/configuration).
+
+This is parallelism *within* one flow, on a single deployment. Spreading flow instances across
+machines is not in v1; one platform instance runs everything.
+
 ## Conversation modes
 
 `conversation_mode` controls how the platform manages session context:

@@ -85,6 +85,10 @@ batch.requested:
         expression: "fan_out.count"
 ```
 
+This is the shape of within-flow [agent sharding](/concepts/agents-and-sessions): each item goes
+to an instance of the agent role, and the runtime caps how many run at once (see
+[Configuration](/reference/configuration)).
+
 ## Rules-based routing
 
 Dispatch on a payload field. `rules` is a list; the matched rule owns the emit.

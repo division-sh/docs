@@ -38,7 +38,8 @@ and state change is persisted, so runs are reproducible, auditable, and crash-sa
   let a run span days without losing state; replay answers "why did the system do that, and
   when?" later.
 - **Coordinating many agents, from a handful to a hundred or more.** Hierarchical addressing
-  (coordinator → managers → workers), per-flow agent sharding, and dynamic flow instances
+  (coordinator → managers → workers), per-flow [agent sharding](/concepts/agents-and-sessions),
+  and dynamic flow instances
   scale the agent count on a single deployment, without the context-window blowup of a flat
   chat.
 - **Systems assembled from reusable parts.** A flow is a self-contained package with typed
