@@ -50,6 +50,15 @@ evidence.submitted:
   evidence_target: evidence.items
 ```
 
+<Note>
+  **Not the same as `data_accumulation`.**
+  [`data_accumulation`](/build/handlers/data-and-state) *sets* named entity fields and overwrites
+  them (last write wins): use it for the entity's current state, such as `category` or a running
+  total. `record_evidence` *appends* the whole event payload as a new entry to a list and never
+  overwrites: use it for an append-only history of what happened. They are complementary, fields
+  versus a log.
+</Note>
+
 <Accordion title="A complete minimal flow">
 An incident log: open an incident, append evidence to it, then close it.
 
