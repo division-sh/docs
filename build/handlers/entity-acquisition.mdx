@@ -58,6 +58,150 @@ order.event_received:
   advances_to: active
 ```
 
+## Complete flows
+
+Both examples below pass `swarm verify`.
+
+<Accordion title="create_entity then select_entity: an order through its lifecycle">
+The first event mints the order; every later event finds that same order by its business key.
+This is the most common shape: one handler creates, the rest select.
+
+```yaml package.yaml
+name: orders
+version: 1.0.0
+description: An order created on its first event, then advanced by later events.
+platform_version: ">=1.6.0"
+flows: []
+```
+
+```yaml schema.yaml
+initial_state: placed
+terminal_states: [delivered]
+states: [placed, shipped, delivered]
+pins:
+  inputs:
+    events: [order.placed, order.shipped, order.delivered]
+```
+
+```yaml entities.yaml
+order:
+  order_id: text
+  customer: text
+```
+
+```yaml events.yaml
+order.placed:
+  swarm: { source: external }
+  order_id: text
+  customer: text
+order.shipped:
+  swarm: { source: external }
+  order_id: text
+order.delivered:
+  swarm: { source: external }
+  order_id: text
+```
+
+```yaml nodes.yaml
+order-tracker:
+  id: order-tracker
+  execution_type: system_node
+  subscribes_to: [order.placed, order.shipped, order.delivered]
+  event_handlers:
+    order.placed:                    # 1. first event: mint the order
+      create_entity: true
+      data_accumulation:
+        writes: [order_id, customer]
+        source_event: order.placed
+    order.shipped:                   # 2. later events: find that order
+      select_entity:
+        by:
+          order_id: payload.order_id
+      advances_to: shipped
+    order.delivered:                 # 3. and advance it
+      select_entity:
+        by:
+          order_id: payload.order_id
+      advances_to: delivered
+```
+
+**What happens:** `order.placed` runs `create_entity`, so it mints a fresh order at the
+`placed` state and records `order_id` and `customer`. When `order.shipped` arrives later, the
+handler has no entity of its own, so `select_entity` finds the existing order whose `order_id`
+matches the event's `payload.order_id`, then advances it to `shipped`. `order.delivered` does the
+same and moves it to the terminal `delivered` state. The `order_id` field is what links every
+later event back to the order it created.
+</Accordion>
+
+<Accordion title="select_or_create_entity: a session that starts on its first event">
+Use `select_or_create_entity` when an event might be the first the flow has seen for a key, or a
+follow-up, and you do not want to handle the two cases separately.
+
+```yaml package.yaml
+name: sessions
+version: 1.0.0
+description: Count page views per session; the first view starts the session.
+platform_version: ">=1.6.0"
+flows: []
+```
+
+```yaml schema.yaml
+initial_state: active
+terminal_states: [ended]
+states: [active, ended]
+pins:
+  inputs:
+    events: [page.viewed, session.ended]
+```
+
+```yaml entities.yaml
+session:
+  session_id: text
+  view_count:
+    type: integer
+    initial: 0
+```
+
+```yaml events.yaml
+page.viewed:
+  swarm: { source: external }
+  session_id: text
+session.ended:
+  swarm: { source: external }
+  session_id: text
+```
+
+```yaml nodes.yaml
+session-tracker:
+  id: session-tracker
+  execution_type: system_node
+  subscribes_to: [page.viewed, session.ended]
+  event_handlers:
+    page.viewed:                     # first view creates the session; the rest find it
+      select_or_create_entity:
+        by:
+          session_id: payload.session_id
+      data_accumulation:
+        writes:
+          - target_field: session_id
+            expression: "payload.session_id"
+          - target_field: view_count
+            expression: "entity.view_count + 1"
+    session.ended:
+      select_entity:
+        by:
+          session_id: payload.session_id
+      advances_to: ended
+```
+
+**What happens:** the very first `page.viewed` for a `session_id` finds no matching session, so
+`select_or_create_entity` mints one at `active`; every later view for that id finds the existing
+session. Either way the handler then writes `session_id` and increments `view_count`, so the
+count rises with each view. `session.ended` uses plain `select_entity` (the session must already
+exist by then) and moves it to `ended`. The computed write reads `entity.view_count` as it stood
+before this handler, which is why it increments cleanly across events.
+</Accordion>
+
 <Card title="Flows and entities" icon="diagram-project" href="/concepts/flows-and-entities">
   What an entity is, and why a flow can hold many of them at once.
 </Card>
