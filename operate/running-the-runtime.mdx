@@ -48,18 +48,18 @@ fails, boot aborts; there is no partial startup. A runtime that is up has passed
 A **run** is one execution of your flow. It moves through a few states you will see in
 `swarm runs` and `swarm status`:
 
-- **running** — work is in progress.
-- **completed** — the run finished cleanly. This happens only when *every* entity has reached a
+- **running**: work is in progress.
+- **completed**: the run finished cleanly. This happens only when *every* entity has reached a
   terminal state *and* no events are still waiting to be delivered. An open timer counts as
   pending work, so a run with a timer still ticking stays `running` until that timer fires or is
   cancelled.
-- **failed** — something broke at the platform level (the database went away, the contract bundle
+- **failed**: something broke at the platform level (the database went away, the contract bundle
   was corrupt). A failed *handler* or *agent* does **not** fail the run: it becomes a
   [dead letter](/operate/reliability) and the run keeps going. So a run can reach `completed` with
   dead letters inside it. Watch dead letters separately rather than trusting run status to surface
   logic errors.
-- **paused** — held by `swarm control pause` (below).
-- **stalled** — still `running` but not making progress. `swarm status <run-id>` reports this and
+- **paused**: held by `swarm control pause` (below).
+- **stalled**: still `running` but not making progress. `swarm status <run-id>` reports this and
   names the blocking layer and reason.
 
 One thing about querying: entity state is scoped to the current run. `swarm entities` and the
