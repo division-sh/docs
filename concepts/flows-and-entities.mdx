@@ -1,59 +1,44 @@
 ---
 title: "Flows and entities"
-description: "Self-contained flow packages, their instances, and the entities that move through them."
+description: "The two core nouns: a flow is the definition, an entity is the work moving through it."
 icon: "diagram-project"
 ---
 
-## Flows
+Two nouns sit at the center of every Swarm system, and it helps to separate them up front. A
+**flow** is the definition: a self-contained package of YAML contracts (states, events, system
+nodes, agents, tools, policy) that describes a piece of work. An **entity** is one actual unit
+of that work moving through it: a ticket, an order, a claim. If a flow is the program, an entity
+is the record it processes, advancing through the flow's states as events arrive.
 
-A flow is a self-contained package of YAML contracts that declares everything the platform
-needs to run a piece of work: states, events, agents, system nodes, tools, and policy. It is
-the universal building block, every level of the system is a flow, from the root flow down
-to the smallest child. There is no separate "project" concept.
+A flow is also the only building block. Every level of a Swarm system is a flow, from the root
+down to the smallest child; there is no separate "project." And a flow exposes a typed public
+interface (its **pins**), which is what lets you drop one into another system and wire it
+without refactoring.
 
-A flow exposes a public interface through typed **pins** (covered below), which is what makes
-flows composable: you can import a flow into another project and wire it without refactoring.
+## Instances: static vs template
 
-## Static and template flows
+A flow is a definition; a **flow instance** is one running copy. How many copies exist depends
+on the mode you declare in the parent:
 
-A flow runs in one of two modes, declared in the parent's `package.yaml`:
-
-| Mode | Instances | Created | Use case |
+| Mode | Instances | Created | Use it for |
 |---|---|---|---|
-| `static` | Exactly one | At boot | Most flows |
-| `template` | Zero at boot, N at runtime | By `create_flow_instance` | Per-customer, per-order instances |
+| `static` | exactly one | at boot | most flows |
+| `template` | zero at boot, many at runtime | a `create_flow_instance` action | one copy per customer, per order, and so on |
 
-A **flow instance** is one running copy. A static flow has a single instance at a fixed path
-(`{flow_id}/{local_name}`); a template flow is loaded at boot but not started, and each
-dynamic instance gets a path that includes its instance id
-(`{template_id}/{instance_id}/{local_name}`).
-
-```yaml package.yaml
-flows:
-  - id: intake
-    flow: intake
-    mode: static       # one instance at boot
-  - id: order
-    flow: order
-    mode: template     # an instance per order, created at runtime
-```
+A static flow is the common case: one copy boots, and many entities flow through it (a single
+ticket flow handles thousands of tickets). A template flow is a stamp: nothing runs at boot, and
+the runtime mints a fresh instance whenever it needs one, for example one order flow per order.
 
 ## Entities
 
-An entity is a mutable document moving through a flow instance's state machine. It has:
+An entity is the thing moving through a flow instance's state machine. It carries three things:
 
-- **state**: where it is (`new`, `assigned`, `resolved`).
-- **gates**: named boolean checkpoints (`g_verified: true`).
-- **fields**: typed data written by handlers (`category`, `resolution`).
+- **state**: which named state it is in (`new`, `assigned`, `resolved`), exactly one at a time.
+- **gates**: named boolean checkpoints a handler can set and a guard can check (`verified: true`).
+- **fields**: typed data that handlers write (`category`, `total`, `resolution`).
 
-Many entities can be in the same flow at once, each with its own id and state. The engine
-serializes events per entity, so entity state, gates, and accumulators are protected from
-races without flow authors reasoning about locks. Events for *different* entities run
-concurrently.
-
-An entity's persistent fields are declared in the flow's **`entities.yaml`** contract, backed
-by the shared type system in `types.yaml`. (Earlier versions embedded an `entity_schema` in
-`package.yaml`; that is retired.)
+You declare an entity's fields in the flow's `entities.yaml`. Its state is not declared there,
+because state belongs to the flow's state machine (in `schema.yaml`).
 
 ```yaml entities.yaml
 order:
@@ -61,30 +46,38 @@ order:
   total: numeric
   placed_at:
     type: timestamp
-    immutable: true
+    immutable: true        # set once, at creation
 ```
 
-The `current_state` is not declared here; state is flow-scoped, in `schema.yaml`.
+## Many entities, no locks
 
-## Two identities
+Many entities live in one flow at the same time, each with its own id and its own state. You
+never reason about locking: the engine processes the events for a single entity one at a time,
+so that entity's state and data cannot be corrupted by a race, while events for *different*
+entities run concurrently. That is what lets one flow carry hundreds or thousands of entities in
+parallel without any author-managed concurrency.
 
-Swarm keeps two flow identities distinct, and the runtime uses the right one for each job:
+## Pins: a flow's public interface
 
-- **`flow_scope_key`**: the semantic namespace from a flow's position in the tree
-  (`scoring`, `operating/build`). Used for gate projection, event scoping, and contract
-  references. Stable across instances.
-- **`flow_instance_path`**: a concrete running instance, including the instance id for
-  template flows (`operating/vert-001`). Used for entity ownership and lifecycle.
+A flow keeps most of its events and data private. What it chooses to expose, it exposes through
+typed **pins**: the events it accepts from outside, the events it emits outward, and the entity
+fields it reads or writes (no two flows may write the same field). Pins are the contract other
+flows wire against, which is what makes composition mechanical rather than a refactor. Any event
+not exposed as a pin is internal to the flow.
 
-## Pins
+See [Composing flows](/build/composition) for how pins are wired across flows.
 
-Pins are a flow's public API, what the outside world may assume about it:
-
-- **Input event pins**: events the flow accepts from outside.
-- **Output event pins**: events it emits to the outside (the activation switch for
-  cross-flow routing).
-- **Input data pins**: entity fields it reads.
-- **Output data pins**: entity fields it writes. No two flows may write the same field.
-
-`events.yaml` may declare more events than the pins show, those are **internal events**, not
-part of the public interface. See [Composing flows](/build/composition) for wiring.
+<CardGroup cols={2}>
+  <Card title="System nodes and handlers" icon="gears" href="/concepts/system-nodes-and-handlers">
+    The deterministic logic that advances an entity through its states.
+  </Card>
+  <Card title="Gates, timers, and state" icon="toggle-on" href="/concepts/gates-timers-and-state">
+    The state machine, gates, and time-based triggers an entity moves through.
+  </Card>
+  <Card title="Events and routing" icon="bolt" href="/concepts/events-and-routing">
+    How work moves between flows and the actors inside them.
+  </Card>
+  <Card title="Composing flows" icon="puzzle-piece" href="/build/composition">
+    Wiring flows together through their pins.
+  </Card>
+</CardGroup>
