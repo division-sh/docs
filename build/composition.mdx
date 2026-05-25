@@ -1,88 +1,205 @@
 ---
 title: "Composing flows"
-description: "Parent-child flows, pins, addressing, and dynamic instances."
+description: "Wiring flows together: pins, static vs template children, spawning instances, and the return path."
 icon: "puzzle-piece"
 ---
 
-Flows nest recursively, and a larger system is built by composing smaller flows. A parent
-declares child flows, and the engine walks the tree into one connected runtime. Flows connect
-only through **pins**, the typed events at their edges, so a child can be reused or swapped
-without touching the parent's internals.
+A larger system is built by nesting flows: a parent declares child flows, and the engine walks
+the tree into one connected runtime. Flows connect *only* through **pins**, the typed events and
+fields at their edges, so a child can be reused or swapped without touching the parent's
+internals.
+
+The part that trips people up is not declaring children, it is the **round trip**: getting work
+into a child and getting a result back out to the right place. This page works one example
+end to end. The parent is an `orders` flow; it has a `notify` child (one instance, wired at
+boot) and a `fulfillment` child (one instance per order, created at runtime).
 
 ```mermaid
 flowchart LR
-    subgraph parent [Parent flow]
-      A["emits order.created"]
+    subgraph orders["orders (parent)"]
+      OP["order.paid handler<br/>spawns fulfillment"]
+      OR["fulfillment.completed handler<br/>advances the order"]
     end
-    subgraph child [Child fulfillment instance]
-      B["input pin: order.created"]
-      C["output pin: order.completed"]
+    subgraph ful["fulfillment (one instance per order)"]
+      F1["does the work"]
+      F2["emits fulfillment.completed"]
     end
-    A -->|output pin| B
-    C -->|subscription| A
+    OP -->|"create_flow_instance + config"| F1
+    F1 --> F2
+    F2 -->|"parent route"| OR
 ```
 
-## Parent-child flows
+## Declare the children
 
-```yaml
-# parent package.yaml
+A parent lists its children in `package.yaml`, each with a mode:
+
+```yaml orders/package.yaml
 flows:
-  - id: intake
-    flow: intake
-    mode: static
+  - id: notify
+    flow: notify
+    mode: static        # exactly one instance, created at boot
   - id: fulfillment
     flow: fulfillment
-    mode: template
+    mode: template       # zero at boot; one instance per order, created at runtime
 ```
 
-Each child lives under `flows/{child}/` with the same package structure. A `static` child
-starts one instance at boot; a `template` child is a blueprint instantiated at runtime.
+Each child lives under `flows/{child}/` with its own full package. Which mode to use is the
+first design decision:
 
-## Pin wiring
+| | Static child | Template child |
+|---|---|---|
+| Instances | one, at boot | one per work item, at runtime |
+| Reached by | pin wiring (auto-wired at boot) | `create_flow_instance` + a target |
+| Use for | a shared service (notifications, audit) | per-order, per-customer work |
 
-Child flows expose typed pins. At boot the engine matches a parent's output event pins to a
-child's input event pins to establish the allowed topology. If an input pin matches outputs
-from more than one flow, boot fails unless you disambiguate with an explicit target or scoped
-subscription.
+## Declare the pins
 
-## Addressing
+Pins are a flow's public interface, declared in its `schema.yaml`. An event a flow accepts from
+outside is an **input event pin**; an event it sends outward is an **output event pin**. Entity
+fields it exposes are **data pins** (`reads` and `writes`). Everything not listed is private.
 
-References resolve by whether they contain a slash:
+```yaml notify/schema.yaml
+pins:
+  inputs:
+    events: [order.shipped]      # notify accepts this from the parent
+```
 
-- **Local**: `ticket.assigned`, the current flow.
-- **Absolute**: `intake/ticket.ready`, a specific flow from the root.
-- **Wildcard**: `fulfillment` then `*` then `order.completed` matches any direct child
-  instance; `**` matches any depth. Wildcards expand to include new dynamic instances as they
-  are created.
+```yaml fulfillment/schema.yaml
+pins:
+  outputs:
+    events: [fulfillment.completed]   # fulfillment sends this back out
+```
 
-## Dynamic instances
+```yaml orders/schema.yaml
+pins:
+  outputs:
+    events: [order.shipped]            # orders emits this to notify
+  inputs:
+    events: [fulfillment.completed]    # orders accepts the result back
+```
 
-A handler creates a dynamic instance with the `create_flow_instance` action:
+A producer's output pin and a consumer's input pin are two halves of one connection: both must
+declare the event, or the wire does not exist.
 
-```yaml
-order.created:
+## Pattern 1: a static child, wired at boot
+
+For static children, the engine **auto-wires** at boot: it matches each output event pin to the
+input pin that accepts it. Once `orders` emits `order.shipped` (a declared output pin), it lands
+in `notify` with no target and no extra code:
+
+```yaml orders/nodes.yaml
+order.delivered:
+  advances_to: closed
+  emit:
+    event: order.shipped              # an output pin -> auto-wired to notify
+    fields:
+      order_id: entity.order_id
+```
+
+The one rule to know: if a single input pin could match outputs from **more than one** flow, boot
+fails as ambiguous, and you disambiguate with an explicit `target` (below) or a scoped
+subscription. Auto-wiring only works when the match is unique.
+
+## Pattern 2: spawn a template instance
+
+A template child does not exist until you create one. A handler mints an instance with the
+`create_flow_instance` action, passing data in through `config_from` (there is no shared memory
+between flows; data crosses through the payload or config, never through direct entity reads):
+
+```yaml orders/nodes.yaml
+order.paid:
   action: create_flow_instance
   template: fulfillment
-  instance_id_from: payload.order_id
+  instance_id_from: payload.order_id       # the new instance's id
   config_from:
-    customer_name: payload.customer_name
-    order_total: payload.total
+    order_id: payload.order_id             # values the child reads as config
+    address: payload.ship_to
+  advances_to: fulfilling
 ```
 
-The platform validates the template, constructs the instance path, registers its nodes and
-agents, records the parent route, creates the entity at `initial_state`, and starts it. A
-child schema can declare `auto_emit_on_create` to bootstrap itself once started.
+The platform validates the template, builds the instance path, registers its nodes and agents,
+records a **parent route** back to this flow, creates the child's entity at its `initial_state`,
+and starts it. A child can declare `auto_emit_on_create` in its schema to fire its first event
+from that config.
 
-## Cross-flow handoff and ownership
+**Addressing an existing instance.** To send an event to a specific instance you already have,
+target it by id; to pick one by an entity field, match on it:
 
-State is flow-local. A business object moves between flows by an explicit event handoff: the
-source emits a cross-flow event, and the destination receives it on a handler that declares
-`create_entity: true`, `select_entity`, or `select_or_create_entity` to own its copy. Data
-crosses through the event payload or `config_from` bindings, never through direct cross-flow
-entity reads, which are prohibited. Write ownership is determined by semantic flow scope, not
-by path prefixes.
+```yaml
+emit:
+  event: fulfillment.expedite
+  target: { instance_id: payload.order_id }   # this exact instance
+# or
+  target: { flow: fulfillment, match: { order_id: payload.order_id } }  # the one whose order_id matches
+```
+
+## The return path
+
+This is the hard half, and the one the old version of this page skipped. The child has its own
+state and its own entity; when it finishes, it sends a result back as an **output pin** event:
+
+```yaml fulfillment/nodes.yaml
+fulfillment.packed:
+  advances_to: done
+  emit:
+    event: fulfillment.completed      # an output pin
+    fields:
+      order_id: entity.order_id       # carry the key the parent needs
+      tracking: entity.tracking
+```
+
+Because the instance was created with a parent route, that output pin returns to the parent
+automatically, no target needed. (Inside an event chain you can also reply to whoever called you
+with `target: sender`.)
+
+The parent receives it on a handler, and here is the key move: the parent must **re-attach to
+the right order**, because the event arrived at the `orders` flow, not at a specific order
+entity. It does that with `select_entity`, using the key the child carried in the payload:
+
+```yaml orders/nodes.yaml
+fulfillment.completed:
+  select_entity:
+    by:
+      order_id: payload.order_id      # find the order this result belongs to
+  data_accumulation:
+    writes: [tracking]
+    source_event: fulfillment.completed
+  advances_to: shipped
+```
+
+So the full loop is: parent spawns the child with `create_flow_instance` and `config_from`; the
+child works in its own state machine; the child emits an output pin carrying the business key;
+the parent route delivers it back; the parent re-selects its entity by that key and continues.
+
+## Ownership rules to keep straight
+
+- **Each flow owns its own entity.** A receiving handler must say how it acquires one:
+  `create_entity`, `select_entity`, or `select_or_create_entity`. State is flow-local; nothing
+  reads another flow's entity directly.
+- **Data crosses only through payloads and `config_from`.** Cross-flow entity reads are
+  prohibited; carry what the other side needs in the event.
+- **One writer per data pin.** Two flows may not both write the same entity field (a boot error).
+
+## Addressing reference
+
+When you name an event or flow, it resolves by whether it contains a slash:
+
+- **Local**: `order.paid`, an event in the current flow.
+- **Absolute**: `intake/ticket.ready`, navigated from the root.
+- **Wildcard**: `fulfillment/*/fulfillment.completed` matches any direct instance; `**` matches
+  any depth. Wildcards expand to include new dynamic instances as they are created, which is how
+  a parent subscribes to results from instances that did not exist at boot.
 
 ## Policy inheritance
 
 Child flows inherit parent and root policy and override specific keys. See
 [Policy](/build/policy).
+
+<CardGroup cols={2}>
+  <Card title="Events and routing" icon="bolt" href="/concepts/events-and-routing">
+    The full routing model: targets, the parent route, wildcards, and the event envelope.
+  </Card>
+  <Card title="Flows and entities" icon="diagram-project" href="/concepts/flows-and-entities">
+    Flows, instances, entities, and pins as a public interface.
+  </Card>
+</CardGroup>
