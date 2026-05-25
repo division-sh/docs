@@ -85,6 +85,19 @@ boot a half-finished contract. In production that refusal is a feature; during e
 it is friction. Sketch loose first if you must, then port to Swarm once the workflow
 stabilizes.
 
+And one honest limit on the word "deterministic": it stops at the agents. The control loop,
+routing, state transitions, and the event log are reproducible, but an LLM is still an LLM, so
+re-run a flow and an agent may reason its way to a different answer. What you can always replay
+and audit is what the *system* did with that answer, and the fact that the answer only changed
+state by passing through a deterministic handler. Swarm does not make the model deterministic; it
+makes everything around the model deterministic, which is the part worth auditing, replaying, and
+recovering. That is the whole bet, restated as a cost: you accept a fuzzy model and wrap it in a
+system that is not.
+
+There is also an upfront price the rest of this page implies but is worth saying outright: real
+contracts to write, a Postgres to run, and a model to learn before the first flow boots. The
+payoff is everything above; the bill comes first.
+
 <Card title="Ready to try it?" icon="rocket" href="/quickstart">
   Boot the runtime and trigger your first run.
 </Card>
