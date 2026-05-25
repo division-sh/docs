@@ -57,7 +57,7 @@ score.received:
         weight: 0.6
       - dimensions: [innovation, scalability]
         weight: 0.4
-    store_as: composite_score
+    store_as: entity.composite_score
   on_complete:
     - condition: "entity.composite_score >= policy.threshold"
       advances_to: approved
@@ -153,13 +153,16 @@ timer.daily_report:
     - entities: tickets
       group_by: state
       count: true
-      store_as: tickets_by_state
+      store_as: entity.tickets_by_state
     - entities: tickets
       filter: "priority == 'critical' && state != 'resolved'"
       select: [ticket_id, subject]
-      store_as: open_critical
+      store_as: entity.open_critical
   emit: report.daily_compiled
 ```
+
+`query` accepts either a single query object or a list of them (as here), and each `store_as`
+target is an entity field. `store_as` is always entity-prefixed (`entity.<field>`).
 
 ## Payload transform
 

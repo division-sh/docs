@@ -34,8 +34,8 @@ on leaving a terminal state.
 A gate is a named boolean on the entity, set by `sets_gate` and checked by guards. Gates
 model "which milestones are complete" in validation-style flows. They default to unset and
 are not auto-reset; `clear_gates: true` resets *every* gate on the entity at once (it is
-all-or-nothing). Gates are projected by `flow_scope_key`, so they stay stable across
-instance ids.
+all-or-nothing). Gates are projected by [`flow_scope_key`](/reference/glossary) (a flow's stable
+position-based namespace), so they stay stable across instance ids.
 
 ## Timers
 

@@ -484,6 +484,11 @@ trace ticket.resolved   delivered     subscriber=node/__runtime_replay_scope__  
 trace ticket.resolution_confirmed     subscriber=node/__runtime_replay_scope__   # 6
 ```
 
+The `subscriber=node/__runtime_replay_scope__` you see on most lines is not your
+`ticket-orchestrator`. It is the platform's internal subscriber that writes every event to the
+log (what makes replay possible). Your orchestrator's work shows up not as a delivery line but as
+the *next event it emits*, which is how you read the chain below.
+
 What each numbered line is doing, mapped back to the four ideas:
 
 1. **`ticket.created` is published and persisted.** The event is written to the log before
