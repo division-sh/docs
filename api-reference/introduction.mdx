@@ -40,6 +40,17 @@ generates and treats as authoritative; drift between the two fails boot verifica
 - **Idempotency:** mutating methods accept an `idempotency_key`.
 - **Versioning:** the surface is under `/v1/`; breaking changes bump to `/v2/`.
 
+## Not in v1
+
+A few things a client should plan around, because v1 deliberately does not have them yet:
+
+- **No multi-tenancy.** There is no `org_id`, `tenant_id`, or `workspace_id`; one deployment is
+  one tenant. A tenant prefix is reserved in the URL shape for later, so a future version can add
+  it without breaking v1 URLs.
+- **No rate limiting and no SLA.** Requests are not throttled in v1. A `RATE_LIMITED` error code
+  is reserved for later, so tolerate it as a possible future response.
+- **No bulk or batch endpoints.** Each mutation is its own call; there is no multi-item request.
+
 Browse the methods in the sidebar, or start with
 [Transport and auth](/api-reference/transport-and-auth) and
 [Subscriptions](/api-reference/subscriptions).

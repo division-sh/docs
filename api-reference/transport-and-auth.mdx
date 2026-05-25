@@ -23,6 +23,10 @@ Authorization: Bearer <token>
 In v1, token presence and validity are the only check; a valid token grants every scope.
 Scopes are declared per method for forward compatibility but are not enforced yet.
 
+A WebSocket token is checked once, at the upgrade, and not re-checked for the life of the
+connection. So rotating or revoking a token does not close streams that are already open; to pick
+up a new token, reconnect.
+
 ## Request and response envelope
 
 ```json
