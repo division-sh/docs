@@ -116,6 +116,7 @@
             "pages": [
               "reference/cli",
               "reference/configuration",
+              "reference/workspaces",
               "reference/mcp-gateway",
               "reference/glossary"
             ]

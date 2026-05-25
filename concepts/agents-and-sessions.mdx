@@ -41,9 +41,9 @@ agent; a single root flow uses `conversation_mode: task`.
 Each agent runs in a scoped session and observes only the events it subscribes to. A
 coordinator addresses managers; managers address workers; workers do not share a context
 window. Messaging scope is enforced and flow-instance-local; there is no "message anyone"
-default. Per-entity Docker workspaces extend the isolation to the filesystem and process
-level. See [Workspaces and permissions](/reference/handler-fields) and the platform guide for
-the authority model.
+default. Per-workspace mounts extend the isolation to the filesystem and process level: each
+agent (or each flow instance) gets its own `/workspace`, invisible to the others. See
+[Agent workspaces and isolation](/reference/workspaces) for the mounts and scoping.
 
 ## Conversation modes
 

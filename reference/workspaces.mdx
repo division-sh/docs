@@ -1,0 +1,132 @@
+---
+title: "Agent workspaces and isolation"
+description: "The filesystem an agent session runs in: three standard mounts, per-agent vs per-flow-instance isolation, and how it maps to deployment."
+icon: "box"
+---
+
+Every agent runs in a filesystem sandbox. The platform gives each agent session the same three
+mount points and controls who can see whose files. This is the filesystem and process side of
+[agent isolation](/concepts/agents-and-sessions): an agent works in its own space and cannot
+reach another agent's working tree.
+
+## The three standard mounts
+
+Every agent session gets exactly these three, and no others. Products cannot add mount points;
+they only configure the scope of `/workspace` (below).
+
+| Mount | Access | Scope | Holds |
+|---|---|---|---|
+| `/workspace` | read-write | per-agent or per-flow-instance | the agent's working files: drafts, artifacts, intermediate output |
+| `/data` | read-only | global (same for every agent) | shared reference data, populated by deployment; the platform treats it as opaque |
+| `/opt/swarm/contracts` | read-only | global | the loaded flow contracts, so an agent can read its own flow's files |
+
+Read-only mounts are enforced at the filesystem level: an agent cannot write to `/data` or
+`/opt/swarm/contracts`. The runtime never varies these mounts by `conversation_mode`,
+`model_tier`, or anything else; the workspace class is the only thing that changes `/workspace`.
+
+<Note>
+  Runtime-owned host storage, such as the artifact repository (`/var/lib/swarm/artifacts`,
+  `SWARM_ARTIFACT_ROOT`) written by [`artifact_repo_commit`](/build/handlers/actions), is **not**
+  one of these mounts and is never exposed to agents. Agents reach committed artifacts only
+  through opaque `swarm-artifact://` URLs, never a raw host path.
+</Note>
+
+## Isolation: per-agent vs per-flow-instance
+
+The one configurable dimension is the scope of `/workspace`:
+
+- **`per-agent`** gives each agent its own private `/workspace`, invisible to every other agent.
+  Use it when an agent's working files are its own business.
+- **`per-flow-instance`** shares one `/workspace` among all agents in the same flow instance, and
+  isolates it from other instances. Use it when collaborators on the same item need a shared
+  scratch space (one fulfillment instance's agents share files; a different order's instance
+  cannot see them).
+
+The guarantees the runtime enforces: a `per-agent` workspace is never visible to another agent; a
+`per-flow-instance` workspace is visible only to agents in that instance. `/data` and
+`/opt/swarm/contracts` are always global and read-only regardless of class.
+
+## Choosing the scope: workspace_classes
+
+You declare workspace classes in `policy.yaml` and reference one from an agent. Each class sets
+the `/workspace` scope; that is the only thing a class controls.
+
+```yaml policy.yaml
+workspace_classes:
+  private_scratch:
+    description: Each agent gets its own working directory.
+    workspace_scope: per-agent
+  shared_instance:
+    description: Agents on one flow instance share a directory.
+    workspace_scope: per-flow-instance
+```
+
+Every `workspace_class` an agent names must be defined here, or boot fails
+([`workspace_class_exists`](/reference/analyzer-checks)). At boot the platform also checks that
+`/data` is readable, that contracts are loaded, and that each agent's `/workspace` can be created
+at its declared scope; it aborts if any mount cannot be satisfied.
+
+## Lifecycle
+
+`/workspace` lifecycle follows the scope and the agent's conversation mode:
+
+- **per-agent**: created when the agent is registered, cleaned up when the agent terminates.
+  It persists across sessions for `session` and `session_per_entity` modes, and is ephemeral for
+  `task` mode.
+- **per-flow-instance**: created when the instance is created, and preserved when the instance
+  terminates (for post-mortem); archiving it is an operational concern.
+
+## Deployment and configuration
+
+Mount paths are invariant: `/workspace`, `/data`, and `/opt/swarm/contracts` are the same on a
+laptop, in Docker, and in production. Only the backing storage changes.
+
+| Environment | `/data` | `/workspace` | `/opt/swarm/contracts` |
+|---|---|---|---|
+| Local dev | host dir, read-only bind | host dir under a managed root | host dir from the contract loader |
+| Docker | shared volume or bind, read-only | per-scope volumes (per-agent or per-instance) | read-only volume |
+| Production | network storage (NFS, EFS, GCS FUSE), read-only | follows mode: ephemeral for `task`, persistent for session modes | read-only volume from the deploy artifact |
+
+A contract that runs on local dev runs on Docker and production without changes.
+
+### Docker backing (the `cli_test` runtime)
+
+When the runtime spawns containers (the Claude CLI runtime), it creates one per workspace from a
+base image, on a shared network, and reuses it by name. The defaults are overridable:
+
+| Variable | Default | Controls |
+|---|---|---|
+| `SWARM_WORKSPACE_IMAGE` | `swarm-workspace:latest` | the base image for workspace containers |
+| `SWARM_WORKSPACE_NETWORK` | `mas_default` | the Docker network they join |
+| `SWARM_WORKSPACE_DATA_SOURCE` | `<repo>/data` | host source for `/data` |
+| `SWARM_WORKSPACE_DATA_MOUNT` | `/data` | mount point for shared data |
+| `SWARM_WORKSPACE_CONTRACTS_SOURCE` | the loaded contracts dir | host source for contracts |
+| `SWARM_WORKSPACE_CONTRACTS_MOUNT` | `/opt/swarm/contracts` | mount point for contracts |
+| `SWARM_WORKSPACE_VOLUMES_FROM` | (unset) | share another container's mounts instead of binding |
+| `SWARM_ENTITY_WORKDIR` | `/workspace` | the working directory inside the container |
+| `SWARM_DOCKER_BIN` | `docker` | the container CLI to invoke |
+
+<Warning>
+  The base image must actually contain the agent CLI for the `cli_test` runtime to work. If the
+  image is missing, the runtime builds one from `Dockerfile.workspace`, but that build does not
+  install the CLI by default, so agent turns fail with `exit 127 ("claude": not found)` until you
+  build the image with the CLI included. Once an image or a named container exists, it is reused
+  as-is. See [Running the runtime](/operate/running-the-runtime).
+</Warning>
+
+### Container identity
+
+Platform-created containers are labeled so recovery and reset tools identify them by label, not
+by name guessing. The kinds are `scaffold`, `system`, `entity`, `agent`, and `flow`; per-agent
+and per-flow-instance workspaces are named `swarm-agent-<id>` and `swarm-flow-<path>`. Labels
+include `dev.swarm.owner`, `dev.swarm.container.kind`, `dev.swarm.reset.eligible`, and lineage
+(`dev.swarm.run_id`, `dev.swarm.entity_id`, `dev.swarm.agent_id`, `dev.swarm.flow_instance`).
+
+<CardGroup cols={2}>
+  <Card title="Agents and sessions" icon="robot" href="/concepts/agents-and-sessions">
+    Session scoping and conversation modes, the other half of agent isolation.
+  </Card>
+  <Card title="Policy" icon="sliders" href="/build/policy">
+    Where `workspace_classes` and `permission_bundles` are declared.
+  </Card>
+</CardGroup>
