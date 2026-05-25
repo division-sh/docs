@@ -77,9 +77,36 @@ native_tools:
   file_io: true
 ```
 
-The field is the authorization gate; it is not granted through `tools` or permissions.
+The field is the authorization gate, and it is a **separate channel** from both `tools` and
+`permissions`. Permissions govern platform operations (shared state, routing, mailbox); native
+tools govern local execution (host shell, web, filesystem). If `native_tools.bash` is `true`, the
+agent gets `bash`, with no matching permission entry required.
+
+On the shipped Claude CLI runtime these three are **provider-native**: the platform will not
+inject a fallback to satisfy them, so a capability the runtime cannot provide **fails closed**
+rather than being silently downgraded. In particular, setting `policy.web_search_provider` does
+**not** satisfy `native_tools.web_search` on the CLI runtime; the capability still has to be
+provider-native.
+
+## Flow reference data
+
+A flow-scoped agent can read immutable deploy-time files shipped under its flow package's
+`data/` directory by declaring `flow_data_access`:
+
+```yaml
+flow_data_access:
+  - exclusions.yaml
+  - templates/review.md
+```
+
+That generates a `read_flow_data` tool for the agent, restricted to exactly the declared
+filenames. This is static contract data (templates, lookup tables), not entity state, not
+mutable, and not native file I/O; it ships and versions with the contract bundle. The
+authorization is `flow_data_access` itself, so it needs no `permissions` entry and is not granted
+through `tools`. Root or project-scoped agents cannot declare it.
 
 ## Default-deny
 
 An agent can only call a tool that is in its `tools` list, a universal tool, an emit tool, a
-generated entity tool, or an enabled native capability. Anything else is rejected.
+generated entity tool, a `read_flow_data` tool (if it declares `flow_data_access`), or an enabled
+native capability. Anything else is rejected.
