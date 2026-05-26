@@ -1,20 +1,30 @@
 ---
 title: "Introduction"
-description: "Deterministic orchestration for multi-agent LLM systems."
+description: "The operating system for autonomous multi-agent systems: durable state machines, isolation, cost control, and crash recovery."
 icon: "house"
 ---
 
-Swarm is an orchestration runtime for multi-agent LLM systems, built on one decision: the LLM
-does not run the system. Agents reason in small, scoped tasks while a deterministic engine
-owns state, routing, and rules, so an agent can never leave the system in a state it only
-*claimed* to reach. You declare a flow as a bundle of YAML contracts, a static analyzer
-validates it against the platform specification before the runtime boots, and the engine
-executes it. Every interaction (agent to agent, system node to system node, human to runtime)
-is a typed, persisted event, routed by declared subscriptions and replayable from the log.
+Swarm runs fleets of LLM agents as a single, durable, stateful system, built for the conditions
+that break demos: processes crash, costs run away, and a fleet of agents has to coordinate over
+hours or days without stepping on each other. You declare the system as a bundle of YAML contracts,
+a static analyzer validates them against the platform specification before the runtime boots, and a
+deterministic engine runs it. The defining decision is that the LLM does not run the system. Agents
+reason in small, scoped sessions and emit their results as events; deterministic code, never the
+model, decides what each result changes, so an agent can never leave the system in a state it only
+*claimed* to reach.
 
-Less an agent library, more a distributed operating system for LLMs. It assumes failures
-will happen, humans will intervene, and costs must be controlled, and ships the plumbing
-for those realities. It runs as a single Go binary backed by Postgres.
+This is more than an orchestrator that decides which agent runs next. Work is modeled as entities
+(an order, a ticket, a candidate business), each moving through a state machine you declare: named
+states, guarded transitions, and gates that must be cleared before the next step. An entity sits in
+exactly one state at a time, hundreds advance concurrently without touching each other, and any one
+of them can wait in a state for days, on a timer or a human, then resume exactly where it left off.
+Every transition, with its data writes and the events it emits, commits in one all-or-nothing
+transaction, and the whole history can be replayed or forked from the log.
+
+That is the shape of an operating system. An OS doesn't make your programs correct; it makes them
+runnable: it schedules them, keeps them apart, tracks what they use, saves their state, and brings
+them back after a crash. Swarm is that layer for autonomous agents, running as a single Go binary
+backed by Postgres. Deterministic routing is one piece of it; the operating system is the rest.
 
 ## How it works
 
