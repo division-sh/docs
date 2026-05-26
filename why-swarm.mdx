@@ -4,9 +4,11 @@ description: "When deterministic, contract-driven orchestration is the right tra
 icon: "circle-question"
 ---
 
-Swarm makes a few opinionated choices and holds them. Those choices buy reproducibility,
-replay, and audit. They cost YAML and a static-analyzer pass before the runtime starts.
-That tradeoff is right for some workloads and wrong for others.
+Swarm makes a few opinionated choices and holds them. The payoff is not just deterministic
+routing, which is becoming common, but the operating system underneath it: a durable state
+machine for every unit of work, agent isolation, cost control, and crash recovery. That depth
+costs YAML and a static-analyzer pass before the runtime starts. The tradeoff is right for some
+workloads and wrong for others.
 
 ## The problem with LLM-managed orchestration
 
@@ -31,6 +33,19 @@ emits an event with its result, and a system node decides what is written and wh
 advances. Routing is [derived from declared subscriptions](/concepts/events-and-routing), each
 transition commits in [one transaction](/concepts/system-nodes-and-handlers), and every event
 and state change is persisted, so runs are reproducible, auditable, and crash-safe.
+
+## A runtime, not just a router
+
+Declaring agent steps in YAML and dispatching them in a fixed order, with no LLM in the routing
+loop, is the right baseline, and increasingly a standard one. But routing only decides
+who-acts-next. Running a multi-agent system in production is the larger problem, and it is the layer
+Swarm adds: work is a set of entities, each moving through a durable state machine, so the runtime
+always knows where every one of them is and resumes mid-flight after a crash; each agent is isolated
+down to its own workspace, so one cannot reach into another's work; token spend is metered per
+entity and per actor, with automatic throttling before a budget runs away; and humans act through
+the same event pipeline as everything else.
+
+A workflow runner dispatches agents and exits. Swarm is the runtime they would run inside.
 
 ## Strong fit
 
@@ -69,15 +84,16 @@ and state change is persisted, so runs are reproducible, auditable, and crash-sa
 Swarm sits closer to durable-execution engines (Temporal, Restate, Inngest) than to agent
 libraries; it applies that rigor to multi-agent LLM systems.
 
-| Dimension | CrewAI / AutoGen | LangGraph | Swarm |
-|---|---|---|---|
-| Routing | LLM-managed (non-deterministic) | Code-defined state machine | Contract-defined, subscription-derived |
-| Crash recovery | None | Manual checkpointing | Atomic transitions + event replay |
-| Composition | Code refactoring | Python sub-graphs | YAML flow packages with typed pins |
-| Agent isolation | Shared chat | Shared state | Scoped sessions, hierarchical addressing |
-| Scaling | Single process | Single process | Per-entity parallelism, agent sharding, dynamic instances; runs spanning hours to days |
-| Expression language | None | Python | CEL (typed, non-Turing-complete) |
-| Audit trail | Logs | Logs | Event store + per-field mutation log |
+| Dimension | LLM-managed (CrewAI / AutoGen) | Workflow runner | LangGraph | Swarm |
+|---|---|---|---|---|
+| Routing | LLM-managed (non-deterministic) | Declared, deterministic | Code-defined graph | Contract-defined, subscription-derived |
+| Unit of work | A shared conversation | A workflow, run once top to bottom | A graph execution | Entities through a durable state machine |
+| Crash recovery | None | Re-run from the top | Manual checkpointing | Atomic transitions + event replay |
+| Agent isolation | Shared chat | Per-step process | Shared state | Scoped sessions, per-agent workspaces, role authority |
+| Cost control | None | None | None | Per-entity and per-actor budgets, throttle and emergency states |
+| Humans | Out of band | Out of band | Out of band | First-class actor via a durable mailbox |
+| Scaling | Single process | One workflow per run | Single process | Per-entity parallelism, agent sharding, runs spanning days |
+| Audit trail | Logs | Logs | Logs | Event store + per-field mutation log |
 
 ## The tradeoff, stated plainly
 
