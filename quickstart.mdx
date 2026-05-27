@@ -15,12 +15,13 @@ it, boot a runtime, trigger it, and watch the trace.
 
 ## Prerequisites
 
-- The `swarm` binary on your PATH and a clone of the repository (see [Installation](/installation)).
+- The `swarm` binary on your PATH (see [Installation](/installation)).
 - Postgres 16, as a local install or a container (shown below).
 - No LLM credential. This flow has no agents, so the runtime boots without one. (Flows that use
   agents need a credential; see [Installation](/installation).)
 
-Run the commands below from the repository root, so the default platform spec resolves.
+Run the commands below from any directory; the platform spec is embedded in the binary, so no
+repository checkout is needed.
 
 <Steps>
   <Step title="Provide Postgres">
