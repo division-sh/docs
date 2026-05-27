@@ -71,15 +71,15 @@ machines is not in v1; one platform instance runs everything.
 `conversation_mode` controls how the platform manages session context:
 
 - **`task`**: a new session per event, no memory between invocations. The default.
-- **`session`**: a persistent session across events. Requires `session_scope: global` or
-  `flow`.
+- **`session`**: a persistent session across events. Requires `session_scope: flow`.
 - **`session_per_entity`**: one session per (agent, entity) pair. Requires
   `session_scope: entity`. The agent builds context for one entity over multiple turns.
 - **`stateless`**: an alias for `task`.
 
-`session_scope` (`global`, `flow`, or `entity`) has to match the mode, as the bullets above
-show. The platform checks the pairing at boot and never guesses, so a non-`task` agent that
-leaves `session_scope` off will not boot. Two more rules depend on where the agent lives: `flow`
+`session_scope` is `flow` or `entity` for authored agents and has to match the mode, as the
+bullets above show. (`global` exists but is reserved for internal platform sessions; an authored
+agent that declares it will not boot.) The platform checks the pairing at boot and never guesses,
+so a non-`task` agent that leaves `session_scope` off will not boot. Two more rules depend on where the agent lives: `flow`
 scope only works for an agent inside a flow (a root agent cannot use it), and `entity` scope only
 works in a flow that has entities (one with an `initial_state`).
 

@@ -146,6 +146,10 @@ records a **parent route** back to this flow, creates the child's entity at its 
 and starts it. A child can declare `auto_emit_on_create` in its schema to fire its first event
 from that config.
 
+`instance_id_from` must resolve to an id that is unique per instance you intend to create.
+Creating an instance whose id already exists fails closed (the handler errors rather than reusing
+or overwriting the live instance), so derive the id from a stable business key like the order id.
+
 **Addressing an existing instance.** To send an event to a specific instance you already have,
 target it by id; to pick one by an entity field, match on it:
 

@@ -29,9 +29,10 @@ to fulfill `required_agents`.
   `task` (default), `session`, or `session_per_entity`.
 </ParamField>
 <ParamField path="session_scope" type="string">
-  `global`, `flow`, or `entity`. Required for non-`task` modes; must form a valid pair with
-  `conversation_mode`. `entity` and `flow` scope require a flow-scoped (child-flow) agent; a
-  root-level agent can only use `task`.
+  `flow` or `entity` for authored agents. Required for non-`task` modes; must form a valid pair
+  with `conversation_mode` (`session` -> `flow`, `session_per_entity` -> `entity`). `entity` and
+  `flow` scope require a flow-scoped (child-flow) agent; a root-level agent can only use `task`.
+  `global` is reserved for internal platform sessions and is rejected on an authored agent.
 </ParamField>
 <ParamField path="manager_fallback" type="string">
   The escalation and hierarchy parent. Not a messaging grant.

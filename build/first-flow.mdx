@@ -460,8 +460,8 @@ swarm run --contracts ./ticket-flow --event ticket.created --payload ticket.json
 
 <Note>
   This flow has LLM agents, so it advances past `new` only when a runtime that can answer them
-  is configured: a real provider (`SWARM_LLM_RUNTIME_MODE=api` with `ANTHROPIC_API_KEY`) or the
-  Claude CLI runtime (`SWARM_LLM_RUNTIME_MODE=cli_test`). The deterministic system-node steps
+  is configured: a real provider (`SWARM_LLM_BACKEND=api` with `ANTHROPIC_API_KEY`) or the
+  Claude CLI runtime (`SWARM_LLM_BACKEND=cli_test`). The deterministic system-node steps
   run either way; the agent steps wait until a runtime is present.
 </Note>
 

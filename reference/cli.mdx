@@ -69,9 +69,13 @@ running one. It takes `--event <name>` and `--payload <file>`.
 | `swarm agent replay <id> --event-id <id>` | `agent.replay` | Redeliver one event to an agent. |
 | `swarm agent replay-backlog <id>` | `agent.replay_backlog` | Redeliver an agent's pending backlog. |
 | `swarm agent directive <id> "<msg>"` | `agent.send_directive` | Send a directive to a running agent. |
+| `swarm agent diagnose <id>` | `agent.diagnose` | Why an agent is stuck: its pending-delivery queue in detail (`--queue-limit`, `--queue-cursor`). |
 | `swarm conversations list` | `conversation.list` | List conversation summaries. |
 | `swarm conversation view <session-id>` | `conversation.get` | Full session with all turns. |
 | `swarm conversation turn <session-id> <n>` | `conversation.get_turn` | One turn in depth. |
+| `swarm forkchat new <session-id>` | `conversation.fork` | Fork one conversation into a sandbox to iterate on it, optionally at a turn or event with an injected `--message`. |
+| `swarm forkchat resume <fork-id>` | `conversation.fork_chat` | Send a sandboxed message into a forked conversation. |
+| `swarm forkchat list \| view \| delete <fork-id>` | `conversation.fork_*` | List, inspect, or delete forked conversations. |
 
 ## Control and diagnostics
 
@@ -94,7 +98,9 @@ missing token, `5` resource not found, `6` resource state or idempotency conflic
 terminal failed or cancelled, `130` interrupted or detached.
 
 <Note>
-  Run-level fork is not yet a CLI command; the top-level `swarm fork` is not available while a
-  gated run-fork surface is in progress. Use `swarm event replay` and `swarm agent replay`
-  for event-level replay today. See [Fork and replay](/operate/fork-and-replay).
+  Run-level fork (`swarm fork`) is still pending: the command is reserved but returns "not
+  implemented." The planned surface consumes a `run.fork` API to fork a run from an event point
+  (same-bundle first; cross-bundle forking is gated separately). Today you can fork a single agent
+  *conversation* with `swarm forkchat` (above), or use `swarm event replay` and `swarm agent replay`
+  for event-level replay. See [Fork and replay](/operate/fork-and-replay).
 </Note>
