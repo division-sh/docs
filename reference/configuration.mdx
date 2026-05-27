@@ -55,8 +55,9 @@ target a local Postgres, so a stock setup needs no configuration:
 ## Runtime mode and credentials
 
 <ParamField path="SWARM_LLM_RUNTIME_MODE" type="string">
-  The agent runtime: `api` or `cli_test`. The runtime validates its credential at boot, even
-  if the flow you run uses no agents.
+  The agent runtime: `api` or `cli_test`. A flow with no agents boots without a credential. When
+  the bundle declares agents, `cli_test` validates its credential at boot, while `api` checks
+  `ANTHROPIC_API_KEY` at the first agent turn rather than at boot.
 </ParamField>
 
 - **`cli_test`** drives the Claude CLI as a subprocess. Requires `CLAUDE_CODE_OAUTH_TOKEN` and

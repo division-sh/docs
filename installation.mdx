@@ -70,14 +70,16 @@ variables) for anything else. Create the `swarm` database, or set `SWARM_DB_NAME
 
 ## Credentials and runtime mode
 
-Two credentials are needed to run anything beyond `swarm verify`:
+Beyond `swarm verify`, you always need an API token, and an LLM credential once your flow runs
+agents:
 
 - **An API token.** Set `SWARM_API_TOKEN` (any value for local development). Every command
   except `swarm verify` requires it.
-- **An LLM credential**, validated at boot even by flows with no agents.
-  `SWARM_LLM_RUNTIME_MODE` is `cli_test` (drives the Claude CLI; needs `CLAUDE_CODE_OAUTH_TOKEN`
-  plus the tool-gateway variables that `.env` provides) or `api` (the Anthropic API; needs
-  `ANTHROPIC_API_KEY`).
+- **An LLM credential**, needed only when your flow has agents; an agent-free flow boots without
+  one. `SWARM_LLM_RUNTIME_MODE` is `cli_test` (drives the Claude CLI; needs `CLAUDE_CODE_OAUTH_TOKEN`
+  plus the tool-gateway variables that `.env` provides), validated at boot when the bundle declares
+  agents; or `api` (the Anthropic API; needs `ANTHROPIC_API_KEY`), checked at the first agent turn
+  rather than at boot.
 
 Credentials are read from the environment and a local credential store, and are never logged
 or persisted. See [Configuration](/reference/configuration) for the full list.

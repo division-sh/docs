@@ -17,8 +17,8 @@ it, boot a runtime, trigger it, and watch the trace.
 
 - The `swarm` binary on your PATH and a clone of the repository (see [Installation](/installation)).
 - Postgres 16, as a local install or a container (shown below).
-- An LLM credential configured (see [Installation](/installation)). The runtime validates one
-  at boot even though this flow never calls an agent.
+- No LLM credential. This flow has no agents, so the runtime boots without one. (Flows that use
+  agents need a credential; see [Installation](/installation).)
 
 Run the commands below from the repository root, so the default platform spec resolves.
 
@@ -39,7 +39,7 @@ Run the commands below from the repository root, so the default platform spec re
   </Step>
 
   <Step title="Create a minimal flow">
-    Five small files in a `greeting-flow/` directory. A system node creates an entity and
+    Four small files in a `greeting-flow/` directory. A system node creates an entity and
     advances it to a terminal state.
 
     ```yaml greeting-flow/package.yaml
@@ -76,12 +76,8 @@ Run the commands below from the repository root, so the default platform spec re
           advances_to: done
     ```
 
-    ```yaml greeting-flow/agents.yaml
-    {}
-    ```
-
-    The empty `agents.yaml` is required because a flow must declare either agents or child
-    flows. This flow has neither, just one system node.
+    No `agents.yaml`: this flow has no agents, just one system node, and the runtime accepts a
+    bundle that omits it.
   </Step>
 
   <Step title="Verify the contracts">

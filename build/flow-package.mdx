@@ -28,7 +28,7 @@ my-flow/
   types.yaml        # shared named types, enums, lists (optional)
   nodes.yaml        # system nodes and their handlers
   events.yaml       # event payload schemas
-  agents.yaml       # agent definitions
+  agents.yaml       # agent definitions (optional)
   tools.yaml        # tool definitions (optional)
   policy.yaml       # configuration values (optional)
   prompts/          # agent behavioral instructions (one .md per agent)
@@ -54,8 +54,8 @@ my-flow/
 ## Minimum package
 
 Only `package.yaml` and `schema.yaml` are strictly required. The rest follow the work: no
-agents means no `prompts/`, no handlers means no `nodes.yaml`, no events means no
-`events.yaml`. A flow must also have either an `agents.yaml` or at least one child flow.
+agents means no `agents.yaml` or `prompts/`, no handlers means no `nodes.yaml`, no events means
+no `events.yaml`. A flow with only system nodes and no agents is valid.
 
 <Card title="Build your first flow" icon="rocket" href="/build/first-flow">
   A complete support-ticket flow, file by file.
