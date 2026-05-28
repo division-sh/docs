@@ -63,9 +63,7 @@ to fulfill `required_agents`.
 ## Example
 
 ```yaml agents.yaml
-validator-agent:
-  id: validator-agent
-  role: validator-agent
+validator-agent:                       # map key serves as both id and role
   model_tier: haiku
   subscriptions: [order.created]
   emit_events: [order.validated]

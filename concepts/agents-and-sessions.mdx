@@ -14,9 +14,7 @@ Agents never write entity state directly. They emit events; a system node handle
 what gets written. This keeps state authority deterministic.
 
 ```yaml agents.yaml
-resolver-agent:
-  id: resolver-agent
-  role: resolver-agent
+resolver-agent:                                # map key = id and role (the default)
   model_tier: sonnet
   subscriptions: [ticket.assigned]
   emit_events: [ticket.resolved]

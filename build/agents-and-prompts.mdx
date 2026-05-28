@@ -18,13 +18,13 @@ flowchart LR
 
 ## The agent contract
 
-An agent is declared as a map entry in `agents.yaml`. The key is the agent id and the role
-name it fulfills.
+An agent is declared as a map entry in `agents.yaml`. The key is the agent's id (its address)
+and, by default, the role name it fulfills (used to resolve `prompts/<role>.md` and to match
+`required_agents` in `schema.yaml`), so you usually do not write `id:` or `role:` inside the
+entry.
 
 ```yaml
-resolver-agent:
-  id: resolver-agent
-  role: resolver-agent
+resolver-agent:                       # map key = agent id = role (the default)
   model_tier: sonnet
   permissions_bundle: worker
   manager_fallback: support-coordinator
@@ -50,6 +50,7 @@ resolver-agent:
 | `entity_writes` | Which entity fields the agent's generated `save_*`/`update_*` tools may write. |
 | `max_turns_per_task` | Turn budget before the session is terminated. |
 | `type` | Optional classification label (defaults to `generic`); used to tag agents, for example by division. Does not change tool or permission gating. |
+| `role` | Optional override; defaults to the map key. Set it when the prompt file is named differently from the id, so the runtime loads `prompts/<role>.md` instead of `prompts/<map-key>.md`. |
 
 `conversation_mode` and `session_scope` must form a valid pair (for example,
 `session_per_entity` requires `session_scope: entity`); invalid combinations fail at boot.

@@ -297,9 +297,7 @@ Create them one at a time.
     emit; system nodes decide what to persist.
 
     ```yaml agents.yaml
-    classifier-agent:
-      id: classifier-agent
-      role: classifier-agent          # matches the role in schema.yaml
+    classifier-agent:                 # map key matches the role in schema.yaml
       model_tier: haiku               # a small, fast model is enough to classify
       subscriptions: [ticket.created] # the events it receives
       emit_events: [ticket.classified]  # the events it may emit
@@ -307,8 +305,6 @@ Create them one at a time.
       max_turns_per_task: 3
 
     resolver-agent:
-      id: resolver-agent
-      role: resolver-agent
       model_tier: sonnet              # a stronger model to draft resolutions
       subscriptions: [ticket.assigned]
       emit_events: [ticket.resolved, ticket.escalated]
