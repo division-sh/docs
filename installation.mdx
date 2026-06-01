@@ -32,13 +32,17 @@ docker run -d --name swarm-postgres \
 swarm serve --store postgres --contracts ./my-flow
 ```
 
-`swarm serve` is the long-running runtime, the API, health, and MCP startup owner, reachable
-at **`http://127.0.0.1:8081`** by default. (The [Quickstart](/quickstart)'s `swarm run` is the
-one-shot, in-process alternative; `serve` is what you operate.) On a numeric loopback bind it
-uses a built-in dev API token (bearer auth still enabled); exposing the API beyond loopback
-requires an explicit `SWARM_API_TOKEN`. An LLM credential is needed only when the flow runs
-agents (see below). CLI commands target that same address; point them elsewhere with
-`--api-server`. See [Configuration](/reference/configuration).
+`swarm serve` is the long-running runtime, the API, health, and MCP startup owner. By default
+it binds **`http://127.0.0.1:8081`**. (The [Quickstart](/quickstart)'s `swarm run` is the
+one-shot, in-process alternative; `serve` is what you operate.)
+
+- **API token.** On a numeric-loopback bind, `swarm serve` uses a built-in dev token (bearer
+  auth still enabled). Exposing the API beyond loopback requires an explicit `SWARM_API_TOKEN`.
+- **LLM credential.** Needed only when the flow runs agents (see below).
+- **CLI target.** Every other `swarm` command targets the same address; point them elsewhere
+  with `--api-server`.
+
+See [Configuration](/reference/configuration) for the full list of flags and environment variables.
 
 ## Runtime store
 
