@@ -66,14 +66,11 @@ agents:
 - **An API token.** A numeric-loopback `swarm serve`/`swarm run` uses a built-in dev token (with
   bearer auth still enabled); any non-loopback bind requires an explicit `SWARM_API_TOKEN`. Every
   command except `swarm verify` authenticates against this.
-- **An LLM credential**, needed only when your flow has agents; an agent-free flow boots without
+- **An LLM credential.** Needed only when your flow has agents; an agent-free flow boots without
   one. Select a backend with the `--backend` flag on `swarm serve`/`swarm run` (or `llm.backend`
-  in `config.yaml`); env vars never select the backend. The default is `anthropic`. Options:
-  `anthropic` (the Anthropic API; needs `ANTHROPIC_API_KEY`, checked at the first agent turn);
-  `claude_cli` (drives the Claude CLI; needs `CLAUDE_CODE_OAUTH_TOKEN` plus the tool-gateway
-  variables that `.env` provides, validated at boot); or `openai_compatible` (any Chat Completions
-  endpoint; needs `OPENAI_COMPATIBLE_API_KEY`, a base URL, and a default model). The legacy ids
-  `api` and `cli_test` remain as back-compat aliases.
+  in `config.yaml`); env vars never select the backend. The default is `anthropic`; the alternatives
+  are `claude_cli` and `openai_compatible`. See [LLM backend and credentials](/reference/configuration#llm-backend-and-credentials)
+  for each backend's required credential and tuning.
 
 Credentials are read from the environment and a local credential store, and are never logged
 or persisted. See [Configuration](/reference/configuration) for the full list.

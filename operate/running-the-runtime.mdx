@@ -76,11 +76,16 @@ method).
 ## Pausing ingress
 
 `swarm control pause --all` pauses runtime ingress (the `runtime.pause` method); `swarm control
-continue --all` resumes it. While paused, new events are still accepted and saved, but they wait
-in the queue and are delivered once when you resume. Work already mid-flight finishes its current
-step, and read-only operator methods keep working, but live tool and MCP calls are refused until
-you resume. Pausing emits `platform.paused`; resuming emits `platform.resumed`. Use it for
-maintenance windows.
+continue --all` resumes it. Use it for maintenance windows.
+
+While paused:
+
+- **New events** are still accepted and saved; they wait in the queue and are delivered once
+  when you resume.
+- **In-flight work** finishes its current step and stops there.
+- **Read-only operator methods** keep working; **live tool and MCP calls** are refused until
+  you resume.
+- **Lifecycle signals:** pausing emits `platform.paused`, resuming emits `platform.resumed`.
 
 Note what `--all` does and does not do. `pause --all` gates *new* ingress; it does not reach into
 each running run and freeze it in place. To act on one run, name it: `swarm control pause

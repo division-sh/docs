@@ -117,10 +117,14 @@ base image, on a shared network, and reuses it by name. The defaults are overrid
 ### Container identity
 
 Platform-created containers are labeled so recovery and reset tools identify them by label, not
-by name guessing. The kinds are `scaffold`, `system`, `entity`, `agent`, and `flow`; per-agent
-and per-flow-instance workspaces are named `swarm-agent-<id>` and `swarm-flow-<path>`. Labels
-include `dev.swarm.owner`, `dev.swarm.container.kind`, `dev.swarm.reset.eligible`, and lineage
-(`dev.swarm.run_id`, `dev.swarm.entity_id`, `dev.swarm.agent_id`, `dev.swarm.flow_instance`).
+by name guessing.
+
+- **Kinds:** `scaffold`, `system`, `entity`, `agent`, `flow`.
+- **Names:** per-agent workspaces are `swarm-agent-<id>`; per-flow-instance workspaces are
+  `swarm-flow-<path>`.
+- **Labels:** `dev.swarm.owner`, `dev.swarm.container.kind`, `dev.swarm.reset.eligible`, plus
+  lineage (`dev.swarm.run_id`, `dev.swarm.entity_id`, `dev.swarm.agent_id`,
+  `dev.swarm.flow_instance`).
 
 <CardGroup cols={2}>
   <Card title="Agents and sessions" icon="robot" href="/concepts/agents-and-sessions">
