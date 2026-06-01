@@ -23,8 +23,9 @@ transaction, and the whole history can be replayed or forked from the log.
 
 That is the shape of an operating system. An OS doesn't make your programs correct; it makes them
 runnable: it schedules them, keeps them apart, tracks what they use, saves their state, and brings
-them back after a crash. Swarm is that layer for autonomous agents, running as a single Go binary
-backed by Postgres. Deterministic routing is one piece of it; the operating system is the rest.
+them back after a crash. Swarm is that layer for autonomous agents, running as a single Go binary,
+with SQLite by default for local and development runs and Postgres as the opt-in backend for
+production. Deterministic routing is one piece of it; the operating system is the rest.
 
 ## How it works
 

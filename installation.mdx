@@ -4,13 +4,16 @@ description: "Run Swarm with Docker Compose or build the binary from source."
 icon: "download"
 ---
 
-Swarm runs as a single Go binary backed by Postgres. Build the binary and run it against a
-Postgres container, or use Docker Compose for a fully containerized runtime.
+Swarm runs as a single Go binary. Local and development runs use file-backed SQLite by default,
+so no database service is required to start; Postgres is the opt-in backend for external and
+production deployments. Build the binary and run a flow directly, or use Docker Compose for a
+fully containerized runtime.
 
 ## Requirements
 
-- **Docker Compose path:** Docker and Docker Compose.
-- **From-source path:** Go 1.23, Postgres 16.
+- **From-source path:** Go 1.23. Docker is needed only for the workspace image used by the
+  `claude_cli` backend; SQLite is the default store and needs no service.
+- **Docker Compose path:** Docker and Docker Compose, plus Postgres if you opt into it.
 
 ## Install paths
 
@@ -29,59 +32,70 @@ Postgres container, or use Docker Compose for a fully containerized runtime.
       `:8081`; Compose overrides the port. It serves health, readiness, and the
       `/v1/rpc` + `/v1/ws` API on that one listener.
     - `SWARM_CONTRACTS_HOST_DIR` is mounted read-only at `/opt/swarm/contracts`.
-    - The Compose orchestrator runs the `cli_test` backend (drives the Claude CLI, needs
-      `CLAUDE_CODE_OAUTH_TOKEN`). Outside Compose, select a backend with `SWARM_LLM_BACKEND`
-      (`api`, `cli_test`, or `openai_compatible`); the retired `SWARM_LLM_RUNTIME_MODE` is rejected.
+    - The Compose orchestrator runs the `claude_cli` backend (drives the Claude CLI, needs
+      `CLAUDE_CODE_OAUTH_TOKEN`). Outside Compose, select a backend with the `--backend` flag on
+      `swarm serve` or `swarm run`; the default is `anthropic`, other options are `claude_cli` and
+      `openai_compatible`. The env vars `SWARM_LLM_BACKEND` and `SWARM_LLM_RUNTIME_MODE` are
+      retired and rejected at boot.
   </Tab>
   <Tab title="Build from source">
     ```bash
     go build ./cmd/swarm
+    swarm serve --contracts ./my-flow
     ```
 
-    Start Postgres (any 16; a container matching the repo's `.env` works), then start the
-    runtime:
+    `swarm serve` uses SQLite at `.swarm/dev.db` by default, so no database service is required
+    for local development. To opt into Postgres, add `--store postgres` and point the runtime at a
+    Postgres 16 it can reach:
 
     ```bash
     docker run -d --name swarm-postgres \
       -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=swarm \
       -p 5432:5432 postgres:16
 
-    swarm serve --contracts ./my-flow
+    swarm serve --store postgres --contracts ./my-flow
     ```
 
     `swarm serve` is the long-running runtime, the API, health, and MCP startup owner, reachable
     at **`http://127.0.0.1:8081`** by default. (The [Quickstart](/quickstart)'s `swarm run` is the
-    one-shot, in-process alternative; `serve` is what you operate.) It needs Postgres, an API
-    token (`SWARM_API_TOKEN`), and an LLM credential (see below). CLI commands target that same
-    address; point them elsewhere with `--api-server`. See
-    [Configuration](/reference/configuration).
+    one-shot, in-process alternative; `serve` is what you operate.) On a numeric loopback bind it
+    uses a built-in dev API token (bearer auth still enabled); exposing the API beyond loopback
+    requires an explicit `SWARM_API_TOKEN`. An LLM credential is needed only when the flow runs
+    agents (see below). CLI commands target that same address; point them elsewhere with
+    `--api-server`. See [Configuration](/reference/configuration).
   </Tab>
 </Tabs>
 
-## Postgres
+## Runtime store
 
-Postgres is the substrate, not an add-on. Every event lands in the event store, every entity
-state change lands in a separate mutation log, and runs are correlated by `run_id`, which is
-what makes replay and fork possible.
+Events, entity state, gates, timers, and sessions all live in a relational database. **SQLite is
+the default for local and development runs** (file-backed at `.swarm/dev.db`, no service needed);
+Postgres is the opt-in backend for external and production deployments. Persistence is the
+substrate, not an add-on: every event lands in the store, every entity state change lands in a
+separate mutation log, and runs are correlated by `run_id`, which is what makes replay and fork
+possible.
 
-Any Postgres 16 works: a local install, a managed service, or a container. Docker is not
-required. The binary defaults to a local Postgres (`127.0.0.1:5432`, database `swarm`, user
-and password `postgres`) and reads `SWARM_DB_*` (falling back to the standard `PG*`
-variables) for anything else. Create the `swarm` database, or set `SWARM_DB_NAME`.
+Select the backend with `--store sqlite` or `--store postgres` (or `SWARM_STORE_BACKEND` /
+`store.backend`). With Postgres, the binary defaults to a local instance (`127.0.0.1:5432`,
+database `swarm`, user and password `postgres`) and reads `SWARM_DB_*` (falling back to the
+standard `PG*` variables) for anything else.
 
-## Credentials and runtime mode
+## Credentials and backend selection
 
 Beyond `swarm verify`, you always need an API token, and an LLM credential once your flow runs
 agents:
 
-- **An API token.** Set `SWARM_API_TOKEN` (any value for local development). Every command
-  except `swarm verify` requires it.
+- **An API token.** A numeric-loopback `swarm serve`/`swarm run` uses a built-in dev token (with
+  bearer auth still enabled); any non-loopback bind requires an explicit `SWARM_API_TOKEN`. Every
+  command except `swarm verify` authenticates against this.
 - **An LLM credential**, needed only when your flow has agents; an agent-free flow boots without
-  one. Select a backend with `SWARM_LLM_BACKEND`: `cli_test` (drives the Claude CLI; needs
-  `CLAUDE_CODE_OAUTH_TOKEN` plus the tool-gateway variables that `.env` provides), validated at boot
-  when the bundle declares agents; `api` (the Anthropic API; needs `ANTHROPIC_API_KEY`), checked at
-  the first agent turn; or `openai_compatible` (any Chat Completions endpoint; needs
-  `OPENAI_COMPATIBLE_API_KEY`, a base URL, and a default model).
+  one. Select a backend with the `--backend` flag on `swarm serve`/`swarm run` (or `llm.backend`
+  in `config.yaml`); env vars never select the backend. The default is `anthropic`. Options:
+  `anthropic` (the Anthropic API; needs `ANTHROPIC_API_KEY`, checked at the first agent turn);
+  `claude_cli` (drives the Claude CLI; needs `CLAUDE_CODE_OAUTH_TOKEN` plus the tool-gateway
+  variables that `.env` provides, validated at boot); or `openai_compatible` (any Chat Completions
+  endpoint; needs `OPENAI_COMPATIBLE_API_KEY`, a base URL, and a default model). The legacy ids
+  `api` and `cli_test` remain as back-compat aliases.
 
 Credentials are read from the environment and a local credential store, and are never logged
 or persisted. See [Configuration](/reference/configuration) for the full list.

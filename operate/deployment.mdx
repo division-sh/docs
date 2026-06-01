@@ -6,18 +6,19 @@ icon: "server"
 
 ## Topology
 
-Swarm runs as a single Go binary backed by Postgres. The bundled Compose file adds an
-orchestrator service and a Postgres service; dynamic per-entity and privileged workspaces are
-created as containers by runtime policy. Today the scope is a single deployment: distributed
-execution and multi-tenant isolation are not yet in scope.
+Swarm runs as a single Go binary. Local and development runs use SQLite by default; production
+uses Postgres (opt-in via `--store postgres`). The bundled Compose file adds an orchestrator
+service and a Postgres service; dynamic per-entity and privileged workspaces are created as
+containers by runtime policy. Today the scope is a single deployment: distributed execution and
+multi-tenant isolation are not yet in scope.
 
 ## Postgres in production
 
-Postgres is the substrate. Every event lands in the event store, every entity field change
-lands in the mutation log, and runs correlate it all by `run_id`. Because the mutation log is
-a complete record, entity state is a rebuildable projection: disaster recovery is rebuilding
-from the log. Size Postgres for your event and mutation volume, and back it up like the system
-of record it is.
+In production, Postgres is the substrate. Every event lands in the event store, every entity
+field change lands in the mutation log, and runs correlate it all by `run_id`. Because the
+mutation log is a complete record, entity state is a rebuildable projection: disaster recovery is
+rebuilding from the log. Size Postgres for your event and mutation volume, and back it up like
+the system of record it is.
 
 ## Configuration
 

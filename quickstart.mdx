@@ -16,7 +16,8 @@ it, boot a runtime, trigger it, and watch the trace.
 ## Prerequisites
 
 - The `swarm` binary on your PATH (see [Installation](/installation)).
-- Postgres 16, as a local install or a container (shown below).
+- No database service. The runtime uses SQLite at `.swarm/dev.db` by default; Postgres is the
+  opt-in backend (`--store postgres`).
 - No LLM credential. This flow has no agents, so the runtime boots without one. (Flows that use
   agents need a credential; see [Installation](/installation).)
 
@@ -24,21 +25,6 @@ Run the commands below from any directory; the platform spec is embedded in the 
 repository checkout is needed.
 
 <Steps>
-  <Step title="Provide Postgres">
-    Any Postgres 16 works: a local install, a managed service, or a container. The binary
-    connects to `127.0.0.1:5432` (database `swarm`, user `postgres`) by default and honors the
-    standard `SWARM_DB_*` and `PG*` variables for anything else.
-
-    For a local install, create the database (`createdb swarm`). Or run a throwaway container
-    that matches the defaults:
-
-    ```bash
-    docker run -d --name swarm-postgres \
-      -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=swarm \
-      -p 5432:5432 postgres:16
-    ```
-  </Step>
-
   <Step title="Create a minimal flow">
     Four small files in a `greeting-flow/` directory. A system node creates an entity and
     advances it to a terminal state.
@@ -111,7 +97,7 @@ repository checkout is needed.
 ## What just happened
 
 1. `swarm verify` checked the bundle against the platform specification.
-2. `swarm run` started a runtime backed by Postgres and published your event.
+2. `swarm run` started a runtime (using SQLite at `.swarm/dev.db` by default) and published your event.
 3. The `greeter` node handled `greeting.requested` in one transaction: it created an entity
    and advanced it to `done`.
 4. Every step was persisted, which is why the trace could stream it and a crash could replay
