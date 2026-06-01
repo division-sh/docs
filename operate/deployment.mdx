@@ -7,10 +7,9 @@ icon: "server"
 ## Topology
 
 Swarm runs as a single Go binary. Local and development runs use SQLite by default; production
-uses Postgres (opt-in via `--store postgres`). The bundled Compose file adds an orchestrator
-service and a Postgres service; dynamic per-entity and privileged workspaces are created as
-containers by runtime policy. Today the scope is a single deployment: distributed execution and
-multi-tenant isolation are not yet in scope.
+uses Postgres (opt-in via `--store postgres`). Dynamic per-entity and privileged workspaces are
+created as containers by runtime policy. Today the scope is a single deployment: distributed
+execution and multi-tenant isolation are not yet in scope.
 
 ## Postgres in production
 
@@ -23,8 +22,7 @@ the system of record it is.
 ## Configuration
 
 Connection, credentials, runtime mode, and ports are set through environment variables; see
-[Configuration](/reference/configuration). The standalone binary serves on `127.0.0.1:8081`;
-the bundled Compose binds `:8070`.
+[Configuration](/reference/configuration). The binary serves on `127.0.0.1:8081`.
 
 ## Runtime storage
 

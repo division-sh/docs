@@ -1,70 +1,44 @@
 ---
 title: "Installation"
-description: "Run Swarm with Docker Compose or build the binary from source."
+description: "Build the Swarm binary and run a flow."
 icon: "download"
 ---
 
 Swarm runs as a single Go binary. Local and development runs use file-backed SQLite by default,
 so no database service is required to start; Postgres is the opt-in backend for external and
-production deployments. Build the binary and run a flow directly, or use Docker Compose for a
-fully containerized runtime.
+production deployments.
 
 ## Requirements
 
-- **From-source path:** Go 1.23. Docker is needed only for the workspace image used by the
-  `claude_cli` backend; SQLite is the default store and needs no service.
-- **Docker Compose path:** Docker and Docker Compose, plus Postgres if you opt into it.
+Go 1.23. Docker is needed only for the workspace image used by the `claude_cli` backend; SQLite
+is the default store and needs no service.
 
-## Install paths
+## Build and run
 
-<Tabs>
-  <Tab title="Build from source">
-    ```bash
-    go build ./cmd/swarm
-    swarm serve --contracts ./my-flow
-    ```
+```bash
+go build ./cmd/swarm
+swarm serve --contracts ./my-flow
+```
 
-    `swarm serve` uses SQLite at `.swarm/dev.db` by default, so no database service is required
-    for local development. To opt into Postgres, add `--store postgres` and point the runtime at a
-    Postgres 16 it can reach:
+`swarm serve` uses SQLite at `.swarm/dev.db` by default, so no database service is required for
+local development. To opt into Postgres, add `--store postgres` and point the runtime at a
+Postgres 16 it can reach:
 
-    ```bash
-    docker run -d --name swarm-postgres \
-      -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=swarm \
-      -p 5432:5432 postgres:16
+```bash
+docker run -d --name swarm-postgres \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=swarm \
+  -p 5432:5432 postgres:16
 
-    swarm serve --store postgres --contracts ./my-flow
-    ```
+swarm serve --store postgres --contracts ./my-flow
+```
 
-    `swarm serve` is the long-running runtime, the API, health, and MCP startup owner, reachable
-    at **`http://127.0.0.1:8081`** by default. (The [Quickstart](/quickstart)'s `swarm run` is the
-    one-shot, in-process alternative; `serve` is what you operate.) On a numeric loopback bind it
-    uses a built-in dev API token (bearer auth still enabled); exposing the API beyond loopback
-    requires an explicit `SWARM_API_TOKEN`. An LLM credential is needed only when the flow runs
-    agents (see below). CLI commands target that same address; point them elsewhere with
-    `--api-server`. See [Configuration](/reference/configuration).
-  </Tab>
-  <Tab title="Docker Compose">
-    The repository ships a `docker-compose.yml` with a `postgres` service and an
-    `orchestrator` service.
-
-    ```bash
-    git clone https://github.com/division-sh/swarm && cd swarm
-    export SWARM_CONTRACTS_HOST_DIR=/absolute/path/to/your/contracts
-    docker compose up -d postgres orchestrator
-    ```
-
-    - The orchestrator binds its HTTP listener to **`:8070`** here. The runtime's default is
-      `:8081`; Compose overrides the port. It serves health, readiness, and the
-      `/v1/rpc` + `/v1/ws` API on that one listener.
-    - `SWARM_CONTRACTS_HOST_DIR` is mounted read-only at `/opt/swarm/contracts`.
-    - The Compose orchestrator runs the `claude_cli` backend (drives the Claude CLI, needs
-      `CLAUDE_CODE_OAUTH_TOKEN`). Outside Compose, select a backend with the `--backend` flag on
-      `swarm serve` or `swarm run`; the default is `anthropic`, other options are `claude_cli` and
-      `openai_compatible`. The env vars `SWARM_LLM_BACKEND` and `SWARM_LLM_RUNTIME_MODE` are
-      retired and rejected at boot.
-  </Tab>
-</Tabs>
+`swarm serve` is the long-running runtime, the API, health, and MCP startup owner, reachable
+at **`http://127.0.0.1:8081`** by default. (The [Quickstart](/quickstart)'s `swarm run` is the
+one-shot, in-process alternative; `serve` is what you operate.) On a numeric loopback bind it
+uses a built-in dev API token (bearer auth still enabled); exposing the API beyond loopback
+requires an explicit `SWARM_API_TOKEN`. An LLM credential is needed only when the flow runs
+agents (see below). CLI commands target that same address; point them elsewhere with
+`--api-server`. See [Configuration](/reference/configuration).
 
 ## Runtime store
 

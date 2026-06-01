@@ -11,9 +11,7 @@ targets the runtime's API and needs a bearer token.
 ## Connecting to the runtime
 
 The runtime exposes one HTTP listener serving health, readiness, `/v1/rpc`, `/v1/ws`, and the
-MCP routes. Its default address is **`http://127.0.0.1:8081`**. The bundled Docker Compose
-binds that same listener to **`:8070`** instead; aside from the port, the two are the same
-surface.
+MCP routes. Its default address is **`http://127.0.0.1:8081`**.
 
 CLI commands resolve connection settings in this order: flag, then environment, then config
 file, then built-in default.
