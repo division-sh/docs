@@ -243,6 +243,10 @@
   "navbar": {
     "links": [
       {
+        "label": "Discussions",
+        "href": "https://github.com/division-sh/swarm/discussions"
+      },
+      {
         "label": "GitHub",
         "href": "https://github.com/division-sh/swarm"
       }
