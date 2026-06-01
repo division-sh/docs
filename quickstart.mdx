@@ -16,13 +16,12 @@ it, boot a runtime, trigger it, and watch the trace.
 ## Prerequisites
 
 - The `swarm` binary on your PATH (see [Installation](/installation)).
-- No database service. The runtime uses SQLite at `.swarm/dev.db` by default; Postgres is the
-  opt-in backend (`--store postgres`).
-- No LLM credential. This flow has no agents, so the runtime boots without one. (Flows that use
-  agents need a credential; see [Installation](/installation).)
 
-Run the commands below from any directory; the platform spec is embedded in the binary, so no
-repository checkout is needed.
+That's it. This Quickstart needs **no database** (SQLite at `.swarm/dev.db` is the default;
+opt into Postgres later with `--store postgres`), **no LLM credential** (the flow has no
+agents), **no repository checkout** (the platform spec is embedded in the binary), and **no
+API token** (the local runtime uses a built-in dev token on loopback). Run the commands below
+from any directory.
 
 <Steps>
   <Step title="Create a minimal flow">
@@ -76,17 +75,18 @@ repository checkout is needed.
   </Step>
 
   <Step title="Run it">
-    Set an API token, write a payload for the trigger event, then run the flow. `swarm run`
-    boots a runtime in process, publishes `greeting.requested`, and streams the run's trace. It
-    is the one-shot way to run a flow; for a long-running server you operate, use `swarm serve`
+    Write a payload for the trigger event, then run the flow. `swarm run` boots a runtime in
+    process on loopback, publishes `greeting.requested`, and streams the run's trace. It is the
+    one-shot way to run a flow; for a long-running server you operate, use `swarm serve`
     (see [Running the runtime](/operate/running-the-runtime)).
 
     ```bash
-    export SWARM_API_TOKEN=dev-token        # any value; the local runtime and CLI share it
-
     echo '{"message": "hello"}' > payload.json
     swarm run --contracts ./greeting-flow --event greeting.requested --payload payload.json
     ```
+
+    The runtime logs `using built-in dev API token on loopback` on startup; only non-loopback
+    binds need an explicit `SWARM_API_TOKEN`.
 
     The trace shows `greeting.requested` arriving, the `greeter` node creating an entity, and
     the entity advancing to `done` (a terminal state). Press Ctrl-C to stop the local runtime
