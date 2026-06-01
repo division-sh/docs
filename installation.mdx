@@ -18,26 +18,6 @@ fully containerized runtime.
 ## Install paths
 
 <Tabs>
-  <Tab title="Docker Compose">
-    The repository ships a `docker-compose.yml` with a `postgres` service and an
-    `orchestrator` service.
-
-    ```bash
-    git clone https://github.com/division-sh/swarm && cd swarm
-    export SWARM_CONTRACTS_HOST_DIR=/absolute/path/to/your/contracts
-    docker compose up -d postgres orchestrator
-    ```
-
-    - The orchestrator binds its HTTP listener to **`:8070`** here. The runtime's default is
-      `:8081`; Compose overrides the port. It serves health, readiness, and the
-      `/v1/rpc` + `/v1/ws` API on that one listener.
-    - `SWARM_CONTRACTS_HOST_DIR` is mounted read-only at `/opt/swarm/contracts`.
-    - The Compose orchestrator runs the `claude_cli` backend (drives the Claude CLI, needs
-      `CLAUDE_CODE_OAUTH_TOKEN`). Outside Compose, select a backend with the `--backend` flag on
-      `swarm serve` or `swarm run`; the default is `anthropic`, other options are `claude_cli` and
-      `openai_compatible`. The env vars `SWARM_LLM_BACKEND` and `SWARM_LLM_RUNTIME_MODE` are
-      retired and rejected at boot.
-  </Tab>
   <Tab title="Build from source">
     ```bash
     go build ./cmd/swarm
@@ -63,6 +43,26 @@ fully containerized runtime.
     requires an explicit `SWARM_API_TOKEN`. An LLM credential is needed only when the flow runs
     agents (see below). CLI commands target that same address; point them elsewhere with
     `--api-server`. See [Configuration](/reference/configuration).
+  </Tab>
+  <Tab title="Docker Compose">
+    The repository ships a `docker-compose.yml` with a `postgres` service and an
+    `orchestrator` service.
+
+    ```bash
+    git clone https://github.com/division-sh/swarm && cd swarm
+    export SWARM_CONTRACTS_HOST_DIR=/absolute/path/to/your/contracts
+    docker compose up -d postgres orchestrator
+    ```
+
+    - The orchestrator binds its HTTP listener to **`:8070`** here. The runtime's default is
+      `:8081`; Compose overrides the port. It serves health, readiness, and the
+      `/v1/rpc` + `/v1/ws` API on that one listener.
+    - `SWARM_CONTRACTS_HOST_DIR` is mounted read-only at `/opt/swarm/contracts`.
+    - The Compose orchestrator runs the `claude_cli` backend (drives the Claude CLI, needs
+      `CLAUDE_CODE_OAUTH_TOKEN`). Outside Compose, select a backend with the `--backend` flag on
+      `swarm serve` or `swarm run`; the default is `anthropic`, other options are `claude_cli` and
+      `openai_compatible`. The env vars `SWARM_LLM_BACKEND` and `SWARM_LLM_RUNTIME_MODE` are
+      retired and rejected at boot.
   </Tab>
 </Tabs>
 

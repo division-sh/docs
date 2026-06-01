@@ -41,6 +41,24 @@ The optional CLI config file at `$XDG_CONFIG_HOME/swarm/config.yaml` accepts `ap
 
 Either way, a bearer token is required.
 
+### Local startup flags
+
+These flags configure a runtime that `swarm serve` or `swarm run` boots in-process. They have no
+effect when attaching to a running runtime with `--connect`.
+
+<ParamField path="--config <path>" type="string">
+  Path to a Swarm runtime config (`config.yaml`). Resolution order: explicit `--config` first,
+  then a `config.yaml` next to the running binary, then built-in defaults.
+</ParamField>
+<ParamField path="--data <path>" type="string">
+  Path to the agent-visible read-only `/data` reference directory. Resolution order:
+  `--data` > `workspace.data_source` in `config.yaml` > `SWARM_WORKSPACE_DATA_SOURCE` > no path.
+  The runtime no longer treats a repo-local `data/` directory as an implicit source.
+</ParamField>
+
+`--store` and `--backend` are documented under [Runtime store](#runtime-store) and
+[LLM backend and credentials](#llm-backend-and-credentials).
+
 ## Runtime store
 
 The runtime stores events, entity state, gates, timers, and sessions in a relational database.

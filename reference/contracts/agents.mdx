@@ -15,8 +15,9 @@ to fulfill `required_agents`.
 <ParamField path="role" type="string" required>
   The role this agent fulfills; matches the map key.
 </ParamField>
-<ParamField path="model_tier" type="string">
-  Which model the agent runs on, for example `haiku` or `sonnet`.
+<ParamField path="model" type="string">
+  Provider-agnostic model alias: `cheap`, `regular`, or `frontier` (resolved to a concrete model
+  per backend by `llm.models`). The older `model_tier` field is retired and rejected at boot.
 </ParamField>
 <ParamField path="subscriptions" type="list">
   The events the agent receives. May be empty for coordinator roles.
@@ -64,7 +65,7 @@ to fulfill `required_agents`.
 
 ```yaml agents.yaml
 validator-agent:                       # map key serves as both id and role
-  model_tier: haiku
+  model: cheap
   subscriptions: [order.created]
   emit_events: [order.validated]
   conversation_mode: task

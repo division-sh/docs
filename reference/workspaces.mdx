@@ -22,7 +22,7 @@ they only configure the scope of `/workspace` (below).
 
 Read-only mounts are enforced at the filesystem level: an agent cannot write to `/data` or
 `/opt/swarm/contracts`. The runtime never varies these mounts by `conversation_mode`,
-`model_tier`, or anything else; the workspace class is the only thing that changes `/workspace`.
+`model`, or anything else; the workspace class is the only thing that changes `/workspace`.
 
 <Note>
   Runtime-owned host storage, such as the artifact repository (`/var/lib/swarm/artifacts`,

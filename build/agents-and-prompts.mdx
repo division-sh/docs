@@ -25,7 +25,7 @@ entry.
 
 ```yaml
 resolver-agent:                       # map key = agent id = role (the default)
-  model_tier: sonnet
+  model: regular
   permissions_bundle: worker
   manager_fallback: support-coordinator
   subscriptions: [ticket.assigned]
@@ -40,7 +40,7 @@ resolver-agent:                       # map key = agent id = role (the default)
 
 | Field | Purpose |
 |---|---|
-| `model_tier` | Which model the agent runs on (e.g. `haiku`, `sonnet`). |
+| `model` | Provider-agnostic model alias: `cheap`, `regular`, or `frontier`. Resolved per backend by `llm.models`. The older `model_tier` is retired. |
 | `subscriptions` | The events the agent receives. |
 | `emit_events` | The events it may emit (each gets an auto-generated `emit_*` tool). |
 | `conversation_mode` | `task`, `session`, or `session_per_entity`. |

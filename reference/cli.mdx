@@ -91,6 +91,18 @@ running one. It takes `--event <name>` and `--payload <file>`.
 | `swarm logs [--follow]` | `runtime.logs` / `runtime.subscribe_logs` | Query or follow runtime logs. |
 | `swarm incidents` | `runtime.incidents` | Aggregated incidents by error code and component. |
 
+## Bundles
+
+Persisted contract bundles in the runtime store, identified by canonical bundle hash.
+
+| Command | Method | Purpose |
+|---|---|---|
+| `swarm bundle list` | `bundle.list` | List persisted bundles. |
+| `swarm bundle show <bundle-hash>` | `bundle.get` | One bundle's catalog entry. |
+| `swarm bundle agents <bundle-hash>` | `bundle.agents` | Agent definitions in a bundle. |
+| `swarm bundle register <envelope-yaml>` | `bundle.register` | Register a bundle from a registration envelope, or from a contracts directory with `--contracts <dir>`. |
+| `swarm bundle delete <bundle-hash>` | `bundle.delete` | Delete a persisted bundle by hash. |
+
 ## Exit codes
 
 `0` success, `2` CLI validation or misuse, `3` runtime or transport error, `4` auth or
