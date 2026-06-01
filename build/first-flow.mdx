@@ -443,16 +443,17 @@ consistent, or it runs at volume. See [Why Swarm](/why-swarm) for the full pictu
 
 ## Run it
 
-With Postgres running (see [Installation](/installation)) and an LLM runtime configured (the
-agents need one to answer), run the bundle. `swarm run` boots a runtime in process, publishes
-the trigger, and streams the trace:
+The runtime defaults to SQLite at `.swarm/dev.db`, so no DB service is needed; the agents do
+need an LLM runtime configured to answer (see [Installation](/installation)). `swarm run`
+boots a runtime in process on loopback, publishes the trigger, and streams the trace:
 
 ```bash
-export SWARM_API_TOKEN=dev-token        # any value; required by every command but `swarm verify`
-
 echo '{"ticket_id": "t-42", "subject": "Export button is greyed out", "body": "The CSV export button on the reports page is greyed out and I cannot click it."}' > ticket.json
 swarm run --contracts ./ticket-flow --event ticket.created --payload ticket.json
 ```
+
+On loopback, `swarm run` uses a built-in dev API token; setting `SWARM_API_TOKEN` is only
+needed when exposing the API beyond loopback.
 
 <Note>
   This flow has LLM agents, so it advances past `new` only when a runtime that can answer them
