@@ -111,9 +111,11 @@ makes everything around the model deterministic, which is the part worth auditin
 recovering. That is the whole bet, restated as a cost: you accept a fuzzy model and wrap it in a
 system that is not.
 
-There is also an upfront price the rest of this page implies but is worth saying outright: real
-contracts to write, a Postgres to run, and a model to learn before the first flow boots. The
-payoff is everything above; the bill comes first.
+There is also an upfront price worth saying outright: real contracts to write and a contract
+model to learn before complex flows pay off. (Local setup is cheap now: SQLite ships with the
+binary, the platform spec is embedded, and agent-free flows boot with no credential, so the
+Quickstart runs with zero env vars.) The bill is conceptual, not infrastructural, but it is real.
+The payoff is everything above; the bill comes first.
 
 <Card title="Ready to try it?" icon="rocket" href="/quickstart">
   Boot the runtime and trigger your first run.
