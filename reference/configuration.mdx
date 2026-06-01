@@ -52,8 +52,9 @@ effect when attaching to a running runtime with `--connect`.
 </ParamField>
 <ParamField path="--data <path>" type="string">
   Path to the agent-visible read-only `/data` reference directory. Resolution order:
-  `--data` > `workspace.data_source` in `config.yaml` > `SWARM_WORKSPACE_DATA_SOURCE` > no path.
-  The runtime no longer treats a repo-local `data/` directory as an implicit source.
+  `--data` > `workspace.data_source` in `config.yaml` > `SWARM_WORKSPACE_DATA_SOURCE` > the
+  auto-default `.swarm/data/` (created next to `.swarm/dev.db` if it doesn't exist, so the runtime
+  starts with no `/data` configuration). Available on both `swarm serve` and `swarm run`.
 </ParamField>
 
 `--store` and `--backend` are documented under [Runtime store](#runtime-store) and

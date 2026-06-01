@@ -98,7 +98,7 @@ base image, on a shared network, and reuses it by name. The defaults are overrid
 |---|---|---|
 | `SWARM_WORKSPACE_IMAGE` | `swarm-workspace:latest` | the base image for workspace containers |
 | `SWARM_WORKSPACE_NETWORK` | `mas_default` | the Docker network they join |
-| `SWARM_WORKSPACE_DATA_SOURCE` | `<repo>/data` | host source for `/data` |
+| `SWARM_WORKSPACE_DATA_SOURCE` | `.swarm/data/` (auto-created if unset) | host source for `/data` |
 | `SWARM_WORKSPACE_DATA_MOUNT` | `/data` | mount point for shared data |
 | `SWARM_WORKSPACE_CONTRACTS_SOURCE` | the loaded contracts dir | host source for contracts |
 | `SWARM_WORKSPACE_CONTRACTS_MOUNT` | `/opt/swarm/contracts` | mount point for contracts |

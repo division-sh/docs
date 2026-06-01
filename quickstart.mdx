@@ -19,7 +19,8 @@ it, boot a runtime, trigger it, and watch the trace.
 
 That's it. This Quickstart needs **no database** (SQLite at `.swarm/dev.db` is the default;
 opt into Postgres later with `--store postgres`), **no LLM credential** (the flow has no
-agents), **no repository checkout** (the platform spec is embedded in the binary), and **no
+agents), **no workspace setup** (an empty `.swarm/data/` is auto-created next to the SQLite
+file), **no repository checkout** (the platform spec is embedded in the binary), and **no
 API token** (the local runtime uses a built-in dev token on loopback). Run the commands below
 from any directory.
 
