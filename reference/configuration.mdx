@@ -60,6 +60,106 @@ effect when attaching to a running runtime with `--connect`.
 `--store` and `--backend` are documented under [Runtime store](#runtime-store) and
 [LLM backend and credentials](#llm-backend-and-credentials).
 
+## Configuration files
+
+Swarm uses two YAML files that share the name `config.yaml` but have different scopes, paths,
+and schemas. They coexist; pick the one that matches what you are configuring.
+
+| | CLI client config | Runtime config |
+|---|---|---|
+| **Audience** | every `swarm` command | `swarm serve` / `swarm run` at boot |
+| **Path** | `$XDG_CONFIG_HOME/swarm/config.yaml` | `<binary-dir>/config.yaml`, or `--config <path>` |
+| **Configures** | the CLI's API target, token, contract path | runtime startup: store, LLM, workspace, tuning |
+| **Schema** | flat, six keys | nested, several sections |
+
+### CLI client config
+
+Optional. Place it at `$XDG_CONFIG_HOME/swarm/config.yaml` to set per-user CLI defaults. Six
+keys are accepted; any other key is a parse error.
+
+```yaml
+api_server: http://127.0.0.1:8081
+api_token_file: ~/.config/swarm/token
+contracts_path: /absolute/path/to/contracts
+platform_spec_path: /absolute/path/to/platform-spec.yaml
+serve_api_listen_addr: 127.0.0.1:8081
+serve_mcp_listen_addr: 127.0.0.1:8082
+```
+
+CLI flags override file values; the file overrides built-in defaults.
+
+### Runtime config
+
+Loaded by `swarm serve` and `swarm run` when they boot a local runtime. Resolution order:
+explicit `--config <path>`, then `config.yaml` beside the running binary, then built-in
+defaults. The full top-level shape:
+
+```yaml
+runtime:                      # event loop and recovery tuning
+  max_concurrent_agents: 16
+  event_poll_interval: 100ms
+  recovery_on_startup: true
+
+database:                     # Postgres connection (used when store.backend is postgres)
+  host: 127.0.0.1
+  port: 5432
+  name: swarm
+  user: postgres
+  password: postgres
+  sslmode: disable
+  pool_size: 10
+
+store:
+  backend: sqlite             # sqlite (default) | postgres
+  sqlite:
+    path: .swarm/dev.db       # auto-created if missing
+
+workspace:
+  data_source: ./reference    # default: auto-created at .swarm/data/
+  backend: ""                 # workspace-isolation backend (claude_cli uses Docker)
+
+llm:
+  backend: anthropic          # anthropic | claude_cli | openai_compatible (default anthropic)
+  models:                     # alias -> { backend: concrete-model } overrides
+    regular:
+      anthropic: claude-3-5-sonnet
+      claude_cli: sonnet
+      openai_compatible: gpt-4o
+  session:
+    lock_ttl: 10s
+    rotate_after_turns: 40
+    rotate_on_parse_failures: 3
+  claude_api:                 # tuning for the anthropic backend
+    default_model: claude-3-5-sonnet
+    haiku_model: claude-3-5-haiku
+    max_retries: 3
+    retry_backoff: 1s
+  claude_cli:                 # tuning for the claude_cli backend
+    command: claude
+    timeout: 30m
+    output_format: json
+    retries: 2
+    no_session_persistence: false
+    use_tmux: false
+  openai_compatible:
+    base_url: https://api.example.com
+    default_model: gpt-4o
+    low_cost_model: gpt-4o-mini
+
+extensions:                   # typed extensions; inline, namespaced per extension
+  # ...
+```
+
+CLI flags override config keys (`--store > store.backend`, `--backend > llm.backend`,
+`--data > workspace.data_source`), and the corresponding env vars override the file where both
+are accepted. See the sections below for each subsystem's precedence.
+
+<Warning>
+  **`llm.runtime_mode` is retired** and rejected at boot; use `llm.backend`. The env-var
+  equivalents `SWARM_LLM_RUNTIME_MODE` and `SWARM_LLM_BACKEND` are also rejected; backend
+  selection is `--backend` or `llm.backend` only.
+</Warning>
+
 ## Runtime store
 
 The runtime stores events, entity state, gates, timers, and sessions in a relational database.
