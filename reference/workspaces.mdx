@@ -89,10 +89,11 @@ laptop, in Docker, and in production. Only the backing storage changes.
 
 A contract that runs on local dev runs on Docker and production without changes.
 
-### Docker backing (the `cli_test` runtime)
+### Docker backing (the `claude_cli` runtime)
 
-When the runtime spawns containers (the Claude CLI runtime), it creates one per workspace from a
-base image, on a shared network, and reuses it by name. The defaults are overridable:
+When the runtime spawns containers (the Claude CLI runtime, selected with `--backend claude_cli`;
+the legacy alias `cli_test` still resolves to the same backend), it creates one per workspace
+from a base image, on a shared network, and reuses it by name. The defaults are overridable:
 
 | Variable | Default | Controls |
 |---|---|---|
@@ -107,7 +108,7 @@ base image, on a shared network, and reuses it by name. The defaults are overrid
 | `SWARM_DOCKER_BIN` | `docker` | the container CLI to invoke |
 
 <Warning>
-  The base image must actually contain the agent CLI for the `cli_test` runtime to work. If the
+  The base image must actually contain the agent CLI for the `claude_cli` runtime to work. If the
   image is missing, the runtime builds one from `Dockerfile.workspace`, but that build does not
   install the CLI by default, so agent turns fail with `exit 127 ("claude": not found)` until you
   build the image with the CLI included. Once an image or a named container exists, it is reused
