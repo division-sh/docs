@@ -4,12 +4,31 @@ description: "Starting the engine, health, and the surfaces it exposes."
 icon: "play"
 ---
 
+## swarm run vs swarm serve
+
+Two ways to start a runtime, picked by how long the work lives:
+
+- **`swarm run`** boots a runtime **in-process**, publishes one trigger event, streams the
+  trace, and **exits when the run quiesces**. Use it for one-shot deterministic flows like
+  the [Quickstart](/quickstart), CI checks, and `event publish`-driven offline testing of a
+  flow's deterministic half. The process going away when the run finishes is the point.
+- **`swarm serve`** is the **long-running runtime** you operate. It owns the API, health, and
+  MCP listener and stays up across many runs and many external interactions. Use it when the
+  flow has timers, human-in-the-loop steps, multiple externally-driven events, or anything else
+  that needs a runtime to outlive a single trigger.
+
+The most common newcomer confusion: trying `swarm run` for a flow with a `mailbox_write` or a
+multi-event interaction, then being surprised the process exits before the human or the next
+event arrives. Use `swarm serve` for those, and drive them with `swarm event publish`,
+`swarm mailbox`, and the rest of the CLI from a second terminal.
+
+The rest of this page is about `swarm serve`.
+
 ## swarm serve
 
 `swarm serve` is the long-running runtime. It owns the API, health, and MCP listener. By
 default it binds `127.0.0.1:8081`, serving health, readiness, `/v1/rpc`, `/v1/ws`, and the
-MCP routes on one listener. (For one-shot local runs, `swarm run` boots a runtime in-process
-instead; see the [Quickstart](/quickstart).)
+MCP routes on one listener.
 
 ```bash
 swarm serve --contracts ./my-flow
