@@ -47,12 +47,42 @@ A decided item cannot be decided again (a second attempt returns a conflict). Ap
 review, approval, and operational-decision items emit `mailbox.item_decided`, which the flow
 subscribes to in order to continue.
 
+To subscribe today, **redeclare** `mailbox.item_decided` in your `events.yaml` with the
+platform's payload schema and a `source: external` marker. The redeclaration is required
+because the static analyzer treats unfamiliar events as wiring errors; auto-registration of
+platform-emitted events is tracked in
+[swarm#1271](https://github.com/division-sh/swarm/issues/1271).
+
+```yaml events.yaml
+mailbox.item_decided:
+  swarm:
+    source: external          # platform-emitted; no internal producer to verify
+  mailbox_id: text
+  mailbox_decision_id: text
+  decision: text              # "approved" | "rejected" | "deferred" | "expired"
+  decision_payload: text      # operator-supplied approval context (JSON-encoded)
+  item_type: text
+  mailbox_payload: text       # the original mailbox row payload (JSON-encoded)
+  source_event_id: text
+  source_flow: text
+  source_entity_id: text
+  decided_by: text
+  decided_at: timestamp
+```
+
+Then the handler subscribes and routes the decision:
+
 ```yaml nodes.yaml
 # the flow resumes when the operator approves
 mailbox.item_decided:
   advances_to: refunding
   emit: refund.issued
 ```
+
+<Note>
+  Branch on `payload.decision` in a `rules:` block (or in a guard) to handle approvals,
+  rejections, and deferrals differently. The handler above shows the approve path only.
+</Note>
 
 ## Budget escalations
 
