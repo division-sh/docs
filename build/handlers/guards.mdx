@@ -48,16 +48,23 @@ both.
 
 ## on_fail
 
-`on_fail` chooses what happens when a check fails. It defaults to `reject`.
+`on_fail` chooses what happens when a check fails. It defaults to `reject`. The chosen value
+becomes the handler's **trace outcome**, visible in `swarm trace` and recorded on the event
+delivery row — so picking the right one is what makes guard failures legible in operations.
 
-| `on_fail` | Behavior |
-|---|---|
-| `reject` (default) | Stop. The event is marked rejected. |
-| `discard` | Drop silently. For expected filtering you do not want recorded as a failure. |
-| `kill` | Advance the entity to a terminal state. |
-| `escalate:{event}` | Emit an escalation event instead of proceeding. |
+| `on_fail` | Trace outcome | Behavior |
+|---|---|---|
+| `reject` (default) | `reject` | Stop. No side effects. Entity unchanged. The event is marked rejected. |
+| `discard` | `discard` | Drop silently. No side effects, no failure record. Use for expected filtering you do not want surfaced as an error. |
+| `kill` | `kill` | Advance the entity to a terminal state. No emit, no other writes. Use when "this entity has crossed a hard policy line; we're done with it." |
+| `escalate:{event}` | `escalate` | Emit `{event}` instead of proceeding with the rest of the handler. |
 
-`escalate` routes the failure somewhere useful instead of just stopping:
+### Choosing between them
+
+- **`reject`** — the default. The event tried, the guard said no, it's recorded as a failure. Operationally noisy on purpose; a rejection rate worth alerting on.
+- **`discard`** — the *expected*-failure value. A handler that subscribes to `payment.received` but only acts on `currency == "USD"` uses `discard` for everything else: not interesting, not an error.
+- **`kill`** — terminal cliff. The entity has hit a hard policy boundary (rate limit, fraud threshold, blocked region) and shouldn't continue, ever. Advances to terminal; no recovery path from the guard alone.
+- **`escalate:{event}`** — routes the failure somewhere useful instead of just stopping. The escalation event is a normal event with a handler somewhere downstream.
 
 ```yaml
 request.received:
@@ -68,6 +75,23 @@ request.received:
   advances_to: processing
 ```
 
-When a guard fails, the handler stops: no state change, no data writes, no emit. Guard failures
-are business logic, not transient errors, so they are not retried. See the
-[execution model](/reference/execution-model) for where the guard sits in the pipeline.
+### Escalate emits with no implicit passthrough
+
+When `escalate:{event}` fires, the emitted event uses the same payload-construction rules as
+a declarative system-node `emit:` block with no business fields: nothing is auto-copied from
+the triggering event, and the payload stays **empty** unless the event declares fields and a
+matching `escalate_payload:` (or equivalent) supplies them. The runtime-owned envelope
+(`event_id`, `run_id`, `entity_id`, etc.) is still attached; only business fields need
+authoring. Schema validation still runs fail-closed, so an escalate event that declares
+required fields without authored values fails at the emit step rather than silently shipping
+a half-filled payload.
+
+The practical consequence: if `rate_limit.exceeded` declares `reason: text`, you must author
+`reason` somewhere — the runtime won't fill it from `payload.reason` on the triggering event.
+
+---
+
+When a guard fails, the handler stops: no state change, no data writes, no emit (other than
+the `escalate` one if configured). Guard failures are business logic, not transient errors,
+so they are not retried. See the [execution model](/reference/execution-model) for where the
+guard sits in the pipeline.
