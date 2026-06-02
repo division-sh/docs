@@ -50,8 +50,7 @@ subscribes to in order to continue.
 To subscribe today, **redeclare** `mailbox.item_decided` in your `events.yaml` with the
 platform's payload schema and a `source: external` marker. The redeclaration is required
 because the static analyzer treats unfamiliar events as wiring errors; auto-registration of
-platform-emitted events is tracked in
-[swarm#1271](https://github.com/division-sh/swarm/issues/1271).
+platform-emitted events is on the roadmap.
 
 ```yaml events.yaml
 mailbox.item_decided:

@@ -52,21 +52,18 @@ identically; both are just events. Your handler advances regardless of who produ
 trigger.
 
 <Warning>
-  `event publish` is reliable for **starting** a run from a flow's root input-pin event, but
-  driving an *existing* run forward from outside is currently incomplete: `--run-id` returns
-  a generic 500 on follow-up injection, and a caller-supplied `entity_id` is silently
-  discarded. Tracked in
-  [swarm#1255](https://github.com/division-sh/swarm/issues/1255) and
-  [swarm#1256](https://github.com/division-sh/swarm/issues/1256). In practice this means an
-  agent author can exercise the first hop of a multi-step flow offline (the input-pin
-  handler and whatever it emits internally), but not chain a second external trigger against
-  the same entity until those land. Check both issues for current status before relying on a
-  multi-trigger offline test path.
+  `event publish` is reliable for **starting** a run from a flow's root input-pin event.
+  Driving an *existing* run forward from outside (injecting a follow-up event with `--run-id`,
+  or supplying a caller-chosen `entity_id`) is a separate surface still evolving on the
+  operator-event-publish RPC; whether it works end-to-end for a multi-trigger offline test
+  depends on the current state of that work. Check the issue tracker before relying on it.
+  An agent author can always exercise the first hop of a multi-step flow offline (the
+  input-pin handler and whatever it emits internally) regardless.
 </Warning>
 
-A user-selectable scripted backend is on the roadmap; see
-[swarm#1252](https://github.com/division-sh/swarm/issues/1252). Until it lands, the
-`event publish` pattern above (with the limits noted) is the supported offline path.
+A user-selectable scripted backend for fully cost-free agent-flow testing is on the
+roadmap. Until it lands, the `event publish` pattern above (with the limits noted) is the
+supported offline path.
 
 ## Implementation gaps: expected, tracked, fix them with us
 
@@ -99,7 +96,7 @@ anything open or recently closed, file fresh.
 
 - **Don't invent fields not in the spec.** The analyzer rejects them with `UNDEFINED-FIELD`. Faster to grep the spec first.
 - **Don't ship a flow that fails `swarm verify`.** The "boot only on a flow that verifies" pitch is the contract; a non-verifying flow is incomplete, not "almost done."
-- **Don't redeclare events the platform owns** unless the docs explicitly tell you to. Today, [`mailbox.item_decided`](/concepts/human-in-the-loop#decisions) is the one event that currently requires redeclaration; that's a temporary workaround tracked in [swarm#1271](https://github.com/division-sh/swarm/issues/1271), not an idiom. When you do redeclare it, the redeclaration **must** carry `swarm: { source: external }` or the `event_producer_exists` check rejects the bundle with "subscribed but nobody emits"; the full schema-plus-marker shape is in the [HITL docs example](/concepts/human-in-the-loop#decisions).
+- **Don't redeclare events the platform owns** unless the docs explicitly tell you to. Today, [`mailbox.item_decided`](/concepts/human-in-the-loop#decisions) is the one event that currently requires redeclaration; that's a temporary workaround pending auto-registration of platform-emitted events, not an idiom. When you do redeclare it, the redeclaration **must** carry `swarm: { source: external }` or the `event_producer_exists` check rejects the bundle with "subscribed but nobody emits"; the full schema-plus-marker shape is in the [HITL docs example](/concepts/human-in-the-loop#decisions).
 - **Don't model intent in YAML comments and expect the engine to read them.** The engine reads structure, not prose. If a behavior matters, it's a field somewhere.
 - **Don't infer field types from JSON Schema in `platform-spec.yaml`'s OpenAPI section.** Swarm's contract type system has its own scalars (`text`, `integer`, `numeric`, `boolean`, `timestamp`, `uuid`) plus named types. The OpenAPI portion describes the runtime API, not authoring types.
 - **Don't bypass the analyzer because "the runtime will catch it."** It probably won't; the analyzer is the strict layer, and the runtime trusts what the analyzer accepted.
