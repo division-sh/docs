@@ -35,8 +35,20 @@ Fork reconstructs the full system state at a moment in time and resumes, optiona
 new contract bundle, so last week's failed run can be replayed against this week's fixed
 contracts.
 
-<Note>
-  The persistence and reconstruction plumbing is in place (the mutation log and the `runs` and
-  `run_fork_*` tables). The operator command surface is in progress; a dedicated run-fork
-  control surface is on the way. For now, use the event and agent replay primitives above.
-</Note>
+```bash
+swarm fork <source-run-id> --at-event <event-id>
+```
+
+Flags:
+
+- **`--at-event <event-id>`** — fork at this source event; the new run starts as if the
+  source run had just processed this event.
+- **`--bundle-hash <hash>`** — pin the fork to a specific bundle. Same-bundle forks only;
+  cross-bundle forks are gated separately and currently rejected.
+- **`--idempotency-key <key>`** — retry-safe fork creation; identical key returns the same
+  fork rather than creating a duplicate.
+
+The persistence and reconstruction plumbing is in `runs`, `run_fork_*`, and the mutation log;
+the command above is the operator surface over `/v1/rpc run.fork`. For finer-grained replay
+inside a run (one event or one agent's backlog), use the event and agent replay primitives
+above.
