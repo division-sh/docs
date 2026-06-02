@@ -46,7 +46,8 @@
               "build/tools",
               "build/policy",
               "build/composition",
-              "build/testing"
+              "build/testing",
+              "build/agentic-authoring"
             ]
           },
           {
