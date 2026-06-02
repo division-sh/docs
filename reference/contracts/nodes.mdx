@@ -90,7 +90,7 @@ timers:
 
 ### start_on / cancel_on canonical forms
 
-Trigger values **must be prefixed**. Bare strings are boot errors — the platform does not
+Trigger values **must be prefixed**. Bare strings are boot errors: the platform does not
 infer state-vs-event intent. Unknown referenced states are boot errors; unknown referenced
 events are boot warnings.
 
@@ -117,7 +117,7 @@ events are boot warnings.
 The fired event carries the runtime envelope (`event_id`, `run_id`, `entity_id`, etc.) but
 no business payload fields unless the timer's `event` declaration sets fields and they are
 authored on the timer block (see `delay`-paired examples below). Most timer events are bare
-triggers — the handler reads `entity` for context, not the event payload.
+triggers; the handler reads `entity` for context, not the event payload.
 
 ### Examples
 

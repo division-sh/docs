@@ -50,7 +50,7 @@ both.
 
 `on_fail` chooses what happens when a check fails. It defaults to `reject`. The chosen value
 becomes the handler's **trace outcome**, visible in `swarm trace` and recorded on the event
-delivery row — so picking the right one is what makes guard failures legible in operations.
+delivery row, so picking the right one is what makes guard failures legible in operations.
 
 | `on_fail` | Trace outcome | Behavior |
 |---|---|---|
@@ -61,10 +61,10 @@ delivery row — so picking the right one is what makes guard failures legible i
 
 ### Choosing between them
 
-- **`reject`** — the default. The event tried, the guard said no, it's recorded as a failure. Operationally noisy on purpose; a rejection rate worth alerting on.
-- **`discard`** — the *expected*-failure value. A handler that subscribes to `payment.received` but only acts on `currency == "USD"` uses `discard` for everything else: not interesting, not an error.
-- **`kill`** — terminal cliff. The entity has hit a hard policy boundary (rate limit, fraud threshold, blocked region) and shouldn't continue, ever. Advances to terminal; no recovery path from the guard alone.
-- **`escalate:{event}`** — routes the failure somewhere useful instead of just stopping. The escalation event is a normal event with a handler somewhere downstream.
+- **`reject`**: the default. The event tried, the guard said no, it's recorded as a failure. Operationally noisy on purpose; a rejection rate worth alerting on.
+- **`discard`**: the *expected*-failure value. A handler that subscribes to `payment.received` but only acts on `currency == "USD"` uses `discard` for everything else: not interesting, not an error.
+- **`kill`**: terminal cliff. The entity has hit a hard policy boundary (rate limit, fraud threshold, blocked region) and shouldn't continue, ever. Advances to terminal; no recovery path from the guard alone.
+- **`escalate:{event}`**: routes the failure somewhere useful instead of just stopping. The escalation event is a normal event with a handler somewhere downstream.
 
 ```yaml
 request.received:
@@ -87,7 +87,7 @@ required fields without authored values fails at the emit step rather than silen
 a half-filled payload.
 
 The practical consequence: if `rate_limit.exceeded` declares `reason: text`, you must author
-`reason` somewhere — the runtime won't fill it from `payload.reason` on the triggering event.
+`reason` somewhere; the runtime won't fill it from `payload.reason` on the triggering event.
 
 ---
 

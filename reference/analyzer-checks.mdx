@@ -20,7 +20,7 @@ swarm verify --contracts ./my-flow
 | **warning** | Boot continues; the finding is logged. Worth fixing, not blocking. |
 | **informational** | Never blocks. Surfaced as `lint_evidence` on detailed audit output. |
 
-`lint_evidence:` lines print on stdout alongside `verify ok` — `verify` still passes. They
+`lint_evidence:` lines print on stdout alongside `verify ok`; `verify` still passes. They
 are design nudges, not failures. Two examples you may see in practice are
 `cross_surface_named_type_use` (two surfaces share an identical field shape) and
 `entity_reader_coverage` (an entity field has no internal handler that reads it).

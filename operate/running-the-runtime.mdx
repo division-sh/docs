@@ -10,7 +10,7 @@ Two ways to start a runtime, picked by how long the work lives:
 
 - **`swarm run`** is a shortcut: boot a runtime in-process, publish one trigger event, stream
   the trace, **exit when the run quiesces**. It works for any flow that completes from a
-  single trigger — deterministic *or* agent-driven. The [Quickstart](/quickstart) uses it,
+  single trigger, deterministic *or* agent-driven. The [Quickstart](/quickstart) uses it,
   CI checks use it, and `event publish`-style offline iteration uses it. The process going
   away when the run finishes is the point.
 - **`swarm serve`** is the **long-running runtime** you operate. It owns the API, health, and
