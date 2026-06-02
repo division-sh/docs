@@ -47,6 +47,11 @@ same event is a boot error.
 
 ## Timers
 
+A timer is a durable time-based trigger declared on a system node. When the delay elapses
+the platform emits the timer's event, which routes through the normal event loop. Timers are
+persisted, so they survive restarts: at boot the platform checks for any whose `fire_at` has
+passed and fires them.
+
 ```yaml
 timers:
   - id: order_sla
@@ -57,8 +62,90 @@ timers:
     recurring: false
 ```
 
-Trigger values must be prefixed (`state:` or `event:`); a bare string is a boot error. See
-[Gates, timers, and state](/concepts/gates-timers-and-state).
+### Fields
+
+<ParamField path="id" type="string" required>
+  Timer identifier, unique within the node.
+</ParamField>
+<ParamField path="event" type="string" required>
+  Event name emitted when the timer fires. A handler somewhere in the flow must subscribe
+  to it, or the timer fires into a dead end.
+</ParamField>
+<ParamField path="delay" type="string" required>
+  Duration string (`72h`, `30m`, `7d`) or a policy reference (`{{policy.sla_timeout_hours}}h`).
+  How long after `start_on` the timer waits before emitting.
+</ParamField>
+<ParamField path="start_on" type="string" required>
+  When the timer begins counting. Must be one of three canonical forms; see below.
+</ParamField>
+<ParamField path="cancel_on" type="string">
+  Optional. When the timer is cancelled before firing. Canonical forms: `state:<name>` or
+  `event:<name>` (`boot` is invalid here). If omitted, the timer can only stop by firing or
+  by entity-terminal cleanup.
+</ParamField>
+<ParamField path="recurring" type="boolean" default="false">
+  When `true`, the timer re-fires at every `delay` interval until cancelled or until the
+  entity reaches a terminal state. When `false` (default), the timer is one-shot.
+</ParamField>
+
+### start_on / cancel_on canonical forms
+
+Trigger values **must be prefixed**. Bare strings are boot errors — the platform does not
+infer state-vs-event intent. Unknown referenced states are boot errors; unknown referenced
+events are boot warnings.
+
+| Form | Where allowed | Meaning |
+|---|---|---|
+| `state:<name>` | `start_on`, `cancel_on` | Trigger fires when the entity enters the named state. |
+| `event:<name>` | `start_on`, `cancel_on` | Trigger fires when the named event is delivered for the entity. |
+| `boot` | `start_on` only | Trigger fires once at platform startup. Useful for system-wide periodic timers paired with `recurring: true`. |
+
+### Lifecycle
+
+1. **Start.** Timer begins when its `start_on` condition fires (entity enters the state, the
+   event is delivered, or the platform boots). Platform persists `(entity_id, timer_id,
+   fire_at)` to the timer store.
+2. **Cancel.** If `cancel_on` fires before `fire_at` is reached, the timer is cancelled and
+   removed from the store. The entity reaching a terminal state also cancels active timers.
+3. **Fire.** When wall-clock reaches `fire_at`, the platform emits the configured event
+   into the normal event loop. The event is routed by its declared subscribers like any
+   other event.
+4. **Recurring.** If `recurring: true`, the timer re-arms for the next interval after firing.
+5. **Crash recovery.** Timers are durable. On restart, the platform checks the store and
+   fires any whose `fire_at` is past, then resumes counting for the rest.
+
+The fired event carries the runtime envelope (`event_id`, `run_id`, `entity_id`, etc.) but
+no business payload fields unless the timer's `event` declaration sets fields and they are
+authored on the timer block (see `delay`-paired examples below). Most timer events are bare
+triggers — the handler reads `entity` for context, not the event payload.
+
+### Examples
+
+A one-shot SLA breach timer:
+
+```yaml
+timers:
+  - id: sla_breach
+    event: timer.sla_breach
+    delay: "{{policy.sla_hours}}h"
+    start_on: state:assigned
+    cancel_on: state:resolved
+    recurring: false
+```
+
+A recurring boot-anchored periodic timer (one fires for the whole runtime, not per entity):
+
+```yaml
+timers:
+  - id: daily_report
+    event: timer.daily_report
+    delay: "{{policy.report_interval_hours}}h"
+    start_on: boot
+    recurring: true
+```
+
+See [Gates, timers, and state](/concepts/gates-timers-and-state) for the conceptual
+treatment alongside gates.
 
 ## Example
 
