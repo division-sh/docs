@@ -1,0 +1,213 @@
+---
+title: "Field index"
+description: "Quick lookup for every YAML field in a contract bundle, with links to the page that covers it."
+icon: "magnifying-glass"
+---
+
+This page is a navigation index, not the field spec. For the per-page reference of a contract
+surface follow the linked page; for binding authority see
+[`platform-spec.yaml`](https://github.com/division-sh/swarm/blob/master/platform-spec.yaml).
+For the handler pipeline ordering, see [Handler fields](/reference/handler-fields).
+
+## By question
+
+| You want to | Page |
+|---|---|
+| Block a handler unless a condition holds | [Guards](/build/handlers/guards) |
+| Choose what happens when a guard fails (`on_fail`) | [Guards → on_fail](/build/handlers/guards#on-fail) |
+| Write payload fields onto the entity (`data_accumulation`) | [Writing data and advancing state](/build/handlers/data-and-state) |
+| Move the entity to another state (`advances_to`) | [Writing data and advancing state](/build/handlers/data-and-state#advancing-state) |
+| Raise or check a gate (`sets_gate` / `clear_gates`) | [Writing data and advancing state](/build/handlers/data-and-state#gates) |
+| Emit an event with a payload (`emit`) | [Emitting](/build/handlers/emitting) |
+| Branch by payload condition (`rules`) or by accumulator result (`on_complete`) | [Branching](/build/handlers/branching) |
+| Acquire an entity (`create_entity` / `select_entity` / `select_or_create_entity`) | [Entity acquisition](/build/handlers/entity-acquisition) |
+| Wait for multiple events to arrive (`accumulate`) | [Accumulation](/reference/accumulation) |
+| Invoke a platform action (`action`) | [Actions](/build/handlers/actions) |
+| Open a mailbox item for a human (`action.mailbox_write`) | [Actions → mailbox_write](/build/handlers/actions#mailbox_write) |
+| Commit files into the artifact repo (`action.artifact_repo_commit`) | [Actions → artifact_repo_commit](/build/handlers/actions#artifact_repo_commit) |
+| Schedule a durable timer (`timers`) | [nodes.yaml → Timers](/reference/contracts/nodes#timers) |
+| Declare a system node | [nodes.yaml](/reference/contracts/nodes) |
+| Declare an agent and its prompts | [agents.yaml](/reference/contracts/agents) |
+| Declare an entity type and its fields | [entities.yaml](/reference/contracts/entities) |
+| Declare an event schema | [events.yaml](/reference/contracts/events) |
+| Declare a flow's state machine and pins | [schema.yaml](/reference/contracts/schema) |
+| Declare workspace classes and permission bundles | [policy.yaml](/build/policy) |
+| Declare a shared type, enum, or list | [types.yaml](/reference/contracts/types) |
+| Subscribe to a platform-emitted event (e.g. `mailbox.item_decided`) | [Human in the loop → Decisions](/concepts/human-in-the-loop#decisions) |
+| Write a CEL expression in a guard, rule, filter, or emit | [Expressions (CEL)](/reference/expressions-cel) |
+
+## Fields by file
+
+Top-level fields per contract file. Sub-field detail lives on the linked reference page.
+
+### `package.yaml`
+
+| Field | Required | One line |
+|---|---|---|
+| `name` | yes | Flow identifier; unique within the bundle. |
+| `version` | yes | Semantic version of the flow. |
+| `description` | yes | One-line human description. |
+| `platform_version` | yes | Range the flow targets (e.g. `">=1.6.0"`). |
+| `flows` | yes | List of child flow ids (empty list `[]` for leaf flows). |
+
+[Reference](/reference/contracts/package).
+
+### `schema.yaml`
+
+| Field | Required | One line |
+|---|---|---|
+| `initial_state` | yes | The state every new entity starts in. |
+| `terminal_states` | yes | States that, once entered, end the entity's life. |
+| `states` | yes | The full list of declared states. |
+| `pins.inputs.events` | — | Events that enter this flow from outside. |
+| `pins.outputs.events` | — | Events this flow emits to consumers outside it. |
+
+[Reference](/reference/contracts/schema).
+
+### `entities.yaml`
+
+A map of `<entity_type>: { <field>: <declaration>, ... }`. Each field declaration is either a
+short form (`field_name: type`) or a verbose block.
+
+| Sub-field | One line |
+|---|---|
+| `type` | One of the built-in scalars or a named type. See [types.yaml](/reference/contracts/types). |
+| `initial` | Default value when no writer fills the field. Required when no writer or `_unused_reason` exists. |
+| `immutable` | If `true`, only the first writer succeeds. |
+| `materialize_from` | Project a node accumulator into an entity field. See [Accumulation → materialize_from](/reference/accumulation#projecting-to-an-entity-field-with-materialize_from). |
+| `_unused_reason` | Suppress the writer-coverage advisory for a field with no writer. |
+| `description` | Human annotation. |
+
+[Reference](/reference/contracts/entities).
+
+### `events.yaml`
+
+A map of `<event.name>: { <field>: <type>, ..., swarm: { ... } }`. Fields under the event
+name declare the payload schema; the `swarm:` sub-block declares routing/lifecycle hints.
+
+| Sub-field | One line |
+|---|---|
+| `swarm.source: external` | The event originates outside the flow; the analyzer should not look for an internal producer. |
+| `swarm.consumer: external` | The event is emitted for external consumers; the analyzer should not require an internal subscriber. |
+
+[Reference](/reference/contracts/events).
+
+### `nodes.yaml`
+
+A map of `<node-id>: { ... }`.
+
+| Field | One line |
+|---|---|
+| `id` | Node identifier; must match the map key. |
+| `execution_type` | `system_node` (deterministic, no LLM). |
+| `subscribes_to` | List of events this node handles. |
+| `produces` | List of events this node emits (analyzer-checked). |
+| `event_handlers` | Map of event → handler block. See [Handler fields](/reference/handler-fields). |
+| `timers` | Durable timers attached to this node. See [Timers](/reference/contracts/nodes#timers). |
+| `gate_state` | Declares the gates this node sets, with their starting values. |
+| `permissions` | Platform permissions this node requires (e.g. `create_flow_instance`). |
+
+[Reference](/reference/contracts/nodes).
+
+### `agents.yaml`
+
+A map of `<agent-role>: { ... }`. The role key must match a role declared in `schema.yaml`.
+
+| Field | One line |
+|---|---|
+| `model` | Alias (`cheap`, `regular`, `frontier`) resolved by `llm.models` per backend. |
+| `subscriptions` | List of events the agent receives. |
+| `emit_events` | List of events the agent may emit (analyzer-checked). |
+| `conversation_mode` | `task` (fresh session per event), `session` (one shared session), or `session_per_entity` (one per entity). |
+| `max_turns_per_task` / `max_turns_per_session` | Per-mode turn caps. |
+| `workspace_class` | Named workspace from `policy.yaml`. See [Agent workspaces](/reference/workspaces). |
+| `permission_bundle` | Named permissions from `policy.yaml`. |
+| `prompt` | Path to the prompt under `prompts/`. |
+
+[Reference](/reference/contracts/agents).
+
+### `tools.yaml`
+
+A map of `<tool-name>: { ... }` declaring tools agents may call. See
+[tools.yaml reference](/reference/contracts/tools).
+
+### `policy.yaml`
+
+Flow-level thresholds, workspace classes, permission bundles. See
+[policy reference](/build/policy).
+
+### `types.yaml`
+
+Shared named types, enums, and lists. See [types.yaml](/reference/contracts/types).
+
+## Sub-field value vocabularies
+
+Enumerable value lists, kept here so search finds them.
+
+### `guard.on_fail` values
+
+| Value | Trace outcome | What happens |
+|---|---|---|
+| `reject` (default) | `reject` | Stop; no side effects; entity unchanged. |
+| `discard` | `discard` | Drop silently; no failure record. |
+| `kill` | `kill` | Advance the entity to a terminal state. |
+| `escalate:{event}` | `escalate` | Emit the named event instead of proceeding. |
+
+Detail: [Guards → on_fail](/build/handlers/guards#on-fail).
+
+### `timer.start_on` and `timer.cancel_on` forms
+
+| Form | `start_on` | `cancel_on` | Meaning |
+|---|---|---|---|
+| `state:<name>` | ✓ | ✓ | Fires when the entity enters the named state. |
+| `event:<name>` | ✓ | ✓ | Fires when the named event is delivered for the entity. |
+| `boot` | ✓ | ✗ | Fires once at platform startup (typically paired with `recurring: true`). |
+
+Bare strings are boot errors. Detail: [Timers](/reference/contracts/nodes#timers).
+
+### `data_accumulation.writes` forms
+
+| Form | Shape | Meaning |
+|---|---|---|
+| Direct | `field_name` | `payload.field_name → entity.field_name`. |
+| Mapped | `{source_field, target_field}` | Renamed mapping from payload to entity. |
+| Literal | `{target_field, value}` | Write a constant; no expression evaluation. |
+| Computed | `{target_field, expression}` | CEL expression against handler context. |
+
+`value` and `expression` are mutually exclusive on one item. The literal key is `value`, not
+`literal`. Detail: [Writing data and advancing state](/build/handlers/data-and-state).
+
+### `action.id` catalog
+
+| Action id | Required sibling | Purpose |
+|---|---|---|
+| `create_flow_instance` | `template`, `instance_id_from`, `config_from` | Spawn a child flow instance from this handler. |
+| `record_evidence` | `evidence_target` (defaults to node id) | Append the payload to a node accumulator buffer. |
+| `mailbox_write` | `mailbox` (object) | Materialize a human-in-the-loop mailbox row. |
+| `artifact_repo_commit` | `artifact_repo` (object) | Commit allowlisted files into a local git artifact repo; exposes `swarm-artifact://` URL. |
+
+Detail: [Actions](/build/handlers/actions). Authoring product-specific actions is not supported.
+
+### `agent.conversation_mode` values
+
+| Value | Meaning |
+|---|---|
+| `task` | A fresh session per event; no memory across events. |
+| `session` | One shared session for the agent across all events. |
+| `session_per_entity` | One session per entity the agent acts on. |
+
+Detail: [agents.yaml](/reference/contracts/agents).
+
+### Handler outcomes (what you see in `swarm trace`)
+
+`success`, `reject`, `discard`, `kill`, `escalate`, `dead_letter`, `terminal_reject`,
+`waiting`, `fanned_out`. The first five are guard-related (see `on_fail` above);
+`dead_letter` is delivery-exhaustion after retries; `terminal_reject` is an event aimed at
+an entity already in a terminal state; `waiting` and `fanned_out` are intermediate states
+for `accumulate` and fan-out. Detail: [Execution model](/reference/execution-model).
+
+## When in doubt
+
+The merge-bearing source of truth for every field, value, and edge case is
+[`platform-spec.yaml`](https://github.com/division-sh/swarm/blob/master/platform-spec.yaml).
+The docs aim to track it; when they drift, file an issue and trust the spec.

@@ -103,6 +103,7 @@
           {
             "group": "Language reference",
             "pages": [
+              "reference/field-index",
               "reference/handler-fields",
               "reference/execution-model",
               "reference/accumulation",
