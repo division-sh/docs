@@ -3,9 +3,12 @@
   "theme": "mint",
   "name": "Division Swarm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#37e2f0",
+    "light": "#5cebf6",
+    "dark": "#128795"
+  },
+  "appearance": {
+    "default": "dark"
   },
   "favicon": "/favicon.svg",
   "navigation": {
