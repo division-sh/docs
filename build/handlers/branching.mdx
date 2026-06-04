@@ -29,11 +29,16 @@ request.received:
         broadcast: true
 ```
 
-Each rule can carry its own `advances_to`, `sets_gate`, `data_accumulation`, and `emit`. When
-`rules` is present, the matched rule owns the emit, so a handler-level `emit` alongside `rules`
-is a boot error. Handler-level `data_accumulation` still runs and supplements the matched rule's
-writes; a rule's value for a field overrides the handler-level default for that field. See the
+Each rule can carry its own `advances_to`, `sets_gate`, `data_accumulation`, `emit`, and
+`action`. When `rules` is present, the matched rule owns both the `emit` and the `action`, so a
+handler-level `emit` or `action` alongside `rules` is a boot error. Handler-level
+`data_accumulation` still runs and supplements the matched rule's writes; a rule's value for a
+field overrides the handler-level default for that field. See the
 [execution model](/reference/execution-model) for the precedence rules.
+
+Rule-level `action` is the idiomatic shape for conditional side effects: auto-approve a refund
+when it is under a policy limit, otherwise fire `mailbox_write` for a human. See
+[Human in the loop](/concepts/human-in-the-loop) for the worked example.
 
 ## on_complete: decide after computing
 

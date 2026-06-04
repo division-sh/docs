@@ -43,6 +43,40 @@ handler failure, so the handler's other side effects still commit.
 An event targeting an entity in a terminal state is rejected before any handler runs (outcome
 `terminal_reject`). This is unconditional.
 
+## Stalled-run escalation
+
+A run that sits in `operational_state=stalled` for longer than a policy threshold has the
+runtime emit `platform.run_stalled` so an operator can react. The default threshold is
+**5 minutes** (300 seconds); the event is platform-emitted, so subscribe to it directly with
+no declaration in your `events.yaml`.
+
+```yaml
+# nodes.yaml: react to a stalled run from inside the flow
+n:
+  subscribes_to: [platform.run_stalled]
+  event_handlers:
+    platform.run_stalled:
+      ...
+```
+
+Tune the threshold and toggle the surface in `policy.yaml`:
+
+```yaml policy.yaml
+runtime:
+  stalled_run_escalation:
+    enabled: true               # default: true
+    threshold_seconds: 300      # default: 300
+```
+
+Dedupe rule: at most one `platform.run_stalled` is emitted per
+`(run_id, blocking_layer, blocking_reason, last_progress_at)` tuple. A new event fires only
+when canonical progress advances or the diagnosis tuple changes while the run remains
+stalled. The platform's own `platform.run_stalled` emit does not count as progress, so it
+cannot accidentally suppress later escalations.
+
+The diagnosis underlying the escalation is the same one `swarm status <run-id>` surfaces
+on demand. The escalation just makes it active rather than poll-only.
+
 ## Incidents and logs
 
 `swarm incidents` aggregates failures by error code and component. `swarm logs [--follow]`

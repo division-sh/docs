@@ -24,15 +24,36 @@ what happens downstream, so an operator can decide without reconstructing the si
 hand.
 
 ```yaml nodes.yaml
-# route a decision to a human instead of proceeding automatically
+# route every refund to a human, unconditionally
 refund.requested:
   action:
     id: mailbox_write
     mailbox:
       item_type: approval
       severity: urgent
-      summary: "Refund exceeds the auto-approval limit"
+      summary: "Refund request"
   advances_to: awaiting_approval
+```
+
+To make the human step conditional (auto-approve under a limit, human review above it), put
+the `action` on a `rules:` branch. The matched rule owns its action; the unmatched branch does
+not fire. Both branches run as part of the same atomic handler transaction:
+
+```yaml nodes.yaml
+refund.requested:
+  rules:
+    auto_approve:
+      condition: "payload.amount < policy.auto_approval_limit"
+      advances_to: approved
+    needs_human:
+      condition: "payload.amount >= policy.auto_approval_limit"
+      advances_to: awaiting_approval
+      action:
+        id: mailbox_write
+        mailbox:
+          item_type: approval
+          severity: urgent
+          summary: "Refund exceeds the auto-approval limit"
 ```
 
 ## Decisions
@@ -47,29 +68,12 @@ A decided item cannot be decided again (a second attempt returns a conflict). Ap
 review, approval, and operational-decision items emit `mailbox.item_decided`, which the flow
 subscribes to in order to continue.
 
-To subscribe today, **redeclare** `mailbox.item_decided` in your `events.yaml` with the
-platform's payload schema and a `source: external` marker. The redeclaration is required
-because the static analyzer treats unfamiliar events as wiring errors; auto-registration of
-platform-emitted events is on the roadmap.
-
-```yaml events.yaml
-mailbox.item_decided:
-  swarm:
-    source: external          # platform-emitted; no internal producer to verify
-  mailbox_id: text
-  mailbox_decision_id: text
-  decision: text              # "approved" | "rejected" | "deferred" | "expired"
-  decision_payload: text      # operator-supplied approval context (JSON-encoded)
-  item_type: text
-  mailbox_payload: text       # the original mailbox row payload (JSON-encoded)
-  source_event_id: text
-  source_flow: text
-  source_entity_id: text
-  decided_by: text
-  decided_at: timestamp
-```
-
-Then the handler subscribes and routes the decision:
+`mailbox.item_decided` is platform-emitted and **auto-registered**: subscribe to it directly,
+no declaration in your own `events.yaml`. (Redeclaring it locally now fails verify with
+`platform_namespace_violation`.) The payload carries `mailbox_id`, `mailbox_decision_id`,
+`decision` (`approved` | `rejected` | `deferred` | `expired`), `decision_payload`, `item_type`,
+`mailbox_payload`, `source_event_id`, `source_flow`, `source_entity_id`, `decided_by`, and
+`decided_at`.
 
 ```yaml nodes.yaml
 # the flow resumes when the operator approves
