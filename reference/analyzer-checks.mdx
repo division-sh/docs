@@ -22,12 +22,27 @@ swarm verify --contracts ./my-flow
 
 `lint_evidence:` lines print on stdout alongside `verify ok`; `verify` still passes. They
 are design nudges, not failures. Two examples you may see in practice are
-`cross_surface_named_type_use` (two surfaces share an identical field shape) and
+`cross_surface_named_type_use` (several surfaces share a reusable field shape) and
 `entity_reader_coverage` (an entity field has no internal handler that reads it).
 
-Some `lint_evidence` checks are currently over-eager on small flows and can fire on
-straightforward examples. Do not contort a contract to silence an advisory unless the
-change is itself a good design choice; the advisories are hints, not mandates.
+Do not contort a contract to silence an advisory unless the change is itself a good design
+choice; the advisories are hints, not mandates.
+
+## Informational design evidence
+
+- **`cross_surface_named_type_use`** (`lint_evidence`). Multiple entity/event/node-state
+  surfaces reuse the same structural shape and may be clearer as a named type in `types.yaml`.
+  Exact duplicate shapes emit only when `field_count >= 3 OR candidate_count >= 3`; this avoids
+  low-signal two-field/two-surface tutorial handoffs while still catching larger repeated shapes.
+  Near-duplicate shapes remain conservative: at least 4 shared field/type pairs, at least 75%
+  overlap, and size delta no greater than 2.
+- **`entity_reader_coverage`** (`lint_evidence`). A declared entity field has no internal
+  handler reader. This is often intentional for audit/operator readout fields. Add
+  `_unused_reader_reason: <reason>` to the entity field when the value is externally read
+  through operator/API surfaces rather than internally consumed. The reason must be non-empty
+  after trimming and at least 10 characters. It suppresses only `entity_reader_coverage`; it
+  does not satisfy writer coverage, authorize runtime/API reads, or change persistence
+  semantics.
 
 The spec states **43 primary checks plus 3 supplemental**. The catalog below documents the
 full set: the boot-verification checks plus the entity-contract checks that also run in
@@ -107,7 +122,8 @@ disable an individual check.
   resolve through the projection resolver (bad reference, type mismatch, or a competing
   writer).
 - **`entity_reader_coverage`** (informational). A declared field has no internal reader. Often
-  fine: the field may be read by an agent or an external consumer.
+  fine: the field may be read by an agent or an external consumer. Use
+  `_unused_reader_reason` for fields that are deliberately external/operator readout only.
 
 ## Handlers and dialect
 

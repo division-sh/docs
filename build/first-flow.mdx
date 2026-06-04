@@ -146,17 +146,22 @@ Create them one at a time.
     ticket:
       category: text                  # set by the classifier
       priority: text                  # set by the classifier
-      resolution: text                # set by the resolver
+      resolution:                     # set by the resolver
+        type: text
+        _unused_reader_reason: External operator readout from the persisted ticket record
       resolved_by: text               # set by the resolver
       escalation_count:               # how many times it has bounced back
         type: integer
         initial: 0                    # starts at 0
     ```
 
-    Most fields use the short form `name: type`. `escalation_count` uses the longer form
-    because it needs an `initial` value: every declared field must have an `initial` or a
-    handler that writes it, or the analyzer reports it as uncovered. You do **not** declare the
-    ticket's state here; the platform tracks `current_state` from the state machine for you.
+    Most fields use the short form `name: type`. `resolution` uses the longer form because it
+    is written by the resolver and then read from external operator views such as `swarm entity
+    view`, not by another internal handler. `_unused_reader_reason` tells the analyzer that the
+    missing internal reader is intentional. `escalation_count` also uses the longer form because
+    it needs an `initial` value: every declared field must have an `initial` or a handler that
+    writes it, or the analyzer reports it as uncovered. You do **not** declare the ticket's state
+    here; the platform tracks `current_state` from the state machine for you.
   </Step>
 
   <Step title="Declare the events (events.yaml)">
@@ -376,10 +381,14 @@ Create them one at a time.
     swarm verify --contracts ./ticket-flow
     ```
 
-    Expect `verify ok`. The analyzer checks payload coverage, state reachability, agent
-    fulfillment, entity writer coverage, handler fields, and CEL parsing, among others. (It may
-    also print informational `lint_evidence` notes, such as a field with no internal reader;
-    those are not errors.) If it reports an error, the
+    Expected output:
+
+    ```text
+    verify ok: contracts=ticket-flow
+    ```
+
+    The analyzer checks payload coverage, state reachability, agent fulfillment, entity writer
+    coverage, handler fields, and CEL parsing, among others. If it reports an error, the
     [analyzer-checks reference](/reference/analyzer-checks) explains each one and how to fix it.
   </Step>
 </Steps>

@@ -37,6 +37,24 @@ Every declared field must have an `initial` value, a writer (a handler `data_acc
 these fails `swarm verify` with `entity_writer_coverage`. This forces you to state intent
 rather than leave a field silently unset. See [Analyzer checks](/reference/analyzer-checks).
 
+## Reader coverage
+
+The analyzer also reports `entity_reader_coverage` as informational `lint_evidence` when a
+declared field has no internal handler reader. That can be correct for fields written for audit,
+operator dashboards, API readers, or `swarm entity view`. In that case, add
+`_unused_reader_reason` to the field with a clear reason of at least 10 characters.
+
+```yaml entities.yaml
+ticket:
+  resolution:
+    type: text
+    _unused_reader_reason: External operator readout from the persisted ticket record
+```
+
+`_unused_reader_reason` suppresses only `entity_reader_coverage`. It does not satisfy writer
+coverage, authorize a runtime/API read surface, or change persistence semantics. Use
+`_unused_reason` only when the field intentionally has no writer.
+
 ## Field options
 
 A field uses a terse form (`field_name: TypeName`) or a verbose block with:
@@ -52,6 +70,15 @@ A field uses a terse form (`field_name: TypeName`) or a verbose block with:
 </ParamField>
 <ParamField path="description" type="string">
   Documentation for the field.
+</ParamField>
+<ParamField path="_unused_reason" type="string">
+  A non-empty reason, at least 10 characters, explaining why a field intentionally has no
+  writer. This suppresses `entity_writer_coverage`.
+</ParamField>
+<ParamField path="_unused_reader_reason" type="string">
+  A non-empty reason, at least 10 characters, explaining why a field intentionally has no
+  internal reader because it is used by external/operator readout. This suppresses only
+  `entity_reader_coverage`.
 </ParamField>
 
 ## Accumulator projection
