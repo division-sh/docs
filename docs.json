@@ -11,6 +11,11 @@
     "default": "dark"
   },
   "favicon": "/favicon.png",
+  "integrations": {
+    "ga4": {
+      "measurementId": "G-JKJEKHZ35V"
+    }
+  },
   "navigation": {
     "tabs": [
       {
