@@ -9,14 +9,16 @@ icon: "spell-check"
 **Flow instance.** One running copy of a flow. Static flows have one; template flows have
 many, created at runtime.
 
-**Entity.** A mutable document moving through a flow instance's state machine: state, gates,
-and typed fields. Declared in [`entities.yaml`](/reference/contracts/entities).
+**Entity.** A mutable document moving through a flow instance's staged lifecycle: stage,
+gates, and typed fields. Declared in [`entities.yaml`](/reference/contracts/entities).
 
-**State.** A named state in a flow's machine. An entity is in exactly one at a time. Terminal
-states are absorbing.
+**Stage.** A named lifecycle stage, declared in the schema's `stages:` map. An entity is in
+exactly one at a time; terminal stages are absorbing. Stage timers, decision gates, and joins
+attach to stages. ("State" survives in a few runtime surfaces — the expression root is
+`_entity.current_state` — but the authored concept is the stage.)
 
 **System node.** Deterministic code that subscribes to events, runs a handler, advances
-state, and emits events. No LLM.
+stages, and emits events. No LLM.
 
 **Agent.** An LLM session that subscribes to events, reasons, calls tools, and emits events.
 
@@ -25,11 +27,42 @@ dependency graph and commits atomically.
 
 **Event.** A typed message with a payload schema. The only communication primitive.
 
-**Gate.** A named boolean on an entity, set by a handler and checked by guards.
+**Gate.** A named boolean on an entity, set by `sets_gate` and checked by guards.
+
+**Decision gate.** A stage-owned typed decision (`stages.<stage>.gate`): the stage waits for
+a human verdict, every outcome is declared, and the card's content hash protects against
+deciding on stale facts.
+
+**Decision card.** The typed resource a decision gate (or an activity approval) creates:
+context, possible verdicts, required input fields. Channels render it; one API commits it.
+
+**Join.** A declared barrier in a stage: which arrivals complete a fan-out (members, window),
+with dedup and timeout owned by the platform.
+
+**Fan-out.** A handler row emitting one event per item of a list; each event typically
+resolves into its own template-flow instance.
+
+**Accumulator.** An append-only list on an entity (`record_evidence`, `accumulate`) used for
+histories and aggregation — distinct from fields, which overwrite.
 
 **Timer.** A durable, time-based trigger that fires an event into the loop.
 
-**Pin.** A typed input or output of a flow, used to wire flows together.
+**Pin.** A typed input or output of a flow. Output pins bind to input pins through the
+package `connect` block; an input pin's `resolution` and carried identity select the
+receiving instance.
+
+**Pack.** A declarative integration bundle. Provider trigger packs turn webhooks into typed
+normalized events; connector packs turn provider APIs into declared tools; channel packs
+render decision cards (Telegram ships first).
+
+**Workspace.** An agent's isolated filesystem (`/workspace` plus read-only mounts), scoped
+per agent or per flow instance by its workspace class.
+
+**Directive.** An operator message sent into a running agent's session
+(`swarm agent directive`) — steering, not state: it changes no entity data.
+
+**Model alias.** The provider-agnostic tier an agent declares (`cheap`, `regular`,
+`frontier`), resolved to a concrete model per backend by `llm.models`.
 
 **Run.** A top-level execution context. Correlates events, deliveries, sessions, and turns by
 `run_id`.
