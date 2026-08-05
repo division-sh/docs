@@ -69,25 +69,30 @@ score.received:
 
 ## Fan out
 
-Dispatch one event per item to an agent, then track completion with `accumulate`.
+Dispatch one event per item; each event resolves into its own template-flow instance (with its
+own agent), and a staged `join:` owns completion.
 
 ```yaml
 batch.requested:
   fan_out:
     items_from: payload.items
-    target: worker-agent
+    as: item
+    identity: item.item_id
     emit:
       event: item.assigned
-      broadcast: true
+      fields:
+        item_id: item.item_id
   data_accumulation:
     writes:
-      - target_field: expected_count
-        expression: "fan_out.count"
+      - target_field: item_ids
+        expression: payload.items.map(i, i.item_id)
 ```
 
-This is the shape of within-flow [agent sharding](/concepts/agents-and-sessions): each item goes
-to an instance of the agent role, and the runtime caps how many run at once (see
-[Configuration](/reference/configuration)).
+Delivery is receiver-owned: a `mode: template` flow declares `instance: item_id` and an input
+pin with `resolution: {mode: select-or-create}` carrying `item_id` — one instance and one
+agent per item, minted on first delivery. Completion is a fan-in barrier pin plus a `join:`
+row (members, dedup, timeout) — see `examples/routing/fan-in/barrier` for the canonical
+shape, and [one role, many instances](/concepts/agents-and-sessions).
 
 ## Rules-based routing
 
@@ -101,13 +106,11 @@ request.received:
       advances_to: billing_review
       emit:
         event: billing.requested
-        broadcast: true
     - id: technical
       condition: "payload.category == 'technical'"
       advances_to: tech_review
       emit:
         event: tech.requested
-        broadcast: true
 ```
 
 `rules` and `on_complete` are mutually exclusive.

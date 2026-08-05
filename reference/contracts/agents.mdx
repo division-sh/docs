@@ -26,14 +26,11 @@ to fulfill `required_agents`.
   The events the agent may emit. Each gets an auto-generated `emit_{event}` tool. Defaults to
   empty.
 </ParamField>
-<ParamField path="conversation_mode" type="string">
-  `task` (default), `session`, or `session_per_entity`.
-</ParamField>
-<ParamField path="session_scope" type="string">
-  `flow` or `entity` for authored agents. Required for non-`task` modes; must form a valid pair
-  with `conversation_mode` (`session` -> `flow`, `session_per_entity` -> `entity`). `entity` and
-  `flow` scope require a flow-scoped (child-flow) agent; a root-level agent can only use `task`.
-  `global` is reserved for internal platform sessions and is rejected on an authored agent.
+<ParamField path="memory" type="boolean">
+  `false` (default): a fresh conversation per task. `true`: one durable conversation per
+  (run, agent, flow instance) — requires the agent's flow to have per-instance identity, and
+  fails at boot with a teaching error otherwise. Replaces the retired
+  `conversation_mode`/`session_scope` pair, which is rejected at load.
 </ParamField>
 <ParamField path="manager_fallback" type="string">
   The escalation and hierarchy parent. Not a messaging grant.
@@ -68,7 +65,7 @@ validator-agent:                       # map key serves as both id and role
   model: cheap
   subscriptions: [order.created]
   emit_events: [order.validated]
-  conversation_mode: task
+  memory: false
   max_turns_per_task: 3
   entity_writes:
     order:

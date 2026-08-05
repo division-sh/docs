@@ -68,9 +68,8 @@ abort the boot. See the [MCP gateway reference](/reference/mcp-gateway).
 ## Permissions
 
 `tools` and `native_tools` cover what an agent may *call*. A separate list, `permissions`, covers
-what it may *do to shared platform state*: hire or reconfigure other agents, change routing,
-write to the mailbox, request a human decision, schedule a timer. These are verbs such as
-`agent_hire`, `agent_fire`, `agent_reconfigure`, `configure_routing`, `message_flow`,
+what it may *do to shared platform state*: change routing, write to the mailbox, request a
+human decision, schedule a timer. These are verbs such as `configure_routing`, `message_flow`,
 `mailbox_send`, `human_task_request`, `human_task_decide`, and `schedule`.
 
 Rather than repeat the same list on every agent, name a **permission bundle** defined once in
@@ -80,7 +79,7 @@ Rather than repeat the same list on every agent, name a **permission bundle** de
 permission_bundles:
   coordinator:
     description: Top-level flow coordinator
-    permissions: [agent_hire, agent_fire, agent_reconfigure, configure_routing, message_flow, mailbox_send, human_task_request, schedule]
+    permissions: [configure_routing, message_flow, mailbox_send, human_task_request, schedule]
   worker:
     description: Does the work, talks to its manager
     permissions: [message_flow, mailbox_send]
@@ -104,9 +103,6 @@ the tool is offered to the agent, lack it and the tool is not.
 
 | Tool | What it does |
 |---|---|
-| `agent_hire` | Spawn a new agent at runtime under the caller's management, used to add a worker or a shard. |
-| `agent_fire` | Tear down an agent the caller manages. |
-| `agent_reconfigure` | Update a managed agent's configuration in place. |
 | `human_task_request` | Open a task for a human (a mailbox item) and wait on the result. |
 | `human_task_decide` | Record a human's decision on a task. |
 | `schedule` | Schedule a future timer event. |

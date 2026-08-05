@@ -125,9 +125,10 @@ triggering event, so the bare string form is correct only for events with no pay
 The analyzer accepts a bare emit of a field-carrying event, so the empty payload surfaces only
 at runtime; populate `fields` whenever the event carries data.
 
-`target` and `broadcast` are a separate, routing-only concern: an intra-flow emit needs
-neither, while a pin-declared output that crosses a flow boundary must set `target` (`sender`,
-`{instance_id}`, `{flow, match}`, or `{flow, match, allow_fanout}`) or `broadcast: true`.
+An emit carries no routing fields at all: intra-flow delivery comes from subscriptions, and a
+pin-declared output routes through the parent's `connect` edges with instance selection owned
+by the receiving pin's `resolution`. (The retired `target:`/`broadcast:` emit fields fail at
+load with a `RETIRED-EMIT-ROUTING` error naming the replacement.)
 
 ## List processing and computation
 

@@ -95,7 +95,7 @@ Create them one at a time.
     name: ticket-flow                 # the flow's name
     version: 1.0.0                    # this flow package's own version
     description: Support ticket classification and resolution.
-    platform_version: ">=1.6.0"       # Swarm versions this bundle is compatible with
+    platform_version: ">=0.7.0 <0.8.0"       # Swarm versions this bundle is compatible with
     flows: []                         # child flows go here; we have none
     ```
 
@@ -104,14 +104,18 @@ Create them one at a time.
   </Step>
 
   <Step title="Declare the lifecycle (schema.yaml)">
-    `schema.yaml` is the flow's public surface. It declares three things: the **states** a
+    `schema.yaml` is the flow's public surface. It declares three things: the **stages** a
     ticket moves through, the **pins** (which events the flow accepts from outside), and the
     **agent roles** the flow needs.
 
     ```yaml schema.yaml
-    initial_state: new                # where a new ticket starts
-    terminal_states: [closed]         # once closed, no more events are accepted
-    states: [new, assigned, resolved, closed]   # every state the ticket can be in
+    stages:
+      new:                            # where a new ticket starts
+        initial: true
+      assigned: {}
+      resolved: {}
+      closed:                         # once closed, no more events are accepted
+        terminal: true
 
     pins:
       inputs:
@@ -312,26 +316,26 @@ Create them one at a time.
       model: cheap                    # the haiku-class alias; classification is light work
       subscriptions: [ticket.created] # the events it receives
       emit_events: [ticket.classified]  # the events it may emit
-      conversation_mode: task         # a fresh session per event, no memory
+      memory: false                   # a fresh conversation per event, no memory
       max_turns_per_task: 3
 
     resolver-agent:
       model: regular                  # the sonnet-class alias to draft resolutions
       subscriptions: [ticket.assigned]
       emit_events: [ticket.resolved, ticket.escalated]
-      conversation_mode: task
+      memory: false
       max_turns_per_task: 10
     ```
 
     Each agent's `emit_events` automatically gives it a tool to emit those events (for example
-    `emit_ticket_classified`). `task` mode means a fresh session per event with no memory
-    between tickets.
+    `emit_ticket_classified`). `memory: false` means a fresh conversation per event with no
+    memory between tickets.
 
     <Note>
-      To give the resolver one persistent session per ticket
-      (`conversation_mode: session_per_entity`, `session_scope: entity`), the agent must live
-      in a child flow, not the root. Entity and flow session scope require a flow-scoped agent.
-      See [Composing flows](/build/composition).
+      To give the resolver one persistent conversation per ticket, set `memory: true` on an
+      agent in a **per-ticket template flow** — memory scope is derived from the flow's
+      instance model, so the flow must have per-instance identity to key it by. See
+      [Composing flows](/build/composition).
     </Note>
   </Step>
 

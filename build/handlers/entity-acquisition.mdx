@@ -70,14 +70,17 @@ This is the most common shape: one handler creates, the rest select.
 name: orders
 version: 1.0.0
 description: An order created on its first event, then advanced by later events.
-platform_version: ">=1.6.0"
+platform_version: ">=0.7.0 <0.8.0"
 flows: []
 ```
 
 ```yaml schema.yaml
-initial_state: placed
-terminal_states: [delivered]
-states: [placed, shipped, delivered]
+stages:
+  placed:
+    initial: true
+  shipped: {}
+  delivered:
+    terminal: true
 pins:
   inputs:
     events: [order.placed, order.shipped, order.delivered]
@@ -141,14 +144,16 @@ follow-up, and you do not want to handle the two cases separately.
 name: sessions
 version: 1.0.0
 description: Count page views per session; the first view starts the session.
-platform_version: ">=1.6.0"
+platform_version: ">=0.7.0 <0.8.0"
 flows: []
 ```
 
 ```yaml schema.yaml
-initial_state: active
-terminal_states: [ended]
-states: [active, ended]
+stages:
+  active:
+    initial: true
+  ended:
+    terminal: true
 pins:
   inputs:
     events: [page.viewed, session.ended]

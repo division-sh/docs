@@ -21,8 +21,8 @@ they only configure the scope of `/workspace` (below).
 | `/opt/swarm/contracts` | read-only | global | the loaded flow contracts, so an agent can read its own flow's files |
 
 Read-only mounts are enforced at the filesystem level: an agent cannot write to `/data` or
-`/opt/swarm/contracts`. The runtime never varies these mounts by `conversation_mode`,
-`model`, or anything else; the workspace class is the only thing that changes `/workspace`.
+`/opt/swarm/contracts`. The runtime never varies these mounts by `memory`, `model`, or
+anything else; the workspace class is the only thing that changes `/workspace`.
 
 <Note>
   Runtime-owned host storage, such as the artifact repository (`/var/lib/swarm/artifacts`,
@@ -68,11 +68,11 @@ at its declared scope; it aborts if any mount cannot be satisfied.
 
 ## Lifecycle
 
-`/workspace` lifecycle follows the scope and the agent's conversation mode:
+`/workspace` lifecycle follows the scope and the agent's `memory` setting:
 
 - **per-agent**: created when the agent is registered, cleaned up when the agent terminates.
-  It persists across sessions for `session` and `session_per_entity` modes, and is ephemeral for
-  `task` mode.
+  It persists across turns for `memory: true` agents, and is ephemeral per task for
+  `memory: false`.
 - **per-flow-instance**: created when the instance is created, and preserved when the instance
   terminates (for post-mortem); archiving it is an operational concern.
 

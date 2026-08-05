@@ -130,7 +130,8 @@ disable an individual check.
 - **`handler_field_compliance`** (error). A handler uses a field name outside the defined
   handler-field set.
 - **`invalid_field_detection`** (error). A node uses a top-level field outside the node-field
-  set, or an agent declares an invalid `session_scope` (see Agents below).
+  set, or an agent declares a retired field (`conversation_mode`, `session_scope`, `mode`);
+  the error names the `memory:` replacement.
 - **`dialect_compliance`** (error). `on_complete` is a map instead of a list; or both
   `on_complete` and `rules`; or both `create_entity` and `accumulate`; or more than one entity
   acquisition mode on one handler.
@@ -143,10 +144,10 @@ disable an individual check.
 
 - **`required_agents_match`** (error). A `required_agents` role has no matching agent (by map
   key) in `agents.yaml`.
-- **`invalid_field_detection` (session scope)** (error). A non-`task` mode declares no valid
-  `session_scope`, or `entity`/`flow` scope is declared on a root-level agent. *Rationale:
-  entity and flow session scope need an owning flow, so they require a flow-scoped (child-flow)
-  agent; a single root flow uses `task`.*
+- **`memory_scope_validation`** (error). `memory: true` on an agent whose flow has no
+  per-instance identity. *Rationale: a durable conversation is keyed by (run, agent, flow
+  instance); without an instance owner there is nothing to scope it to, and the platform never
+  guesses.*
 - **`agent_permission_validation`** (error). An agent declares an unknown permission, or uses a
   builtin tool whose required permission it lacks.
 - **`native_tools_valid`** (error). `native_tools` names an unrecognized capability (not
@@ -172,9 +173,11 @@ disable an individual check.
 
 - **`write_pin_ownership_validation`** (error). Two flows declare writes to the same output
   data pin. *Rationale: one writer per field keeps entity state authoritative.*
-- **`pin_target_resolution`** (error). A pin-declared output emit lacks an explicit `target`,
-  a structural parent route, or `broadcast: true`; or has malformed or unknown target syntax.
-  *Rationale: a pin output must never silently broadcast to the wrong recipients.*
+- **`RETIRED-EMIT-ROUTING`** (error, at parse). An emit declares `target:` or
+  `broadcast:` — producer-side routing authority is retired; the error names the receiver-owned
+  replacement (subscriptions, `connect` edges, pin `resolution`). Pin-declared outputs route
+  through the parent's `connect` edges and the structural parent route; the compiled connect
+  graph is the single routing authority and verify proves every edge at boot.
 - **`missing_external_select_entity`** (error). A stateful handler consumes an external or
   no-target event but declares no `select_entity`/`select_or_create_entity`, so it would run
   against the sender instead of a receiving-flow-owned entity.
@@ -202,8 +205,8 @@ disable an individual check.
 | `missing_external_select_entity` | Add `create_entity: true` (or `select_entity`) to the stateful input-pin handler. |
 | `entity_writer_coverage` | Give the field an `initial:` value, write it in a handler, or mark `_unused_reason`. |
 | `state_machine_coherence` / unreachable state | Make every declared state an `advances_to` target, and remove states nothing reaches. |
-| `invalid_field_detection` (session scope) | Use `conversation_mode: task` for a root agent, or move the agent into a child flow for `entity`/`flow` scope. |
+| `memory_scope_validation` | Set `memory: false`, or move the agent into a flow with per-instance identity for `memory: true`. |
 | `single_node_per_event` | Ensure only one system node handles each event. |
 | `payload_field_coverage` | Declare the field in the source event's `events.yaml`, or stop writing it. |
-| `pin_target_resolution` | Add `target:` or `broadcast: true` to the pin-declared output emit. |
+| `RETIRED-EMIT-ROUTING` | Remove `target:`/`broadcast:` from the emit; wire the receiver through subscriptions or a `connect` edge with pin `resolution`. |
 | `produces_drift` / `phantom_produces` | Match `produces` to what handlers emit, or omit `produces` and let it derive. |

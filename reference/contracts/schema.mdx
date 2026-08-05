@@ -9,15 +9,22 @@ and the agent roles it requires.
 
 ## State machine
 
-<ParamField path="initial_state" type="string">
-  The state a new entity starts in. Set to `null` for a stateless flow.
+<ParamField path="stages" type="map">
+  The entity's lifecycle stages, each a map entry. Mark the entry stage `initial: true` and
+  absorbing stages `terminal: true` (once an entity reaches one, new events for it are
+  rejected and its timers are cancelled). A stage may also declare `timers:` that fire when an
+  entity has sat in it too long. Omit `stages:` entirely for a stateless flow. The older
+  `initial_state`/`states`/`terminal_states` list grammar still parses, but `stages:` is the
+  canonical form and the only one stage timers attach to.
 </ParamField>
-<ParamField path="states" type="list">
-  All states in the flow. Empty for a stateless flow.
+<ParamField path="mode" type="string">
+  `singleton` (default) or `template` — one instance per identity value.
 </ParamField>
-<ParamField path="terminal_states" type="list">
-  Absorbing states. Once an entity reaches one, new events for it are rejected and its timers
-  are cancelled.
+<ParamField path="instance" type="string">
+  Template flows only: the scalar identity field (`instance: order_id` = one instance per
+  order_id). Every selecting input pin must carry a field with this name; the pin's instance
+  key derives from it. The older `instance: {by:}` block and `resolution.instance_key` are
+  retired and rejected at load.
 </ParamField>
 
 ## Pins
@@ -35,8 +42,9 @@ pins:
     writes: [status, total]
 ```
 
-No two flows may write the same data pin (a boot error). An emit of a pin-declared output
-event must resolve a target or set `broadcast: true`; see
+No two flows may write the same data pin (a boot error). A pin-declared output event routes
+through the parent package's `connect` edges; the receiving flow's input pin owns instance
+selection via `resolution` and `carries`. The producer never targets recipients; see
 [Events and routing](/concepts/events-and-routing).
 
 ## Required agents

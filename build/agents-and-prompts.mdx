@@ -30,8 +30,7 @@ resolver-agent:                       # map key = agent id = role (the default)
   manager_fallback: support-coordinator
   subscriptions: [ticket.assigned]
   emit_events: [ticket.resolved, ticket.escalated]
-  conversation_mode: session_per_entity
-  session_scope: entity
+  memory: true
   max_turns_per_task: 10
   entity_writes:
     ticket:
@@ -43,8 +42,7 @@ resolver-agent:                       # map key = agent id = role (the default)
 | `model` | Provider-agnostic model alias: `cheap`, `regular`, or `frontier`. Resolved per backend by `llm.models`. The older `model_tier` is retired. |
 | `subscriptions` | The events the agent receives. |
 | `emit_events` | The events it may emit (each gets an auto-generated `emit_*` tool). |
-| `conversation_mode` | `task`, `session`, or `session_per_entity`. |
-| `session_scope` | `flow` or `entity`: required for non-`task` modes (`global` is internal-only). |
+| `memory` | `true` or `false`. `false` (the default) means each task starts a fresh conversation. `true` keeps a durable conversation whose scope is **derived from the flow's instance model** — one conversation per flow instance (so in a `mode: template` flow, one per instance/entity). The older `conversation_mode`/`session_scope` pair is retired; `memory:` replaces both. |
 | `permissions_bundle` | A named permission set from `policy.yaml`; combined with any inline `permissions`. See [Tools](/build/tools). |
 | `manager_fallback` | The escalation/hierarchy parent. Omit (or set `null`) for a top-level coordinator, which then resolves to the runtime default. Not a messaging grant. |
 | `entity_writes` | Which entity fields the agent's generated `save_*`/`update_*` tools may write. |
@@ -52,8 +50,8 @@ resolver-agent:                       # map key = agent id = role (the default)
 | `type` | Optional classification label (defaults to `generic`); used to tag agents, for example by division. Does not change tool or permission gating. |
 | `role` | Optional override; defaults to the map key. Set it when the prompt file is named differently from the id, so the runtime loads `prompts/<role>.md` instead of `prompts/<map-key>.md`. |
 
-`conversation_mode` and `session_scope` must form a valid pair (for example,
-`session_per_entity` requires `session_scope: entity`); invalid combinations fail at boot.
+`memory: true` on a flow with no per-instance identity (a plain root flow) fails at boot with
+a teaching error: there is no flow-instance owner to scope the conversation to.
 
 ## What an agent can call
 

@@ -19,7 +19,7 @@ every flow must have.
   Human-readable description.
 </ParamField>
 <ParamField path="platform_version" type="string">
-  A semver range (for example `">=1.6.0"`). Boot rejects the bundle if the running platform
+  A semver range (for example `">=0.7.0 <0.8.0"`). Boot rejects the bundle if the running platform
   version falls outside the range.
 </ParamField>
 <ParamField path="flows" type="list">
@@ -39,7 +39,7 @@ instances are created at runtime with the `create_flow_instance` action. See
 name: order-platform
 version: 1.0.0
 description: Order intake and fulfillment.
-platform_version: ">=1.6.0"
+platform_version: ">=0.7.0 <0.8.0"
 flows:
   - id: intake
     flow: intake

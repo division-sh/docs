@@ -8,7 +8,7 @@ icon: "robot"
 
 An agent is an LLM session. It receives events, reasons inside a scoped session, calls tools,
 and emits events. An agent is defined in `agents.yaml`: its subscriptions, the events it may
-emit, its tools, its model tier, and its conversation mode.
+emit, its tools, its model tier, and whether it keeps memory.
 
 Agents never write entity state directly. They emit events; a system node handler decides
 what gets written. This keeps state authority deterministic.
@@ -18,26 +18,25 @@ resolver-agent:                                # map key = id and role (the defa
   model: regular
   subscriptions: [ticket.assigned]
   emit_events: [ticket.resolved]
-  conversation_mode: session_per_entity
-  session_scope: entity
+  memory: true
   entity_writes:
     ticket:
       save: [resolution]
 ```
 
-This agent receives `ticket.assigned`, keeps one session per ticket, and may emit
-`ticket.resolved` (which gives it an auto-generated `emit_ticket_resolved` tool). Its
-`entity_writes` let it write the `resolution` field through a generated
-`save_ticket_resolution` tool, the only entity write it is allowed.
+This agent receives `ticket.assigned`, keeps one durable conversation per flow instance (in a
+per-ticket template flow, that means one per ticket), and may emit `ticket.resolved` (which
+gives it an auto-generated `emit_ticket_resolved` tool). Its `entity_writes` let it write the
+`resolution` field through a generated `save_ticket_resolution` tool, the only entity write it
+is allowed.
 
-`session_per_entity` (and any non-`task` mode) requires the agent to be declared inside a
-flow, that is, a child flow. Entity and flow session scope are not available to a root-level
-agent; a single root flow uses `conversation_mode: task`.
+`memory: true` requires a flow-instance owner to scope the conversation to — an agent in a
+flow with per-instance identity. A root-level agent with `memory: true` fails at boot with a
+teaching error; roots have no instance to key memory by.
 
 (If "root" and "child" are new here: a Swarm system is a tree of flows. The top one is the
-**root**; a flow it nests is a **child**. A standalone single flow is a root, which is why it is
-limited to `task` sessions. [Composing flows](/build/composition) covers how flows nest; you only
-need the root-vs-child distinction for the rule above.)
+**root**; a flow it nests is a **child**. [Composing flows](/build/composition) covers how
+flows nest; you only need the root-vs-child distinction for the rule above.)
 
 ## Isolation and hierarchical addressing
 
@@ -48,38 +47,39 @@ default. Per-workspace mounts extend the isolation to the filesystem and process
 agent (or each flow instance) gets its own `/workspace`, invisible to the others. See
 [Agent workspaces and isolation](/reference/workspaces) for the mounts and scoping.
 
-## Sharding: one role, many instances
+## One role, many instances
 
 When a single agent would be a bottleneck (it has to score 52 categories, or review 200 files),
-you run the role in parallel. A system node splits the workload and dispatches a slice to each of
-several instances of the agent, called **shards** (named `<agent>-shard-1`, `-shard-2`, and so
-on), then gathers the results with [`accumulate`](/build/handlers/accumulation). You write the
-partitioning and the merge; the platform provides the dispatch, the per-shard routing, and the
-completion tracking. The [fan-out pattern](/patterns/overview) is the shape this takes.
+you run the role in parallel — **declaratively**. A `fan_out` row splits the workload into one
+event per item; each event resolves into its own instance of a `mode: template` flow
+(`select-or-create` on the pin's carried identity); each instance materializes **its own copy
+of the declared agent**, with its own session, workspace, and lifecycle. Results converge
+through a fan-in barrier pin and a [`join`](/concepts/gates-timers-and-state) row that owns
+completion, dedup, and timeout. You declare the split key and the join membership; the platform
+owns dispatch, per-instance identity, and completion tracking.
 
-The runtime keeps the parallelism from running away: there are caps on shards per job and on how
-many run at once, a per-shard timeout and budget, bounded retries, and a circuit breaker. Those
-settings are in [Configuration](/reference/configuration).
+Agent identity is exact: each template instance's agent is a separate runtime agent keyed by
+(declaration × flow instance). One instance finishing never affects a sibling's agent.
 
-This is parallelism *within* one flow, on a single deployment. Spreading flow instances across
+This is parallelism *within* one run, on a single deployment. Spreading flow instances across
 machines is not in v1; one platform instance runs everything.
 
-## Conversation modes
+## Memory
 
-`conversation_mode` controls how the platform manages session context:
+`memory` is the one field that controls conversation persistence:
 
-- **`task`**: a new session per event, no memory between invocations. The default.
-- **`session`**: a persistent session across events. Requires `session_scope: flow`.
-- **`session_per_entity`**: one session per (agent, entity) pair. Requires
-  `session_scope: entity`. The agent builds context for one entity over multiple turns.
-- **`stateless`**: an alias for `task`.
+- **`memory: false`** (the default): a fresh conversation per task. The agent sees the
+  triggering event and its tools, does its work, and the conversation ends.
+- **`memory: true`**: one durable conversation whose scope is **derived from the flow's
+  instance model** — exactly one conversation per (run, agent, flow instance). In a
+  `mode: template` flow that means one conversation per instance/entity: the agent builds
+  context for one ticket, one customer, one startup over multiple turns.
 
-`session_scope` is `flow` or `entity` for authored agents and has to match the mode, as the
-bullets above show. (`global` exists but is reserved for internal platform sessions; an authored
-agent that declares it will not boot.) The platform checks the pairing at boot and never guesses,
-so a non-`task` agent that leaves `session_scope` off will not boot. Two more rules depend on where the agent lives: `flow`
-scope only works for an agent inside a flow (a root agent cannot use it), and `entity` scope only
-works in a flow that has entities (one with an `initial_state`).
+There is nothing else to configure: no mode enum, no scope field. The platform derives the
+memory identity from where the agent is declared, checks it at boot, and never guesses — an
+agent with `memory: true` in a flow with no per-instance identity fails with a teaching error
+naming the fix. (Older Swarm versions used `conversation_mode`/`session_scope` pairs; both
+fields are retired and rejected at load.)
 
 ## The tools an agent can call
 

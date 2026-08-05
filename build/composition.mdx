@@ -150,16 +150,34 @@ from that config.
 Creating an instance whose id already exists fails closed (the handler errors rather than reusing
 or overwriting the live instance), so derive the id from a stable business key like the order id.
 
-**Addressing an existing instance.** To send an event to a specific instance you already have,
-target it by id; to pick one by an entity field, match on it:
+<Note>
+  The declarative alternative — usually the better one — is to let the **receiving pin mint
+  instances**: declare the child's input pin with `resolution: {mode: select-or-create}` and a
+  carried identity, and instances come into existence when their first event arrives. No
+  creation handler needed. See the addressing section below.
+</Note>
 
-```yaml
-emit:
-  event: fulfillment.expedite
-  target: { instance_id: payload.order_id }   # this exact instance
-# or
-  target: { flow: fulfillment, match: { order_id: payload.order_id } }  # the one whose order_id matches
+**Addressing an existing instance.** The *receiver* owns instance selection, not the emitting
+handler. The child's input pin declares how an arriving event finds its instance — by the
+identity field the pin carries:
+
+```yaml fulfillment/schema.yaml
+mode: template
+instance: order_id                 # one instance per order_id
+pins:
+  inputs:
+    events:
+      - name: expedite
+        event: fulfillment.expedite
+        resolution:
+          mode: select             # must match an existing instance; select-or-create would mint
+        carries:
+          order_id: {from: payload.order_id, type: text}
 ```
+
+The parent just emits `fulfillment.expedite` through its output pin and the `connect` edge; the
+carried `order_id` does the addressing. (Older Swarm accepted producer-side
+`target: { instance_id }` / `target: { flow, match }` — both are retired and fail at load.)
 
 ## The return path
 
@@ -177,8 +195,9 @@ fulfillment.packed:
 ```
 
 Because the instance was created with a parent route, that output pin returns to the parent
-automatically, no target needed. (Inside an event chain you can also reply to whoever called you
-with `target: sender`.)
+automatically — the producer never targets anything. (Request/reply correlation, when you need
+it, is declared on the *receiving* pin, not chosen per-emit; the retired `target: sender`
+spelling fails at load.)
 
 The parent receives it on a handler, and here is the key move: the parent must **re-attach to
 the right order**, because the event arrived at the `orders` flow, which holds many orders, not

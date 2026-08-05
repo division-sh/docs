@@ -20,13 +20,11 @@ request.received:
       advances_to: billing_review
       emit:
         event: billing.requested
-        broadcast: true
     - id: technical
       condition: "payload.category == 'technical'"
       advances_to: tech_review
       emit:
         event: tech.requested
-        broadcast: true
 ```
 
 Each rule can carry its own `advances_to`, `sets_gate`, `data_accumulation`, and `emit`. When

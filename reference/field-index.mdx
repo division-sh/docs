@@ -47,7 +47,7 @@ Top-level fields per contract file. Sub-field detail lives on the linked referen
 | `name` | yes | Flow identifier; unique within the bundle. |
 | `version` | yes | Semantic version of the flow. |
 | `description` | yes | One-line human description. |
-| `platform_version` | yes | Range the flow targets (e.g. `">=1.6.0"`). |
+| `platform_version` | yes | Range the flow targets (e.g. `">=0.7.0 <0.8.0"`). |
 | `flows` | yes | List of child flow ids (empty list `[]` for leaf flows). |
 
 [Reference](/reference/contracts/package).
@@ -56,9 +56,9 @@ Top-level fields per contract file. Sub-field detail lives on the linked referen
 
 | Field | Required | One line |
 |---|---|---|
-| `initial_state` | yes | The state every new entity starts in. |
-| `terminal_states` | yes | States that, once entered, end the entity's life. |
-| `states` | yes | The full list of declared states. |
+| `stages` | yes* | Map of the entity's lifecycle stages; mark one `initial: true` and terminal ones `terminal: true`. Omit entirely for a stateless flow. |
+| `mode` | | `singleton` (default) or `template` (one instance per identity value). |
+| `instance` | template only | Scalar identity field: `instance: order_id` means one instance per order_id. |
 | `pins.inputs.events` | | Events that enter this flow from outside. |
 | `pins.outputs.events` | | Events this flow emits to consumers outside it. |
 
@@ -118,8 +118,8 @@ A map of `<agent-role>: { ... }`. The role key must match a role declared in `sc
 | `model` | Alias (`cheap`, `regular`, `frontier`) resolved by `llm.models` per backend. |
 | `subscriptions` | List of events the agent receives. |
 | `emit_events` | List of events the agent may emit (analyzer-checked). |
-| `conversation_mode` | `task` (fresh session per event), `session` (one shared session), or `session_per_entity` (one per entity). |
-| `max_turns_per_task` / `max_turns_per_session` | Per-mode turn caps. |
+| `memory` | `false` (default): fresh conversation per task. `true`: one durable conversation per flow instance (scope derived from the flow's instance model). |
+| `max_turns_per_task` | Turn cap per task. |
 | `workspace_class` | Named workspace from `policy.yaml`. See [Agent workspaces](/reference/workspaces). |
 | `permission_bundle` | Named permissions from `policy.yaml`. |
 | `prompt` | Path to the prompt under `prompts/`. |
@@ -188,14 +188,14 @@ Bare strings are boot errors. Detail: [Timers](/reference/contracts/nodes#timers
 
 Detail: [Actions](/build/handlers/actions). Authoring product-specific actions is not supported.
 
-### `agent.conversation_mode` values
+### `agent.memory` values
 
 | Value | Meaning |
 |---|---|
-| `task` | A fresh session per event; no memory across events. |
-| `session` | One shared session for the agent across all events. |
-| `session_per_entity` | One session per entity the agent acts on. |
+| `false` | A fresh conversation per task; no memory across events. The default. |
+| `true` | One durable conversation per (run, agent, flow instance); requires a flow with per-instance identity. |
 
+The older `conversation_mode`/`session_scope` fields are retired and rejected at load.
 Detail: [agents.yaml](/reference/contracts/agents).
 
 ### Handler outcomes (what you see in `swarm trace`)

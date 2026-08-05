@@ -47,8 +47,8 @@ contracts.
 
 **Mailbox.** The durable human-in-the-loop task queue. Decisions are approve, reject, defer.
 
-**Session.** An agent's execution context, scoped by `conversation_mode`: `task` (per event),
-`session` (persistent), or `session_per_entity`.
+**Session.** An agent's execution context. With `memory: false` (the default) it lasts one
+task; with `memory: true` it is one durable conversation per (run, agent, flow instance).
 
 **Conversation.** The API's name for a session's recorded transcript. The `conversation.*`
 methods read sessions, their turns, and transcripts.

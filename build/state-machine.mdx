@@ -1,11 +1,11 @@
 ---
 title: "Defining the state machine"
-description: "States, pins, required agents, and entity acquisition in schema.yaml."
+description: "Stages, pins, required agents, and entity acquisition in schema.yaml."
 icon: "sitemap"
 ---
 
 A flow's **state machine** is the lifecycle of the entity moving through it. The entity sits
-in exactly one state at a time, and a handler moves it forward by setting `advances_to`.
+in exactly one stage at a time, and a handler moves it forward by setting `advances_to`.
 `schema.yaml` declares that lifecycle, along with the flow's public **pins** and the **agent
 roles** it needs.
 
@@ -24,22 +24,33 @@ stateDiagram-v2
 Each arrow is a handler's `advances_to`, and the label is the event that triggers it. The
 self-arrow on `assigned` is the escalation retry loop.
 
-## States
+## Stages
 
 ```yaml
-initial_state: new
-terminal_states: [closed]
-states: [new, assigned, resolved, closed]
+stages:
+  new:
+    initial: true
+  assigned: {}
+  resolved: {}
+  closed:
+    terminal: true
 ```
 
-An entity is in exactly one state, set by a handler's `advances_to`. Terminal states are
-absorbing, once reached, new events are rejected and timers are cancelled. A flow with
-`initial_state: null` and `states: []` is stateless. See
+An entity is in exactly one stage, set by a handler's `advances_to`. Terminal stages are
+absorbing: once reached, new events are rejected and timers are cancelled. A flow that
+declares no `stages:` is stateless. Stages are also where **stage timers** attach — a
+`timers:` block on a stage can advance or escalate an entity that has sat too long; see
 [Gates, timers, and state](/concepts/gates-timers-and-state).
 
-Every declared state must be reachable: it is either the `initial_state` or the target of
-some `advances_to`. The analyzer flags states that nothing reaches (see
-[Analyzer checks](/reference/analyzer-checks)).
+Every declared stage must be reachable: it is either the initial stage or the target of some
+`advances_to` (including a stage timer's). The analyzer flags stages that nothing reaches
+(see [Analyzer checks](/reference/analyzer-checks)).
+
+<Note>
+  The older list grammar (`initial_state` / `terminal_states` / `states:`) still parses, but
+  `stages:` is the canonical form — new features (stage timers, join stages) attach to it.
+  New flows should use `stages:`.
+</Note>
 
 ## Pins
 
@@ -57,9 +68,11 @@ pins:
 ```
 
 No two flows may write the same data pin, that conflict is a boot error. Output event pins
-are the activation switch for cross-flow routing; an emit of a pin-declared output must
-resolve a target or set `broadcast: true`. Internal events not listed in pins are ordinary
-event-loop emits and need no target.
+are the flow's exit points for cross-flow routing: the parent package binds them with
+`connect` edges, and the *receiving* flow's input pin owns instance selection through its
+`resolution` and `carries` declarations. The producer never chooses recipients — an emit
+carries no routing authority (see [Emitting events](/build/handlers/emitting)). Internal
+events not listed in pins are ordinary event-loop emits delivered by subscription.
 
 ## Required agents
 
@@ -82,7 +95,7 @@ required_agents:
 A stateful flow's input-pin handler must say how it gets the entity to operate on. It
 declares exactly one acquisition mode:
 
-- `create_entity: true`: mint a new entity at `initial_state`.
+- `create_entity: true`: mint a new entity at the initial stage.
 - `select_entity`: resolve exactly one existing flow-owned entity by a declared business
   key.
 - `select_or_create_entity`: resolve one existing, or deterministically mint one.

@@ -92,7 +92,6 @@ batch.requested:
     items_from: payload.items
     emit:
       event: item.assigned
-      broadcast: true
       fields:
         item: item
   data_accumulation:
@@ -102,6 +101,16 @@ batch.requested:
 ```
 
 `fan_out.count` is only available to `data_accumulation` in the same handler.
+
+<Note>
+  **Waiting for the fan-out to complete?** Don't hand-roll a counter with `accumulate` and
+  `expected_count` comparisons — that pattern has no dedup and no timeout, and it deadlocks
+  if the last result arrives before the count is written. The platform owns that barrier: a
+  **fan-in resolution pin** (`resolution: {mode: fan-in, aggregation: barrier}` with
+  `dedup_by` and `window`) feeding a staged **`join:`** row with `members:`, `on_complete:`,
+  and `timeout:`. See `examples/routing/fan-in/barrier` in the repository for the canonical
+  shape. `accumulate` remains right for aggregations that are not completion barriers.
+</Note>
 
 ## query: read across entities
 
@@ -115,7 +124,6 @@ timer.daily_report:
     count: true
   emit:
     event: report.compiled
-    broadcast: true
 ```
 
 A `query` can also `filter`, `select` specific fields, and `store_as` a named result; see

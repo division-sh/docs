@@ -38,14 +38,16 @@ from any directory.
     ```yaml greeting-flow/package.yaml
     name: greeting-flow
     version: 1.0.0
-    platform_version: ">=1.6.0"
+    platform_version: ">=0.7.0 <0.8.0"
     flows: []
     ```
 
     ```yaml greeting-flow/schema.yaml
-    initial_state: received
-    terminal_states: [done]
-    states: [received, done]
+    stages:
+      received:
+        initial: true
+      done:
+        terminal: true
     pins:
       inputs:
         events: [greeting.requested]
@@ -96,7 +98,7 @@ from any directory.
     binds need an explicit `SWARM_API_TOKEN`.
 
     The trace shows `greeting.requested` arriving, the `greeter` node creating an entity, and
-    the entity advancing to `done` (a terminal state). Press Ctrl-C to stop the local runtime
+    the entity advancing to `done` (a terminal stage). Press Ctrl-C to stop the local runtime
     once you have seen it.
   </Step>
 </Steps>

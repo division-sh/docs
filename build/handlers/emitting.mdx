@@ -25,31 +25,25 @@ accepts it, so the empty payload only shows up at runtime when a subscriber rece
 the bare form only for events that declare no fields; use `fields` the moment an event carries
 data.
 
-## Targeting
+## Routing is not the producer's job
 
-Routing inside a flow comes from subscriptions, so an internal emit needs no target. An emit
-that **crosses a flow boundary** (a pin-declared output) must resolve a recipient with `target`
-or opt out with `broadcast: true`:
+An emit carries **no routing authority**. The producer says *what happened*; who receives it
+is owned entirely by the receiving side:
 
-```yaml
-emit:
-  event: order.fulfilled
-  fields:
-    order_id: entity.order_id
-  target: sender          # reply to whoever sent the triggering event
-```
+- **Inside a flow** — delivery comes from subscriptions (`subscribes_to` on nodes, `subscriptions`
+  on agents). An internal emit needs nothing beyond `event` and `fields`.
+- **Across flows** — the event leaves through a **declared output pin**, the parent package
+  binds it with a `connect` edge, and the *receiver's* input pin owns instance selection via
+  `resolution` and its declared `carries`. See [Composing flows](/build/composition).
+- **Replies** — reply correlation is declared on the receiving pin, not chosen per-emit by the
+  producer.
 
-```yaml
-emit:
-  event: ticket.resolved
-  fields:
-    resolved_by: entity.resolved_by
-  broadcast: true         # deliberately fan out to all subscribers
-```
-
-Cross-flow targeting (`target: { instance_id }`, `target: { flow, match }`, the parent route)
-is its own topic; see [Composing flows](/build/composition) and
-[Events and routing](/concepts/events-and-routing).
+Older Swarm versions accepted `emit.target` and `emit.broadcast` — producer-side recipient and
+cardinality selection. Both are retired and now fail at load with a `RETIRED-EMIT-ROUTING`
+error naming the replacement. If you are migrating: a `target: sender` reply becomes
+receiver-owned reply correlation on the pin; a `broadcast: true` fan-out becomes either
+ordinary subscriptions (every subscriber in the flow already receives an internal event) or
+explicit `connect` edges per receiving flow.
 
 A handler's top-level `emit` is valid only when the handler has a single emit site. If the
 handler also branches with `rules` or `on_complete`, the emit moves onto the branch; a

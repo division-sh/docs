@@ -88,9 +88,12 @@ A doc that must be reviewed before it can publish. The gate is declared once, se
 required by the publish guard, and cleared if changes are requested. This passes `swarm verify`.
 
 ```yaml schema.yaml
-initial_state: draft
-terminal_states: [published]
-states: [draft, in_review, published]
+stages:
+  draft:
+    initial: true
+  in_review: {}
+  published:
+    terminal: true
 pins:
   inputs:
     events: [doc.submitted, review.approved, changes.requested, publish.requested]

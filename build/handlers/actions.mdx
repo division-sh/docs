@@ -66,14 +66,16 @@ An incident log: open an incident, append evidence to it, then close it.
 name: incident-log
 version: 1.0.0
 description: Append evidence to an incident, then close it.
-platform_version: ">=1.6.0"
+platform_version: ">=0.7.0 <0.8.0"
 flows: []
 ```
 
 ```yaml schema.yaml
-initial_state: open
-terminal_states: [closed]
-states: [open, closed]
+stages:
+  open:
+    initial: true
+  closed:
+    terminal: true
 pins:
   inputs:
     events: [incident.opened, evidence.submitted, incident.closed]
@@ -173,14 +175,19 @@ A refund desk: route a large refund to a human, then resume on their decision.
 name: refund-approval
 version: 1.0.0
 description: Route large refunds to a human, resume on their decision.
-platform_version: ">=1.6.0"
+platform_version: ">=0.7.0 <0.8.0"
 flows: []
 ```
 
 ```yaml schema.yaml
-initial_state: requested
-terminal_states: [approved, rejected]
-states: [requested, awaiting_approval, approved, rejected]
+stages:
+  requested:
+    initial: true
+  awaiting_approval: {}
+  approved:
+    terminal: true
+  rejected:
+    terminal: true
 pins:
   inputs:
     events: [refund.requested, refund.approved, refund.rejected]
@@ -282,14 +289,16 @@ A report publisher: commit a generated report to a git-backed repo.
 name: report-publisher
 version: 1.0.0
 description: Commit a generated report to a git-backed artifact repo.
-platform_version: ">=1.6.0"
+platform_version: ">=0.7.0 <0.8.0"
 flows: []
 ```
 
 ```yaml schema.yaml
-initial_state: ready
-terminal_states: [published]
-states: [ready, published]
+stages:
+  ready:
+    initial: true
+  published:
+    terminal: true
 pins:
   inputs:
     events: [report.ready]

@@ -109,14 +109,16 @@ credentials:
 ```yaml greeting-flow/package.yaml
 name: greeting-flow
 version: 1.0.0
-platform_version: ">=1.6.0"
+platform_version: ">=0.7.0 <0.8.0"
 flows: []
 ```
 
 ```yaml greeting-flow/schema.yaml
-initial_state: received
-terminal_states: [done]
-states: [received, done]
+stages:
+  received:
+    initial: true
+  done:
+    terminal: true
 pins:
   inputs:
     events: [greeting.requested]

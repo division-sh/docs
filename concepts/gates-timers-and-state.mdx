@@ -6,15 +6,17 @@ icon: "timer"
 
 ## State machines
 
-A flow declares its state machine in `schema.yaml`: an `initial_state`, a list of `states`,
-and `terminal_states`. An entity is in exactly one state at a time, set by a handler's
-`advances_to` (a single state, never a list). State is flow-scoped; there is no global state
-enum spanning the platform, and authors never declare a state field on the entity; the
-runtime carries `entity.current_state` implicitly.
+A flow declares its state machine in `schema.yaml` as a **`stages:` map** — each stage named
+once, with `initial: true` on the entry stage and `terminal: true` on the absorbing ones. An
+entity is in exactly one stage at a time, set by a handler's `advances_to` (a single stage,
+never a list). Stages are flow-scoped; there is no global stage enum spanning the platform,
+and authors never declare a state field on the entity; the runtime carries
+`entity.current_state` implicitly. Stages also carry **stage timers**: a `timers:` block on a
+stage fires when an entity has sat in it too long, advancing or escalating deterministically.
 
-A flow with `initial_state: null` and `states: []` is **stateless**: it processes events
-without a lifecycle. `advances_to` is invalid there. Stateless still allows entities: a
-handler that writes entity fields auto-materializes one with no state.
+A flow that declares no `stages:` is **stateless**: it processes events without a lifecycle.
+`advances_to` is invalid there. Stateless still allows entities: a handler that writes entity
+fields auto-materializes one with no state.
 
 ## Terminal states
 
