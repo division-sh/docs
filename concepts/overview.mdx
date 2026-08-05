@@ -39,8 +39,10 @@ node touches state. Both kinds of emitted event re-enter the loop and route to t
 subscribers.
 
 A third kind of actor is the **human**: a stage can wait on a typed decision gate, and the
-verdict — decided from the CLI, the API, or a chat channel on a phone — is just another event entering the same loop,
-with every outcome declared in the contract. And a fourth is implicit: the **runtime** itself
+verdict — decided from the CLI, the API, or a chat channel on a phone — is just another event
+entering the same loop, with every outcome declared in the contract. The split holds even
+here: the human supplies the judgment, but the state change is still committed by the gate's
+declared outcome running through a deterministic handler — a person decides, a node writes. And a fourth is implicit: the **runtime** itself
 handles transitions you never declare, such as a stage timer firing or a flow's own
 lifecycle.
 

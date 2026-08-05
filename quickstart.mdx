@@ -91,6 +91,9 @@ from any directory.
     swarm run --contracts ./greeting-flow --event greeting.requested --payload payload.json
     ```
 
+    Both `payload.json` and the runtime's `.swarm/` directory (store + workspace data) are
+    created in the directory you run from — run from a scratch directory if you care.
+
     The runtime logs `using built-in dev API token on loopback` on startup; only non-loopback
     binds need an explicit token, supplied via `--api-token-file` or `serve.api_token_file` in
     config (the old `SWARM_API_TOKEN` env var is retired and rejected with a teaching error).

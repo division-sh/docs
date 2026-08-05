@@ -4,6 +4,11 @@ description: "Wait for many events, aggregate collected items, and fan work out:
 icon: "layer-group"
 ---
 
+<Note>
+  This page is the **guide** — the shapes and when to use them. The complete field-level
+  contract lives in the [accumulation reference](/reference/accumulation).
+</Note>
+
 These steps handle work that spans more than one event or more than one item. They run in the
 handler pipeline before the writes, and most handlers use none of them. For the deep rules
 behind accumulation (deduplication, completion, and copying results to a typed entity field),

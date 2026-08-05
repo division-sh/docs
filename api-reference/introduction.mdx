@@ -15,7 +15,7 @@ fails the platform's boot verification.
 
 <Note>
   Every method is a single `POST /v1/rpc` with the method name in the JSON-RPC body. The
-  per-method paths in this section (for example `POST /v1/rpc/run.start`) are a documentation
+  per-method paths in this section (for example `POST /v1/rpc/event.publish`) are a documentation
   convenience so each method gets its own page. See
   [Transport and auth](/api-reference/transport-and-auth) for the real envelope.
 </Note>
@@ -56,3 +56,8 @@ A few things a client should plan around, because v1 deliberately does not have 
 Browse the methods in the sidebar, or start with
 [Transport and auth](/api-reference/transport-and-auth) and
 [Subscriptions](/api-reference/subscriptions).
+
+<Note>
+  `run.start` remains available as a **deprecated wrapper** with `event.publish` semantics;
+  new clients should call `event.publish` directly (it allocates a run when none is given).
+</Note>

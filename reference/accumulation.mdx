@@ -4,6 +4,11 @@ description: "Gathering many events into one entity, and copying accumulated ite
 icon: "layer-group"
 ---
 
+<Note>
+  This page is the **specification** — every field and constraint. For the guide with worked
+  shapes, see [Accumulation](/build/handlers/accumulation).
+</Note>
+
 Some handlers must wait for several events before they act: collect every dimension score,
 every sub-task result, every vote. The `accumulate` step gathers arrivals for one entity and
 fires only when a completion condition is met. `materialize_from` then copies the gathered

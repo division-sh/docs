@@ -31,7 +31,7 @@ up a new token, reconnect.
 
 ```json
 // request
-{ "jsonrpc": "2.0", "id": 1, "method": "run.start", "params": { "event_name": "order.created", "payload": {} } }
+{ "jsonrpc": "2.0", "id": 1, "method": "event.publish", "params": { "event_name": "order.created", "payload": {} } }
 
 // success
 { "jsonrpc": "2.0", "id": 1, "result": { "run_id": "r-123", "status": "running" } }

@@ -302,7 +302,7 @@ Create them one at a time.
 
     ```yaml agents.yaml
     classifier-agent:                 # map key matches the role in schema.yaml
-      model: cheap                    # the haiku-class alias; classification is light work
+      model: cheap                    # a model alias; see reference/contracts/agents for the set
       subscriptions: [ticket.created] # the events it receives
       emit_events: [ticket.classified]  # the events it may emit
       memory: false                   # a fresh conversation per event, no memory
