@@ -16,9 +16,11 @@ Modules are declared in `policy.yaml`, with their contract stated up front:
 ```yaml policy.yaml
 modules:
   structured_renderer:
-    kind: python                 # or wasm
+    kind: python
     path: modules/renderer.py
-    abi: python-json-v1          # wasm: core-json-v1
+    abi: python-json-v1
+    entry: handle                # python: always handle
+    digest: sha256:<64-hex>      # of the source bytes; pins what runs
     input_schema:
       type: object
       properties:
@@ -32,11 +34,42 @@ modules:
       output_bytes: 262144
 ```
 
-Python modules run on the embedded CPython-WASI interpreter (shipped in the binary — no local
-Python needed); `kind: wasm` runs a compiled module. Either way the module's bytes are
-digest-captured into the bundle at compile time, execution is metered by the declared limits,
-and the sandbox has **no I/O**: no filesystem, no network, no clock, no randomness. Same
-input, same output, forever — which is what makes module calls replayable.
+The module itself is ordinary Python with one required shape — `def handle(input)` taking a
+dict and returning a JSON-compatible dict. The harness owns all transport; author code never
+reads stdin, writes stdout, or touches bindings:
+
+```python modules/renderer.py
+def handle(input):
+    files = input["files"]
+    manifest = [{"name": f["name"], "size": len(f["content"])} for f in files]
+    return {
+        "component": input["component"],
+        "file_count": len(files),
+        "manifest": manifest,
+    }
+```
+
+For compiled modules, declare `kind: wasm` instead:
+
+```yaml
+modules:
+  scorer:
+    kind: wasm
+    path: modules/scorer.wasm
+    abi: core-json-v1
+    entry: compute
+    digest: sha256:<64-hex>
+    input_schema: {type: object}
+    output_schema: {type: object}
+    limits: {gas: 5000000, memory_pages: 32, output_bytes: 65536}
+```
+
+Python modules run on the embedded CPython-WASI interpreter (shipped in the binary, executed
+through Wasmtime — no local Python needed); `kind: wasm` runs your compiled module through
+the same engine. Either way the declared digest pins the exact bytes into the bundle at
+compile time, execution is metered by the declared limits, and the sandbox has **no I/O**: no
+filesystem, no network, no clock, no randomness. Same input, same output, forever — which is
+what makes module calls replayable.
 
 ## Calling a module
 
