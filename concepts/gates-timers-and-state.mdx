@@ -6,23 +6,36 @@ icon: "timer"
 
 ## Stages: the lifecycle
 
-A flow declares its state machine in `schema.yaml` as a **`stages:` map** — each stage named
-once, with `initial: true` on the entry stage and `terminal: true` on the absorbing ones. An
-entity is in exactly one stage at a time, set by a handler's `advances_to` (a single stage,
-never a list). Stages are flow-scoped; there is no global stage enum spanning the platform,
-and authors never declare a state field on the entity; the runtime exposes it to expressions
-as `_entity.current_state` (the `_entity.*` root holds platform metadata; `entity.*` holds
-your declared fields). Stages also carry **stage timers**: a `timers:` block on a
-stage fires when an entity has sat in it too long, advancing or escalating deterministically.
+A flow declares its lifecycle in `schema.yaml` as a **`stages:` map**:
 
-A flow that declares no `stages:` is **stateless**: it processes events without a lifecycle.
-`advances_to` is invalid there. Stateless still allows entities: a handler that writes entity
-fields auto-materializes one with no state.
+```yaml schema.yaml
+stages:
+  new:
+    initial: true      # where every entity starts
+  assigned: {}
+  resolved: {}
+  closed:
+    terminal: true     # once here, the entity is done
+```
 
-A stage is also where the lifecycle's machinery attaches — each of these is declared on the
-stage itself, not scattered through handlers:
+Three rules give the lifecycle its shape:
 
-- **Stage timers** (`stages.<stage>.timers`) fire when an entity has sat in the stage too
+- **One stage at a time.** An entity is always in exactly one stage, and only a handler's
+  `advances_to` moves it — to a single named stage, never a list.
+- **Stages belong to the flow.** There is no global stage enum; `assigned` in your ticket
+  flow and `assigned` in someone else's are unrelated.
+- **You never declare a state field.** The entity's current stage is platform-tracked;
+  expressions read it as `_entity.current_state` (`_entity.*` is platform metadata,
+  `entity.*` is your declared fields).
+
+A flow that declares no `stages:` is **stateless**: it processes events without a lifecycle,
+and `advances_to` is invalid there. Stateless still allows entities — a handler that writes
+entity fields auto-materializes one with no stage.
+
+The stage is also where the lifecycle's machinery attaches, declared on the stage itself
+rather than scattered through handlers:
+
+- **Timers** (`stages.<stage>.timers`) fire when an entity has sat in the stage too
   long — see Timers below.
 - **Decision gates** (`stages.<stage>.gate`) pause the stage for a typed human verdict with
   every outcome declared — see [Human in the loop](/concepts/human-in-the-loop).
