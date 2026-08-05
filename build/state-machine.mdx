@@ -76,7 +76,10 @@ events not listed in pins are ordinary event-loop emits delivered by subscriptio
 
 ## Required agents
 
-`required_agents` declares the roles the flow needs. Fulfillment has two conditions, both
+`required_agents` is **optional**: when omitted, the flow's effective required-agent facts
+are derived from `agents.yaml`. Declare it when the flow is an interface boundary — a package
+someone else fulfills with their own agents — because an authored list (including an explicit
+empty one) turns inference off and becomes the contract. Fulfillment has two conditions, both
 checked at boot:
 
 ```yaml

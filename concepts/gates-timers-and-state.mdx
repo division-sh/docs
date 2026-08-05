@@ -10,8 +10,9 @@ A flow declares its state machine in `schema.yaml` as a **`stages:` map** — ea
 once, with `initial: true` on the entry stage and `terminal: true` on the absorbing ones. An
 entity is in exactly one stage at a time, set by a handler's `advances_to` (a single stage,
 never a list). Stages are flow-scoped; there is no global stage enum spanning the platform,
-and authors never declare a state field on the entity; the runtime carries
-`entity.current_state` implicitly. Stages also carry **stage timers**: a `timers:` block on a
+and authors never declare a state field on the entity; the runtime exposes it to expressions
+as `_entity.current_state` (the `_entity.*` root holds platform metadata; `entity.*` holds
+your declared fields). Stages also carry **stage timers**: a `timers:` block on a
 stage fires when an entity has sat in it too long, advancing or escalating deterministically.
 
 A flow that declares no `stages:` is **stateless**: it processes events without a lifecycle.

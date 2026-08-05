@@ -15,7 +15,8 @@ A CEL expression reads from a fixed set of namespaces:
 
 | Variable | What it holds | Where it is available |
 |---|---|---|
-| `entity` | Current entity state: declared fields, `current_state`, `gates` | Everywhere |
+| `entity` | The entity's **declared** fields | Everywhere |
+| `_entity` | Platform-owned metadata: `_entity.current_state`, `_entity.gates`, `_entity.id`, `_entity.flow_instance` | Everywhere |
 | `payload` | The current event's payload fields | Everywhere |
 | `policy` | Flow policy merged with root policy | Everywhere |
 | `fan_out` | Fan-out metadata, e.g. `fan_out.count` | After a `fan_out` step |

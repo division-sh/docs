@@ -95,7 +95,8 @@ from any directory.
     ```
 
     The runtime logs `using built-in dev API token on loopback` on startup; only non-loopback
-    binds need an explicit `SWARM_API_TOKEN`.
+    binds need an explicit token, supplied via `--api-token-file` or `serve.api_token_file` in
+    config (the old `SWARM_API_TOKEN` env var is retired and rejected with a teaching error).
 
     The trace shows `greeting.requested` arriving, the `greeter` node creating an entity, and
     the entity advancing to `done` (a terminal stage). Press Ctrl-C to stop the local runtime

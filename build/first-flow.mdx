@@ -471,7 +471,7 @@ echo '{"ticket_id": "t-42", "subject": "Export button is greyed out", "body": "T
 swarm run --contracts ./ticket-flow --event ticket.created --payload ticket.json
 ```
 
-On loopback, `swarm run` uses a built-in dev API token; setting `SWARM_API_TOKEN` is only
+On loopback, `swarm run` uses a built-in dev API token; an explicit token (`--api-token-file`) is only
 needed when exposing the API beyond loopback.
 
 <Note>
