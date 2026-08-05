@@ -49,8 +49,8 @@ A parent lists its children in `package.yaml`, each with a mode:
 
 ```yaml orders/package.yaml
 flows:
-  - id: notify
-    flow: notify
+  - id: notify          # the name connect edges and pins use ("notify.<pin>")
+    flow: notify        # the directory it loads from (flows/notify/)
     mode: static        # exactly one instance, created at boot
   - id: fulfillment
     flow: fulfillment
