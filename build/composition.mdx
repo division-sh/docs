@@ -12,7 +12,10 @@ internals.
 Beyond declaring children, composition is mostly the **round trip**: getting work into a child
 and getting a result back out to the right place.
 
-This page works one example end to end. The parent is an `orders` flow; it has a `notify`
+{/* audit: fragments — the runnable version is examples/routing/parent-connect */}
+This page works one example end to end. (The fences are teaching fragments of one package;
+the complete, CI-verified runnable version is
+[`examples/routing/parent-connect`](https://github.com/division-sh/swarm/tree/master/examples/routing/parent-connect).) The parent is an `orders` flow; it has a `notify`
 child (one instance, wired at boot) and a `fulfillment` child (one instance per order, created
 at runtime).
 
@@ -146,14 +149,16 @@ A template child does not exist until you create one. A handler mints an instanc
 between flows; data crosses through the payload or config, never through direct entity reads):
 
 ```yaml orders/nodes.yaml
-order.paid:
-  action: create_flow_instance
-  template: fulfillment
-  instance_id_from: payload.order_id       # the new instance's id
-  config_from:
-    order_id: payload.order_id             # values the child reads as config
-    address: payload.ship_to
-  advances_to: fulfilling
+orders-orchestrator:
+  event_handlers:
+    order.paid:
+      action: create_flow_instance
+      template: fulfillment
+      instance_id_from: payload.order_id       # the new instance's id
+      config_from:
+        order_id: payload.order_id             # values the child reads as config
+        address: payload.ship_to
+      advances_to: fulfilling
 ```
 
 What `create_flow_instance` does:
@@ -198,13 +203,15 @@ The child has its own state and its own entity; when it finishes, it sends a res
 **output pin** event:
 
 ```yaml fulfillment/nodes.yaml
-fulfillment.packed:
-  advances_to: done
-  emit:
-    event: fulfillment.completed      # an output pin
-    fields:
-      order_id: entity.order_id       # carry the key the parent needs
-      tracking: entity.tracking
+fulfillment-worker:
+  event_handlers:
+    fulfillment.packed:
+      advances_to: done
+      emit:
+        event: fulfillment.completed      # an output pin
+        fields:
+          order_id: entity.order_id       # carry the key the parent needs
+          tracking: entity.tracking
 ```
 
 Because the instance was created with a parent route, that output pin returns to the parent
@@ -217,14 +224,16 @@ at a specific one. It does that with `select_entity`, using the key the child ca
 payload:
 
 ```yaml orders/nodes.yaml
-fulfillment.completed:
-  select_entity:
-    by:
-      order_id: payload.order_id      # find the order this result belongs to
-  data_accumulation:
-    writes: [tracking]
-    source_event: fulfillment.completed
-  advances_to: shipped
+orders-orchestrator:
+  event_handlers:
+    fulfillment.completed:
+      select_entity:
+        by:
+          order_id: payload.order_id      # find the order this result belongs to
+      data_accumulation:
+        writes: [tracking]
+        source_event: fulfillment.completed
+      advances_to: shipped
 ```
 
 So the full loop is: parent spawns the child with `create_flow_instance` and `config_from`; the

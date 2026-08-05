@@ -267,12 +267,12 @@ report.ready:
         - path: "reports/summary.md"
           content: { ref: entity.body }       # the file's contents come from the entity field
           content_type: markdown     # yaml | json | markdown | text
-      output:                        # bind the result to entity fields
+      output:                        # output name -> entity field to write it to
         repo_url: repo_url
         current_ref: current_ref
         file_manifest: file_manifest
         status: commit_status
-        failure_reason: failure_reason
+        failure: failure_reason
         last_request_id: last_request_id
         last_source_event_id: last_source_event_id
   advances_to: published
@@ -345,7 +345,7 @@ report-publisher:
             current_ref: current_ref
             file_manifest: file_manifest
             status: commit_status
-            failure_reason: failure_reason
+            failure: failure_reason
             last_request_id: last_request_id
             last_source_event_id: last_source_event_id
       advances_to: published
