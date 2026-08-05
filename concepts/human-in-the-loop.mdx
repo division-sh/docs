@@ -38,9 +38,9 @@ stages:
 
 When an entity enters the stage, the platform creates a **decision card**: a typed resource
 carrying the declared context, the possible verdicts, and any input fields an outcome
-requires. Channels (the dashboard, Telegram, whatever renderer you attach) *display* the
+requires. Channels (Telegram ships first; any renderer you attach) *display* the
 card; the decision itself is committed through one API — which means a decision made on your
-phone and a decision made in the dashboard are the same object, and the flow resumes
+phone and a decision made through the CLI or API are the same object, and the flow resumes
 identically. The card's content is hashed, and a verdict must reference the content it saw —
 a decision against a stale card is rejected, never silently applied to changed facts.
 

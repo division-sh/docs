@@ -108,7 +108,7 @@ batch.requested:
   if the last result arrives before the count is written. The platform owns that barrier: a
   **fan-in resolution pin** (`resolution: {mode: fan-in, aggregation: barrier}` with
   `dedup_by` and `window`) feeding a staged **`join:`** row with `members:`, `on_complete:`,
-  and `timeout:`. See `examples/routing/fan-in/barrier` in the repository for the canonical
+  and `timeout:`. See [`examples/routing/fan-in/barrier`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/barrier) for the canonical
   shape. `accumulate` remains right for aggregations that are not completion barriers.
 </Note>
 

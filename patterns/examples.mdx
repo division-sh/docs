@@ -1,0 +1,45 @@
+---
+title: "Runnable examples"
+description: "Canonical example bundles in the repository — clone, verify, run."
+icon: "folder-open"
+---
+
+Every pattern in this section has a canonical, runnable bundle in the
+[`examples/`](https://github.com/division-sh/swarm/tree/master/examples) directory of the
+repository. These are conformance-loaded — the platform's own CI verifies them against every
+change — so they are never stale and always the current idiom. Each ships with a README and
+runs with the zero-config defaults:
+
+```bash
+git clone https://github.com/division-sh/swarm && cd swarm
+swarm verify --contracts examples/routing/fan-in/barrier
+swarm run --contracts examples/routing/fan-in/barrier --event <trigger> --payload <file>
+```
+
+## Routing and composition
+
+| Example | What it proves |
+|---|---|
+| [`root-ingress`](https://github.com/division-sh/swarm/tree/master/examples/routing/root-ingress) | External events entering a root flow's input pin. |
+| [`parent-connect`](https://github.com/division-sh/swarm/tree/master/examples/routing/parent-connect) | The `connect` block: parent↔child edges over declared pins. |
+| [`template-select-or-create`](https://github.com/division-sh/swarm/tree/master/examples/routing/template-select-or-create) | Instances minted on first delivery by pin resolution. |
+| [`template-select-existing`](https://github.com/division-sh/swarm/tree/master/examples/routing/template-select-existing) | `mode: select` — address an existing instance by carried identity. |
+| [`template-create-minted-key`](https://github.com/division-sh/swarm/tree/master/examples/routing/template-create-minted-key) | `mode: create` with a platform-minted identity (`generated.uuid`). |
+| [`template-reply`](https://github.com/division-sh/swarm/tree/master/examples/routing/template-reply) | Request/reply correlation declared on the receiving pin. |
+| [`notify-all-children`](https://github.com/division-sh/swarm/tree/master/examples/routing/notify-all-children) | One parent event delivered across many child instances. |
+
+## Fan-in and convergence
+
+| Example | What it proves |
+|---|---|
+| [`fan-in/barrier`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/barrier) | The barrier join: members, window, dedup, timeout — deliver once when complete. |
+| [`fan-in/stream`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/stream) | Stream aggregation: every deduplicated arrival delivered, completion still tracked. |
+
+## Testing
+
+| Example | What it proves |
+|---|---|
+| [`harness-injection`](https://github.com/division-sh/swarm/tree/master/examples/routing/harness-injection) | `source: harness` pins for validation-only event injection (never production-valid). |
+
+When a page in these docs names a repo path like `examples/routing/fan-in/barrier`, this is
+the directory it means.

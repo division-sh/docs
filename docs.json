@@ -78,7 +78,8 @@
           {
             "group": "Patterns",
             "pages": [
-              "patterns/overview"
+              "patterns/overview",
+              "patterns/examples"
             ]
           },
           {

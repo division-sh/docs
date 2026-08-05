@@ -105,12 +105,11 @@ on completion or on timeout, whichever comes first. Two aggregation modes exist:
 `aggregation: barrier` (shown here) delivers once when the window completes, while
 `aggregation: stream` delivers every deduplicated arrival as it comes *and* still tracks
 window completion — use stream when the collector should react per result (progress updates,
-incremental writes) rather than only at the end (`examples/routing/fan-in/stream`). Do **not** hand-roll this with
+incremental writes) rather than only at the end ([`examples/routing/fan-in/stream`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/stream)). Do **not** hand-roll this with
 `accumulate` and an `expected_count` comparison: that pattern has no dedup, no timeout, and
 deadlocks when the last result arrives before the expected count is written.
 
-The canonical runnable version of this whole shape is `examples/routing/fan-in/barrier` in
-the repository.
+The canonical runnable version of this whole shape is [`examples/routing/fan-in/barrier`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/barrier).
 
 ## The singleton coordinator
 

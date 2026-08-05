@@ -41,7 +41,8 @@ event loop. From there:
   call tools, and emit events. They never write state directly; they emit, and a handler
   decides what gets written.
 - **Humans** decide through typed decision gates: a stage waits for a verdict, every outcome
-  is declared, and the card can be decided from a dashboard or your phone — the platform
+  is declared, and the card can be decided from the CLI, the API, or a chat channel on
+  your phone (Telegram ships as the first channel pack) — the platform
   itself never decides for you.
 - **The outside world** connects through packs: a provider's webhooks arrive as typed,
   normalized events, and its API becomes declared tools — signature checks, credentials, and
