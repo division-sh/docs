@@ -52,11 +52,14 @@ A workflow runner dispatches agents and exits. Swarm is the runtime they would r
 - **Long-running workflows, hours to days.** Durable timers, persistence, and crash recovery
   let a run span days without losing state; replay answers "why did the system do that, and
   when?" later.
-- **Coordinating many agents, from a handful to a hundred or more.** Hierarchical addressing
-  (coordinator → managers → workers), per-flow [agent sharding](/concepts/agents-and-sessions),
-  and dynamic flow instances
-  scale the agent count on a single deployment, without the context-window blowup of a flat
-  chat.
+- **Coordinating many agents, from a handful to a hundred or more.** Fan a batch out and
+  [each item gets its own flow instance with its own agent](/build/parallel-work) — isolated
+  session, workspace, and lifecycle — while a declared join owns completion. Agent count
+  scales on a single deployment without the context-window blowup of a flat chat.
+- **Approval-gated automation.** A risky external effect can require a typed human verdict
+  before it *exists*: no request, no credential lookup, no provider call until someone
+  approves the exact recorded action. Sign-off is a declared outcome with an audit trail,
+  not a Slack message beside the system.
 - **Systems assembled from reusable parts.** A flow is a self-contained package with typed
   input and output pins. Build a flow once and import it into other projects, or swap one for
   a better version, without refactoring.
@@ -72,10 +75,15 @@ A workflow runner dispatches agents and exits. Swarm is the runtime they would r
 ## Weak fit
 
 - **One-shot LLM calls.** Use the provider SDK directly: no runtime needed.
-- **Conversational chatbots.** Short interactions where the value is the conversation; the
-  contract overhead does not pay for itself.
+- **Conversational chatbots — with a line worth drawing.** A chatbot whose value ends at the
+  reply is the provider SDK's job; the contract overhead does not pay for itself. A durable
+  assistant that remembers per conversation, waits on timers, and asks permission through
+  chat is a different animal — that is a [standing flow](/build/standing-ingress), and it is
+  strong fit.
 - **Exploratory prototyping that changes hourly.** The analyzer refusing to boot a
-  half-finished contract is exactly the wrong friction while you are still sketching.
+  half-finished contract is exactly the wrong friction while you are still sketching. (The
+  sketch loop is cheaper than it was — `swarm test` and the mock backend iterate a flow with
+  zero credentials — but the contract-first discipline remains the price.)
 - **LLM-managed routing at runtime.** Swarm refuses this by design. If "the model decides
   what happens next" is the point of your system, this is the wrong tool.
 
@@ -91,8 +99,9 @@ libraries; it applies that rigor to multi-agent LLM systems.
 | Crash recovery | None | Re-run from the top | Manual checkpointing | Atomic transitions + event replay |
 | Agent isolation | Shared chat | Per-step process | Shared state | Scoped sessions, per-agent workspaces, role authority |
 | Cost control | None | None | None | Per-entity and per-actor budgets, throttle and emergency states |
-| Humans | Out of band | Out of band | Out of band | First-class actor via a durable mailbox |
-| Scaling | Single process | One workflow per run | Single process | Per-entity parallelism, agent sharding, runs spanning days |
+| Humans | Out of band | Out of band | Out of band | Typed decision gates: declared outcomes, phone-decidable, nothing auto-decides |
+| Scaling | Single process | One workflow per run | Single process | Per-entity parallelism (one instance + agent per item), runs spanning days |
+| Testing | None | Re-run and hope | Manual mocks | Deterministic scenarios + scripted agent turns, zero LLM credentials |
 | Audit trail | Logs | Logs | Logs | Event store + per-field mutation log |
 
 ## The tradeoff, stated plainly
@@ -104,9 +113,11 @@ stabilizes.
 
 And one honest limit on the word "deterministic": it stops at the agents. The control loop,
 routing, state transitions, and the event log are reproducible, but an LLM is still an LLM, so
-re-run a flow and an agent may reason its way to a different answer. What you can always replay
-and audit is what the *system* did with that answer, and the fact that the answer only changed
-state by passing through a deterministic handler. Swarm does not make the model deterministic; it
+re-run a flow and an agent may reason its way to a different answer. (In tests, even that gap
+closes: the mock backend scripts the agent turns, so a scenario is deterministic end to end.)
+What you can always replay and audit in production is what the *system* did with the model's
+answer, and the fact that the answer only changed state by passing through a deterministic
+handler. Swarm does not make the model deterministic; it
 makes everything around the model deterministic, which is the part worth auditing, replaying, and
 recovering. That is the whole bet, restated as a cost: you accept a fuzzy model and wrap it in a
 system that is not.
