@@ -4,31 +4,47 @@ description: "Following causal traces and reading the flight recorder."
 icon: "magnifying-glass-chart"
 ---
 
+## The serve story feed
+
+`swarm serve --dev` narrates what the runtime is doing as a **story feed**: one line per
+semantic fact (event published, delivery made, agent turn completed, stage advanced, decision
+pending), rendered for whoever is watching:
+
+- **In a terminal**, lines are colored semantically (red is reserved for real failures) with
+  a live status footer.
+- **Piped or `--json`**, the feed is NDJSON — typed fact lines an agent or script can parse.
+  Anything a human can see in the feed, a monitoring agent can consume structurally,
+  including degradation notices (for example, a detached trace follower).
+
+`--no-feed` turns it off. `swarm logs --follow` remains the *diagnostic* stream — component
+internals at log level — while the feed is the *narrative* stream; they answer different
+questions.
+
 ## Following a run
 
-`swarm trace` prints or follows a run's causal trace: events, deliveries, state changes, and
+`swarm run trace` prints or follows a run's causal trace: events, deliveries, state changes, and
 agent turns, in order.
 
 ```bash
-swarm trace <run-id> -f
+swarm run trace <run-id> -f
 ```
 
 It accepts filters (`--event-name`, `--entity-id`, `--delivery-status`, `--subscriber-type`,
 `--since`, `--until`, `--limit`). The snapshot uses `run.trace`; `-f` opens a
-`run.subscribe_trace` stream. To list runs, use `swarm runs`.
+`run.subscribe_trace` stream. To list runs, use `swarm run list`.
 
 ## Diagnosing why a run is stuck
 
-`swarm status <run-id>` (the `run.diagnose` method) interprets a run's state and reports the
+`swarm run status <run-id>` (the `run.diagnose` method) interprets a run's state and reports the
 blocking layer and reason. It is the single answer to "why is this run not progressing?"
 
 ## Inspecting the pieces
 
 | What | Command |
 |---|---|
-| Events | `swarm events list`, `swarm events follow`, `swarm event view <id>` |
-| Entities | `swarm entities list`, `swarm entity view <id>`, `swarm entity aggregate` |
-| Conversations | `swarm conversations list`, `swarm conversation view <id>`, `swarm conversation turn <id> <n>` |
+| Events | `swarm event list`, `swarm event follow`, `swarm event view <id>` |
+| Entities | `swarm entity list`, `swarm entity view <id>`, `swarm entity aggregate` |
+| Conversations | `swarm conversation list`, `swarm conversation view <id>`, `swarm conversation turn <id> <n>` |
 | Logs | `swarm logs [--follow]` |
 | Incidents | `swarm incidents` |
 

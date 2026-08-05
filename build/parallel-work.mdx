@@ -112,6 +112,17 @@ deadlocks when the last result arrives before the expected count is written.
 The canonical runnable version of this whole shape is `examples/routing/fan-in/barrier` in
 the repository.
 
+## The singleton coordinator
+
+When many template instances need **shared state** — a rate budget, an aggregate score, a
+cross-instance learning table — that state gets one owner: a `mode: singleton` coordinator
+flow whose primary entity holds it as **typed contained map/list fields**. Instances report
+to the coordinator through ordinary events (often the fan-in pin above); the coordinator's
+handlers update the contained state deterministically. Two rules keep this from becoming a
+god-flow: contained items get no independent lifecycle (no timers, retries, or terminality of
+their own — an item that needs them must be promoted to a real template instance), and a
+plain `mode: static` flow is not coordinator authority — the coordinator role is explicit.
+
 ## Bounded loops: declared revision cycles
 
 When work legitimately cycles — draft, review, revise, review again — the cycle is declared,

@@ -68,7 +68,7 @@ fails, boot aborts; there is no partial startup. A runtime that is up has passed
 ## Run lifecycle
 
 A **run** is one execution of your flow. It moves through a few states you will see in
-`swarm runs` and `swarm status`:
+`swarm run list` and `swarm run status`:
 
 - **running**: work is in progress.
 - **completed**: the run finished cleanly. This happens only when *every* entity has reached a
@@ -81,7 +81,7 @@ A **run** is one execution of your flow. It moves through a few states you will 
   dead letters inside it. Watch dead letters separately rather than trusting run status to surface
   logic errors.
 - **paused**: held by `swarm control pause` (below).
-- **stalled**: still `running` but not making progress. `swarm status <run-id>` reports this and
+- **stalled**: still `running` but not making progress. `swarm run status <run-id>` reports this and
   names the blocking layer and reason.
 
 One thing about querying: entity state is scoped to the current run. `swarm entities` and the

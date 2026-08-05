@@ -47,3 +47,25 @@ An event targeting an entity in a terminal state is rejected before any handler 
 
 `swarm incidents` aggregates failures by error code and component. `swarm logs [--follow]`
 queries or streams runtime logs. Both read through the runtime API.
+
+## The failure taxonomy
+
+Every runtime failure is a **typed envelope** in the closed `platform.*` namespace: a failure
+class, a semantic detail selector, retryability, and a remediation — minted by one owner
+(`internal/runtime/failures`), never by string-matching error text. What this buys you
+operationally:
+
+- **Deterministic**: the same recorded inputs re-produce the same failure class on replay —
+  a failure is a fact about the run, not about the weather.
+- **Closed namespace**: product contracts cannot mint `platform.*` classes; authoring
+  mistakes surface as verify findings instead, so a runtime failure always means "valid
+  contract, real runtime fact."
+- **Cause carried**: dead letters and incidents persist the validated envelope with its
+  cause chain — `swarm event view` on a dead letter and `swarm incidents` group by the same
+  class/selector taxonomy, so "what failed" has one vocabulary from log line to aggregate.
+
+Routing failures are their own taxonomy slice worth knowing: publish-time dead letters
+distinguish `target_unreachable_no_subscriber`, `target_unreachable_terminated`,
+`target_not_subscribed`, and reply-context conflicts (`platform.reply_already_terminal`,
+`platform.stale_arrival`) — each naming the exact identities involved, so a routing gap is a
+one-line diagnosis rather than store archaeology.
