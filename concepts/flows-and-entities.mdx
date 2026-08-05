@@ -22,12 +22,15 @@ on the mode you declare in the parent:
 
 | Mode | Instances | Created | Use it for |
 |---|---|---|---|
-| `static` | exactly one | at boot | most flows |
-| `template` | zero at boot, many at runtime | on demand, when a handler asks for one (`create_flow_instance`) | one copy per customer, per order, and so on |
+| `static` | exactly one | at boot | a shared service (notifications, audit) |
+| `template` | zero at boot, many at runtime | on first event (the pin's `select-or-create`), or explicitly with `create_flow_instance` | one copy per customer, per order, per ticket |
+| `singleton` | exactly one | at boot | a coordinator holding shared or aggregate state |
 
-A static flow is the common case: one copy boots, and many entities flow through it (a single
-ticket flow handles thousands of tickets). A template flow is a stamp: nothing runs at boot, and
-the runtime mints a fresh instance whenever it needs one, for example one order flow per order.
+**Each instance owns exactly one entity.** That is the scaling rule to internalize: a ticket
+system handling thousands of tickets is a `template` flow with thousands of instances — one
+instance, one ticket entity, one lifecycle each. A template flow is a stamp: nothing runs at
+boot, and the runtime mints a fresh instance (with its fresh entity) whenever a new identity
+arrives.
 
 ## Entities
 
@@ -49,17 +52,18 @@ order:
     immutable: true        # set once, at creation
 ```
 
-## Many entities, no locks
+## Many instances, no locks
 
-Many entities live in one flow at the same time, each with its own id and its own state. You
-never reason about locking: the engine processes the events for a single entity one at a time,
-so that entity's state and data cannot be corrupted by a race, while events for *different*
-entities run concurrently. That is what lets one flow carry hundreds or thousands of entities in
-parallel without any author-managed concurrency.
+Thousands of instances of one template flow can be live at the same time, each with its own
+entity and its own stage. You never reason about locking: the engine processes one instance's
+events one at a time, so its entity cannot be corrupted by a race, while events for *different*
+instances run concurrently. That is what lets one contract carry hundreds or thousands of
+work items in parallel without any author-managed concurrency.
 
-This multiplicity has a knock-on effect: because a flow holds many entities at once, an event
-arriving from another flow cannot just go "to the flow" — it has to say **which entity** it
-is for. [Composing flows](/build/composition) covers how that address is declared.
+This multiplicity has a knock-on effect: because a template flow has many instances, an event
+arriving from another flow cannot just go "to the flow" — it has to say **which instance** it
+is for, by carrying that instance's identity field. [Composing flows](/build/composition)
+covers how that address is declared.
 
 ## Pins: a flow's public interface
 

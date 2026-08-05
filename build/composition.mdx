@@ -34,13 +34,12 @@ flowchart LR
 ## Why crossing a boundary needs an address
 
 Inside a flow, an event just goes to its subscribers. Across a boundary it is not that simple,
-and the reason is multiplicity: **a flow is not a single recipient.** A static flow can hold many
-entities at once (one ticket flow, thousands of tickets), and a template flow can have many live
-instances (one per order). So "send `fulfillment.completed` to the orders flow" is ambiguous:
-*which* order?
+and the reason is multiplicity: **a flow is not a single recipient.** A template flow can have
+thousands of live instances (one per order, each owning its one entity). So "send
+`fulfillment.completed` to the orders flow" is ambiguous: *which* order's instance?
 
-Every cross-flow hop therefore has to answer one question, **which entity, in which instance**,
-the event is for. The `connect` edge, the parent route, and a receiver-side `select_entity` are
+Every cross-flow hop therefore has to answer one question — **which instance** the event is
+for; the instance's entity comes with it. The `connect` edge, the parent route, and a receiver-side `select_entity` are
 just different ways to answer it. That question is the whole reason wiring across flows takes more
 than a subscription, and it is worth keeping in mind as you read the rest of this page.
 
@@ -64,7 +63,8 @@ first design decision:
 | | Static child | Template child |
 |---|---|---|
 | Instances | one, at boot | one per work item, at runtime |
-| Reached by | pin wiring (auto-wired at boot) | `create_flow_instance` + a target |
+| Entities | its one shared entity (or stateless) | one entity per instance |
+| Reached by | a `connect` edge | a `connect` edge + the pin's `resolution` (which can mint the instance) |
 | Use for | a shared service (notifications, audit) | per-order, per-customer work |
 
 ## Declare the pins
