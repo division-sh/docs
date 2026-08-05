@@ -37,12 +37,16 @@ it binds **`http://127.0.0.1:8081`**. (The [Quickstart](/quickstart)'s `swarm ru
 one-shot, in-process alternative; `serve` is what you operate.)
 
 - **API token.** On a numeric-loopback bind, `swarm serve` uses a built-in dev token (bearer
-  auth still enabled). Exposing the API beyond loopback requires an explicit `SWARM_API_TOKEN`.
+  auth still enabled). Exposing the API beyond loopback requires an explicit token, supplied
+  with `--api-token-file` or `serve.api_token_file` in `swarm.yaml`.
 - **LLM credential.** Needed only when the flow runs agents (see below).
 - **CLI target.** Every other `swarm` command targets the same address; point them elsewhere
-  with `--api-server`.
+  with `--api-server`, a named `--context`, or `connection.api_server` in config.
 
-See [Configuration](/reference/configuration) for the full list of flags and environment variables.
+Configuration is **explicit by design**: flags and typed `swarm.yaml` keys, not ambient
+environment variables. The old `SWARM_API_TOKEN` / `SWARM_API_SERVER` / `SWARM_LLM_BACKEND`
+env sources are retired — setting one fails with a teaching error naming the flag or config
+key that replaced it. See [Configuration](/reference/configuration).
 
 ## Runtime store
 
@@ -53,10 +57,11 @@ substrate, not an add-on: every event lands in the store, every entity state cha
 separate mutation log, and runs are correlated by `run_id`, which is what makes replay and fork
 possible.
 
-Select the backend with `--store sqlite` or `--store postgres` (or `SWARM_STORE_BACKEND` /
-`store.backend`). With Postgres, the binary defaults to a local instance (`127.0.0.1:5432`,
-database `swarm`, user and password `postgres`) and reads `SWARM_DB_*` (falling back to the
-standard `PG*` variables) for anything else.
+Select the backend with `--store sqlite` or `--store postgres` (or `store.backend` in
+`swarm.yaml`). With Postgres, connection details are typed config (`database.host`,
+`database.port`, `database.name`, `database.user`, `database.sslmode`); the password is never
+read implicitly — declare its source explicitly with `database.password_env: <VAR>` and the
+named variable becomes the one accepted environment read.
 
 ## Credentials and backend selection
 
@@ -64,8 +69,9 @@ Beyond `swarm verify`, you always need an API token, and an LLM credential once 
 agents:
 
 - **An API token.** A numeric-loopback `swarm serve`/`swarm run` uses a built-in dev token (with
-  bearer auth still enabled); any non-loopback bind requires an explicit `SWARM_API_TOKEN`. Every
-  command except `swarm verify` authenticates against this.
+  bearer auth still enabled); any non-loopback bind requires an explicit token via
+  `--api-token-file` / `serve.api_token_file`. Every command except `swarm verify`
+  authenticates against this.
 - **An LLM credential.** Needed only when your flow has agents; an agent-free flow boots without
   one. Select a backend with the `--backend` flag on `swarm serve`/`swarm run` (or `llm.backend`
   in `config.yaml`); env vars never select the backend. The default is `anthropic`; the alternatives

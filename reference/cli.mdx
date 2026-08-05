@@ -12,16 +12,20 @@ running runtime.
 
 | Flag | Purpose |
 |---|---|
-| `--api-server <url>` | API base URL. Also `SWARM_API_SERVER`; default `http://127.0.0.1:8081`. |
-| `--api-token-file <path>` | Bearer token file. Also `SWARM_API_TOKEN` / `SWARM_API_TOKEN_FILE`. |
-| `--contracts <path>` | Contract bundle root. Also `SWARM_CONTRACTS_PATH`. |
+| `--api-server <url>` | API base URL. Also `connection.api_server` in config; default `http://127.0.0.1:8081`. |
+| `--api-token-file <path>` | Bearer token file. Also `connection.api_token_file` in config. |
+| `--context <name>` | Named connection context descriptor. |
+| `--contracts <path>` | Contract bundle root. Also `paths.contracts_path` in config. |
+| `--config <path>` | Explicit `swarm.yaml` config; overrides discovered layers. |
 | `--json` | Machine-readable output (one JSON document, or NDJSON when streaming). |
 | `--quiet` | Only the load-bearing value. Mutually exclusive with `--json`. |
 | `--no-color` | Disable color. Also `NO_COLOR`. |
 | `--log-level <debug\|info\|warn\|error>` | Diagnostic verbosity (default `info`). |
 
-Resolution precedence for connection settings is flag, then environment, then config file
-(`$XDG_CONFIG_HOME/swarm/config.yaml`), then built-in default. See
+Resolution precedence is: flag, then layered `swarm.yaml` config (explicit `--config` >
+`./.swarm/swarm.yaml` > `./swarm.yaml` > user-global `$XDG_CONFIG_HOME/swarm/swarm.yaml`),
+then built-in default. Environment variables are **not** an accepted configuration source —
+retired `SWARM_*` variables fail with a teaching error naming the flag or config key. See
 [Configuration](/reference/configuration).
 
 ## Runtime
@@ -31,6 +35,14 @@ Resolution precedence for connection settings is flag, then environment, then co
 | `swarm serve` | local | Start the runtime, API, health, and MCP listener. |
 | `swarm run` | RPC + local | Start (or reattach to) a run and stream its trace. |
 | `swarm verify` | local | Validate a contract bundle on disk. |
+| `swarm test [scenario...]` | RPC | Run deterministic scenario tests (see [Testing](/build/testing)). |
+| `swarm doctor` | local | Check prerequisites and diagnose setup problems (config layers, backends, credentials). |
+| `swarm context` | local | Show which runtime and directories this CLI targets. |
+| `swarm describe` | local | Render the expanded authoring view of a contract bundle. |
+| `swarm secrets` | local | Manage local secrets used by tools and providers. |
+| `swarm connections` | local | Manage managed credential connections (OAuth and friends). |
+| `swarm workspace` | local | Manage local workspace setup (image build, doctor). |
+| `swarm migrate-producer-routing` / `swarm migrate-connect-delivery-one` | local | Deterministic codemods removing retired routing spellings. |
 | `swarm version [--server]` | local / `health.check` | Print binary version; `--server` adds runtime identity. |
 | `swarm completion <shell>` | local | Generate shell completion. |
 
@@ -41,22 +53,22 @@ running one. It takes `--event <name>` and `--payload <file>`.
 
 | Command | Method | Purpose |
 |---|---|---|
-| `swarm runs` | `run.list` | List runs. |
-| `swarm status [run-id]` | `run.diagnose` | Diagnose one run (why it is not progressing). |
-| `swarm trace [run-id]` | `run.trace` / `run.subscribe_trace` | Print or follow (`-f`) a run's causal trace. |
-| `swarm fork <source-run-id>` | `run.fork` | Fork a run from an event point. Flags: `--at-event <event-id>`, `--bundle-hash <hash>` (same-bundle only), `--idempotency-key <key>`. |
+| `swarm run list` | `run.list` | List runs. |
+| `swarm run status [run-id]` | `run.diagnose` | Diagnose one run (why it is not progressing). |
+| `swarm run trace [run-id]` | `run.trace` / `run.subscribe_trace` | Print or follow (`-f`) a run's causal trace. |
+| `swarm run fork <source-run-id>` | `run.fork` | Fork a run from an event point. Flags: `--at-event <event-id>`, `--bundle-hash <hash>` (same-bundle only), `--idempotency-key <key>`. |
 | `swarm health` | `health.check` | Authenticated operator health summary. |
 
 ## Events and entities
 
 | Command | Method | Purpose |
 |---|---|---|
-| `swarm events list` | `event.list` | Query the event store (folds in dead-letter inspection). |
-| `swarm events follow` | `event.subscribe` | Stream events live. |
+| `swarm event list` | `event.list` | Query the event store (folds in dead-letter inspection). |
+| `swarm event follow` | `event.subscribe` | Stream events live. |
 | `swarm event view <id>` | `event.get` | One event with delivery detail. |
 | `swarm event replay <id>` | `event.replay` | Redeliver an event to its subscribers. |
 | `swarm event publish <event>` | `event.publish` | Publish one event (`--payload-json`); allocates a run if none given. |
-| `swarm entities list` | `entity.list` | List entities. |
+| `swarm entity list` | `entity.list` | List entities. |
 | `swarm entity view <id>` | `entity.get` | One entity with fields, gates, accumulator. |
 | `swarm entity aggregate` | `entity.aggregate` | Counts grouped by a field. |
 
@@ -64,14 +76,15 @@ running one. It takes `--event <name>` and `--payload <file>`.
 
 | Command | Method | Purpose |
 |---|---|---|
-| `swarm agents list` | `agent.list` | List agents and status. |
+| `swarm agent list` | `agent.list` | List agents and status. |
 | `swarm agent view <id>` | `agent.get` | One agent's status and session refs. |
 | `swarm agent restart <id>` | `agent.restart` | Restart an agent session. |
 | `swarm agent replay <id> --event-id <id>` | `agent.replay` | Redeliver one event to an agent. |
 | `swarm agent replay-backlog <id>` | `agent.replay_backlog` | Redeliver an agent's pending backlog. |
 | `swarm agent directive <id> "<msg>"` | `agent.send_directive` | Send a directive to a running agent. |
+| `swarm agent deliveries <id>` | `agent.deliveries` | One agent's event delivery history. |
 | `swarm agent diagnose <id>` | `agent.diagnose` | Why an agent is stuck: its pending-delivery queue in detail (`--queue-limit`, `--queue-cursor`). |
-| `swarm conversations list` | `conversation.list` | List conversation summaries. |
+| `swarm conversation list` | `conversation.list` | List conversation summaries. |
 | `swarm conversation view <session-id>` | `conversation.get` | Full session with all turns. |
 | `swarm conversation turn <session-id> <n>` | `conversation.get_turn` | One turn in depth. |
 | `swarm forkchat new <session-id>` | `conversation.fork` | Fork one conversation into a sandbox to iterate on it, optionally at a turn or event with an injected `--message`. |
@@ -113,7 +126,7 @@ terminal failed or cancelled, `130` interrupted or detached.
 <Note>
   Three replay surfaces, at different granularities:
 
-  - **Run.** `swarm fork` re-executes a whole run from an event point via `run.fork`.
+  - **Run.** `swarm run fork` re-executes a whole run from an event point via `run.fork`.
   - **Conversation.** `swarm forkchat` (above) forks one agent conversation into a sandbox via
     `conversation.fork`.
   - **Single event.** `swarm event replay` and `swarm agent replay` redeliver an event to its

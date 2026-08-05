@@ -13,20 +13,25 @@ targets the runtime's API and needs a bearer token.
 The runtime exposes one HTTP listener serving health, readiness, `/v1/rpc`, `/v1/ws`, and the
 MCP routes. Its default address is **`http://127.0.0.1:8081`**.
 
-CLI commands resolve connection settings in this order: flag, then environment, then config
-file, then built-in default.
+Configuration is one file format — `swarm.yaml` — discovered in layers, later layers
+overriding earlier ones:
+
+1. user-global `$XDG_CONFIG_HOME/swarm/swarm.yaml`
+2. project `./swarm.yaml`
+3. local operator `./.swarm/swarm.yaml` (machine-local overrides; keep it out of git)
+4. explicit `--config <path>` (or `SWARM_CONFIG`, the one accepted env pointer)
+
+Flags override config. Ambient environment variables are **not** a configuration source: the
+retired `SWARM_*` family fails with a teaching error naming the replacement.
 
 <ParamField path="--api-server <url>" type="string">
-  Base URL of the runtime. Default `http://127.0.0.1:8081`. Env: `SWARM_API_SERVER`.
+  Base URL of the runtime. Default `http://127.0.0.1:8081`. Config: `connection.api_server`.
 </ParamField>
 <ParamField path="--api-token-file <path>" type="string">
-  File holding the bearer token. Required for every command except `swarm verify`. Env:
-  `SWARM_API_TOKEN` (the token value) or `SWARM_API_TOKEN_FILE`. An inline `--api-token` is
-  not accepted, to keep secrets out of shell history.
+  File holding the bearer token. Required for every command except `swarm verify`. Config:
+  `connection.api_token_file` (client side) / `serve.api_token_file` (server side). An inline
+  `--api-token` is not accepted, to keep secrets out of shell history.
 </ParamField>
-
-The optional CLI config file at `$XDG_CONFIG_HOME/swarm/config.yaml` accepts `api_server` and
-`api_token_file`.
 
 ### swarm run
 
@@ -50,47 +55,44 @@ effect when attaching to a running runtime with `--connect`.
 </ParamField>
 <ParamField path="--data <path>" type="string">
   Path to the agent-visible read-only `/data` reference directory. Resolution order:
-  `--data` > `workspace.data_source` in `config.yaml` > `SWARM_WORKSPACE_DATA_SOURCE` > the
-  auto-default `.swarm/data/` (created next to `.swarm/dev.db` if it doesn't exist, so the runtime
-  starts with no `/data` configuration). Available on both `swarm serve` and `swarm run`.
+  `--data` > `workspace.data_source` in `swarm.yaml` > the auto-default `.swarm/data/`
+  (created next to `.swarm/dev.db` if it doesn't exist, so the runtime starts with no `/data`
+  configuration). Available on both `swarm serve` and `swarm run`.
 </ParamField>
 
 `--store` and `--backend` are documented under [Runtime store](#runtime-store) and
 [LLM backend and credentials](#llm-backend-and-credentials).
 
-## Configuration files
+## The configuration file: `swarm.yaml`
 
-Swarm uses two YAML files that share the name `config.yaml` but have different scopes, paths,
-and schemas. They coexist; pick the one that matches what you are configuring.
+One schema, discovered in layers (later overrides earlier):
 
-| | CLI client config | Runtime config |
+| Layer | Path | Typical use |
 |---|---|---|
-| **Audience** | every `swarm` command | `swarm serve` / `swarm run` at boot |
-| **Path** | `$XDG_CONFIG_HOME/swarm/config.yaml` | `<binary-dir>/config.yaml`, or `--config <path>` |
-| **Configures** | the CLI's API target, token, contract path | runtime startup: store, LLM, workspace, tuning |
-| **Schema** | flat, six keys | nested, several sections |
+| user-global | `$XDG_CONFIG_HOME/swarm/swarm.yaml` | personal defaults across projects |
+| project | `./swarm.yaml` | committed project configuration |
+| local operator | `./.swarm/swarm.yaml` | machine-local overrides; keep out of git |
+| explicit | `--config <path>` (or `SWARM_CONFIG`) | scripts, tests, alternates |
 
-### CLI client config
+Keys are **trust-tiered**: project-safe keys (llm backend/models, runtime tuning, budgets,
+loopback listeners) are accepted from any layer, while sensitive settings — public/wildcard
+listener binds, host-escaping paths, elevated workspace capabilities — are accepted only from
+the local-operator/user layers or a flag. A committed `swarm.yaml` in a cloned repo cannot
+expose your machine.
 
-Optional. Place it at `$XDG_CONFIG_HOME/swarm/config.yaml` to set per-user CLI defaults. Six
-keys are accepted; any other key is a parse error.
+The top-level sections (`swarm doctor` reports which layers loaded and what each supplied):
 
-```yaml
-api_server: http://127.0.0.1:8081
-api_token_file: ~/.config/swarm/token
-contracts_path: /absolute/path/to/contracts
-platform_spec_path: /absolute/path/to/platform-spec.yaml
-serve_api_listen_addr: 127.0.0.1:8081
-serve_mcp_listen_addr: 127.0.0.1:8082
-```
+- `connection.*` — CLI target: `api_server`, `api_token_file`, contexts
+- `serve.*` — listeners and server token: `api_listen_addr`, `mcp_listen_addr`, `api_token_file`
+- `paths.*` — `contracts_path`, `platform_spec_path`, prompt and tooling paths
+- `store.*` / `database.*` — backend selection and Postgres parameters
+- `llm.*` — backend profile, model aliases per backend, session rotation, provider rate/concurrency limits, `claude_cli` settings
+- `workspace.*` — backend preference, `data_source`, image settings
+- `runtime.*` — `recovery_on_startup`, decision-card cadence (first reminder, urgency, reminder interval, input draft TTL)
+- `budget.*` — global/per-entity/system monthly caps, human-task budgets
+- `provider_triggers.*` / `channels.*` — pack directories
 
-CLI flags override file values; the file overrides built-in defaults.
-
-### Runtime config
-
-Loaded by `swarm serve` and `swarm run` when they boot a local runtime. Resolution order:
-explicit `--config <path>`, then `config.yaml` beside the running binary, then built-in
-defaults. The full top-level shape:
+### Runtime section shape
 
 ```yaml
 runtime:                      # event loop and recovery tuning
@@ -149,8 +151,8 @@ extensions:                   # typed extensions; inline, namespaced per extensi
 ```
 
 CLI flags override config keys (`--store > store.backend`, `--backend > llm.backend`,
-`--data > workspace.data_source`), and the corresponding env vars override the file where both
-are accepted. See the sections below for each subsystem's precedence.
+`--data > workspace.data_source`). There are no env-var equivalents. See the sections below
+for each subsystem's precedence.
 
 <Warning>
   **`llm.runtime_mode` is retired** and rejected at boot; use `llm.backend`. The env-var
@@ -164,19 +166,21 @@ The runtime stores events, entity state, gates, timers, and sessions in a relati
 **SQLite is the default for local and development runs** (file-backed at `.swarm/dev.db`, no
 service needed); Postgres is the opt-in backend for external and production deployments.
 
-Select the backend with `--store sqlite` or `--store postgres`. `SWARM_STORE_BACKEND` and
-`store.backend` in `config.yaml` also select it; the `--store` flag overrides both.
+Select the backend with `--store sqlite` or `--store postgres`, or `store.backend` in
+`swarm.yaml`; the flag overrides the config key.
 
-<ParamField path="SWARM_STORE_BACKEND" type="string">
-  Runtime store backend: `sqlite` (local/dev default) or `postgres` (external/production opt-in).
-  Config key `store.backend`; the `--store` flag overrides.
+<ParamField path="store.backend" type="string">
+  Runtime store backend: `sqlite` (local/dev default, file at `store.sqlite.path`, default
+  `.swarm/dev.db`) or `postgres` (external/production opt-in).
 </ParamField>
 
-<ParamField path="SWARM_DB_HOST / SWARM_DB_PORT / SWARM_DB_NAME / SWARM_DB_USER / SWARM_DB_PASSWORD / SWARM_DB_SSLMODE" type="string">
-  Postgres connection parameters (used when `--store postgres` is selected). Defaults: `127.0.0.1`,
-  `5432`, `swarm`, `postgres`, `postgres`, `disable`. Each `SWARM_DB_*` variable falls back to the
-  standard libpq equivalent (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`) before the
-  default.
+<ParamField path="database.*" type="object">
+  Postgres connection parameters (used when `postgres` is selected): `database.host`,
+  `database.port`, `database.name`, `database.user`, `database.sslmode`,
+  `database.pool_size`. Defaults: `127.0.0.1`, `5432`, `swarm`, `postgres`, `disable`. The
+  password is never read implicitly: declare `database.password_env: <VAR>` and exactly that
+  named environment variable becomes the accepted source. The old `SWARM_DB_*`/`PG*` implicit
+  fallbacks are retired.
 </ParamField>
 
 ## LLM backend and credentials
