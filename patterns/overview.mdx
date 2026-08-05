@@ -129,8 +129,9 @@ order.created:
     order_total: payload.total
 ```
 
-Observe all instances with a wildcard subscription such as `fulfillment` then `*` then
-`order.completed`.
+Results come back through the child's output pin and a `connect` edge to the parent's
+input pin; the parent re-attaches to the right entity via the pin's carried identity (see
+[Composing flows](/build/composition)).
 
 ## Timers
 

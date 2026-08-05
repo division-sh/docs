@@ -20,9 +20,10 @@ map entry keyed by its id.
   Derived (`system_node`). Accepted explicitly for compatibility; carries no information.
 </ParamField>
 <ParamField path="subscribes_to" type="list">
-  Derived from the `event_handlers` keys. Declare it explicitly only for subscriptions the
-  handler keys cannot express — a scoped subscription such as
-  `validation/mailbox.review_requested` (qualified by producer flow), or a wildcard form.
+  Derived from the `event_handlers` keys; an explicit list is accepted but adds nothing.
+  Subscriptions never cross a flow boundary — qualified forms
+  (`<flow>/<event>`) are retired and fail verify; cross-flow delivery is owned by the
+  package `connect` block.
 </ParamField>
 <ParamField path="produces" type="list">
   Derived from the handler emit sites. If present, the analyzer warns on drift

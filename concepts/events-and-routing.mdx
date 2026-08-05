@@ -60,7 +60,7 @@ after persisting, the event replays on recovery and nothing is lost.
 Here is what makes runs reproducible: no LLM decides who acts next. Who receives an event follows
 entirely from who declared a **subscription** to it.
 
-- A system node subscribes in `nodes.yaml`: its `event_handlers` keys are its subscriptions (explicit `subscribes_to` exists only for scoped/wildcard forms).
+- A system node subscribes in `nodes.yaml`: its `event_handlers` keys are its subscriptions. Subscriptions are same-flow only; cross-flow delivery goes through the package `connect` block.
 - An agent subscribes in `agents.yaml` (`subscriptions`).
 
 `events.yaml` defines payload *shapes*, never routing. So you change who receives an event by
@@ -110,19 +110,21 @@ fires:
 4. `ticket.triaged` and `ticket.classified` each enter the loop as new events and route to their
    own subscribers.
 
-To send `ticket.created` somewhere else, you change a `subscribes_to` or `subscriptions` list.
-The payload does not move.
+To send `ticket.created` somewhere else, you change which node handles it or which agent
+subscribes. The payload does not move.
 
 ## Crossing flow boundaries
 
-Inside one flow, routing is just subscription matching, and that is most of what you write. To
-send an event to **another flow**, or to a **specific instance**, a flow uses its pins and an
-explicit target (and wildcard subscriptions pick up dynamic instances that did not exist at
-boot). That is its own topic, with its own rules about how a recipient is resolved.
+Inside one flow, routing is just subscription matching, and that is most of what you write.
+Between flows there is exactly one mechanism: the event leaves through a declared **output
+pin**, a `connect` edge in the package binds it to an **input pin**, and the receiving pin's
+`resolution` and carried identity decide which instance handles it — including instances that
+did not exist yet (`select-or-create` mints them on first delivery). The compiled connect
+graph is the single routing authority, and verify proves every edge at boot.
 
 <CardGroup cols={2}>
   <Card title="Composing flows" icon="puzzle-piece" href="/build/composition">
-    Pins, targets, the parent route, and wildcard subscriptions for cross-flow routing.
+    Pins, connect edges, the parent route, and receiver resolution for cross-flow routing.
   </Card>
   <Card title="System nodes and handlers" icon="gears" href="/concepts/system-nodes-and-handlers">
     What a node does with an event once it is delivered.

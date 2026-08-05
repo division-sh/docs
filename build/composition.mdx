@@ -93,36 +93,37 @@ pins:
 A producer's output pin and a consumer's input pin are two halves of one connection: both must
 declare the event, or the wire does not exist.
 
-## Pattern 1: a static child, wired at boot
+## Pattern 1: the `connect` block — every edge declared
 
-For static children, the engine **auto-wires** at boot: it matches each output event pin to the
-input pin that accepts it. Once `orders` emits `order.shipped` (a declared output pin), it lands
-in `notify` with no target and no extra code:
+Cross-flow delivery has exactly one mechanism: the package root's **`connect:` block** binds
+output pins to input pins, edge by edge. Pin addresses are `<flow-id>.<pin-name>`; the root
+flow's own pins use a leading dot (`.pin-name`):
 
-```yaml orders/nodes.yaml
-order.delivered:
-  advances_to: closed
-  emit:
-    event: order.shipped              # an output pin -> auto-wired to notify
-    fields:
-      order_id: entity.order_id
+```yaml package.yaml
+name: jobs
+version: 1.0.0
+platform_version: ">=0.7.0 <0.8.0"
+flows:
+  - id: worker
+    flow: worker
+    mode: template
+connect:
+  - from: .job_requested        # root output pin →
+    to: worker.job_requested    #   child input pin
+  - from: worker.job_done       # child output pin →
+    to: .job_done               #   back to the root
 ```
 
-The one rule to know: if a single input pin could match outputs from **more than one** flow, boot
-fails as ambiguous, and you disambiguate with an explicit `target` (below) or a scoped
-subscription. Auto-wiring only works when the match is unique.
+The compiled connect graph is the **single routing authority**: verify proves every edge at
+boot — a `from` with no producer, a `to` with no pin, an event mismatch across an edge, or an
+output pin bound nowhere is a boot error, never a silent no-delivery. Subscriptions never
+cross a flow boundary: the older scoped form (`validation/mailbox.review_requested`) and
+cross-flow wildcards are retired and fail verify with `legacy_qualified_subscription` —
+inside a flow, subscriptions; between flows, edges.
 
-A **scoped subscription** qualifies the event with the producer flow's path, so the receiver
-takes that one flow's output and nothing else:
-
-```yaml
-# subscribe to mailbox.review_requested, but only the copy the validation flow emits
-subscribes_to:
-  - validation/mailbox.review_requested
-```
-
-The form is `<producer-flow>/<event>`. For a template child with many instances, the
-instance-wildcard form `<flow>/*/<event>` (below) addresses them all.
+Once an edge exists, the producer just emits: the event leaves through its output pin, the
+edge carries it, and the *receiving* pin's `resolution` + `carries` decide which instance
+handles it (next pattern).
 
 ## Pattern 2: spawn a template instance
 
