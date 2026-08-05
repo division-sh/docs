@@ -7,7 +7,7 @@ icon: "gears"
 Every Swarm workflow has two kinds of worker: **agents**, which are LLMs that make judgment
 calls, and **system nodes**, which handle everything that has to be exact and repeatable. A
 system node is plain workflow logic you write as YAML, with no model and no prompt. Its job is
-to own the things you would never want an LLM to track on its own: what state each item is in,
+to own the things you would never want an LLM to track on its own: what stage each item is in,
 what data has been recorded, and which step happens next.
 
 The division of labor is the whole point. An agent proposes an outcome by sending an event; a
@@ -42,12 +42,12 @@ ticket.classified:
   data_accumulation:                  # record category and priority on the ticket
     writes: [category, priority]
     source_event: ticket.classified
-  advances_to: assigned               # move the ticket to the "assigned" state
+  advances_to: assigned               # move the ticket to the "assigned" stage
   emit: ticket.assigned               # send the next event, for whoever handles assigned tickets
 ```
 
 Read as a sentence: *if* the category is valid, save `category` and `priority` onto the ticket,
-move it to `assigned`, and send a `ticket.assigned` event. The agent that classified the ticket
+advance it to `assigned`, and send a `ticket.assigned` event. The agent that classified the ticket
 never touched the ticket's state to make any of this happen.
 
 Every handler has that same shape: an event comes in, the handler looks at the item it concerns
@@ -76,7 +76,7 @@ saved in one database transaction: all of it, or none of it. If the process cras
 through, nothing is left half-finished; the event simply runs again when the system restarts.
 
 This is what lets the rest of the flow trust an item's state. A ticket is always in exactly one
-of the states you declared, never stuck somewhere in between, and never showing a result that
+of the stages you declared, never stuck somewhere in between, and never showing a result that
 was not actually committed.
 
 ## Branching
