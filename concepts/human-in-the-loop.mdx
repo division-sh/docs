@@ -6,18 +6,55 @@ icon: "user-check"
 
 ## Humans as a first-class actor
 
-Approvals, rejections, and deferrals flow through a durable **mailbox**, using the same event
-model as everything else: a pending decision is just another event, waiting for a handler that
-happens to be a human. You choose this per transition. A handler runs automatically unless it
-adds a `mailbox_write` action (shown below), which pauses it for a human decision; everything
-else stays autonomous. We call this: autonomy is a dial, not a switch.
+A human decision in Swarm is a typed, durable object — not a chat message and not a webhook
+callback. You choose per transition where a human belongs; everything else stays autonomous.
+We call this: autonomy is a dial, not a switch.
+
+## Decision gates: pause a stage for a verdict
+
+The primary surface is the **stage gate** — a stage that waits for a typed decision, with
+every outcome declared:
+
+```yaml schema.yaml
+stages:
+  awaiting_launch_approval:
+    gate:
+      decision: launch_review          # stable audit identity
+      context:                         # what the deciding human sees
+        staging: entity.staging_url
+        qa_summary: entity.qa_summary
+      outcomes:
+        approve:
+          advances_to: operating
+          emit: opco.launched
+        reject:
+          input:
+            feedback: {type: text, required: true}   # rejection must say why
+          advances_to: building
+          emit:
+            event: launch.rejected
+            fields: {feedback: decision.feedback}
+```
+
+When an entity enters the stage, the platform creates a **decision card**: a typed resource
+carrying the declared context, the possible verdicts, and any input fields an outcome
+requires. Channels (the dashboard, Telegram, whatever renderer you attach) *display* the
+card; the decision itself is committed through one API — which means a decision made on your
+phone and a decision made in the dashboard are the same object, and the flow resumes
+identically. The card's content is hashed, and a verdict must reference the content it saw —
+a decision against a stale card is rejected, never silently applied to changed facts.
+
+Every outcome is a declared lifecycle edge: `advances_to` and `emit` are verified statically,
+so "what happens if they reject?" has an answer at boot, not at 2am. The platform itself
+**never decides** — no timeout auto-approves; an expired card escalates or defers, loudly.
 
 ## The mailbox
 
-The mailbox is a persisted, human-in-the-loop task queue. A handler writes an item with the
-`mailbox_write` action, declaring the item type, severity (`normal`, `urgent`, `critical`), a
-summary, and an explicit payload. Writes are row-idempotent per source event, so a replayed
-delivery never creates a duplicate item.
+Alongside gates, the **mailbox** is the persisted queue for human *tasks* — work items that
+are not a stage verdict (review this draft, investigate this alert). A handler writes an item
+with the `mailbox_write` action, declaring the item type, severity (`normal`, `urgent`,
+`critical`), a summary, and an explicit payload. Writes are row-idempotent per source event,
+so a replayed delivery never creates a duplicate item.
 
 Each item carries a server-built **decision sheet**: the entity context and a preview of
 what happens downstream, so an operator can decide without reconstructing the situation by

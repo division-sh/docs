@@ -1,0 +1,66 @@
+---
+title: "Standing flows and webhook ingress"
+description: "Always-on flows that receive provider webhooks: activation: standing and the ingress block."
+icon: "tower-broadcast"
+---
+
+Most flows are **guided**: a run starts, events flow, the run reaches terminal and ends. A
+chat bot, a support inbox, or any webhook-driven service is different — it must be *already
+running* when the outside world calls. That is a **standing** flow: the platform materializes
+its instance before readiness, keeps it alive across restarts, and exposes a webhook endpoint
+for it.
+
+## Declaring a standing flow
+
+Activation is declared on the package's flow entry — explicitly, never inferred:
+
+```yaml package.yaml
+flows:
+  - id: telegram-chat
+    flow: telegram-chat
+    mode: singleton
+    activation: standing
+    ingress:
+      alias: chat                    # optional; defaults to the flow id
+      providers:
+        - provider: telegram
+          signing_secret: webhook_signing.telegram
+```
+
+The rules, all checked at verify:
+
+- `activation: standing` is valid only for `mode: singleton` flows.
+- Standing **without** `ingress` is valid — a timer-driven or connect-fed always-on service.
+- `ingress` **requires** `activation: standing`, and its `alias` defaults to the flow id. The
+  alias is one URL path segment: the endpoint is `/webhooks/{alias}/{provider}` — here,
+  `/webhooks/chat/telegram`.
+- `signing_secret` is a **deployment credential reference** (resolved from the credential
+  store at boot); the package never carries the value.
+- Every provider binding must line up with an external input pin consuming that provider's
+  events — a dangling ingress or an unfed pin is a verify error, not a runtime surprise.
+
+## Provider events, normalized
+
+A provider pack (Telegram, Slack, Stripe, …) declares the raw webhook's admission policy and
+its **normalized events** — flat, typed projections of the provider payload that your flow
+subscribes to. Your contracts consume `telegram.message` with `chat_id: text`; the pack owns
+signature verification, payload dispatch, and field extraction. You never parse a raw webhook
+body in a handler.
+
+Accepting **unsigned** webhooks (a provider with no signature scheme, or local testing) must
+be acknowledged explicitly in the admission declaration — an unsigned public endpoint is
+something you say out loud, or boot warns.
+
+## Lifecycle: what "standing" means operationally
+
+- **Materialized before ready**: the standing instance, its routes, and its agents exist
+  before the runtime reports readiness — the first webhook never races activation.
+- **Durable across restarts**: the service's identity is stable (derived from package + flow
+  id); a restart reconciles the declared set against the store and resumes, it does not
+  re-create. Removing or renaming the flow in a later revision explicitly **orphans** the old
+  service — quiesced, paused, inspectable — rather than silently deleting it.
+- **Operator control**: suspend, resume, and reset act on the same durable identity and
+  survive restart.
+
+For exposing the local endpoint during development (for example through a tunnel to receive
+real provider webhooks), see [Running the runtime](/operate/running-the-runtime).

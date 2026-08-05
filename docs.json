@@ -49,6 +49,8 @@
               "build/tools",
               "build/policy",
               "build/composition",
+              "build/parallel-work",
+              "build/standing-ingress",
               "build/testing",
               "build/agentic-authoring"
             ]

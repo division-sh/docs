@@ -1,30 +1,21 @@
 ---
 title: "Testing and verification"
-description: "The static analyzer, test packages, and agent fixtures."
+description: "The static analyzer, swarm test scenarios, and the mock LLM backend."
 icon: "vial"
 ---
 
-Swarm gives you three layers of testing, cheapest to most thorough: the static analyzer (no
-runtime), test packages (one handler, deterministic), and agent fixtures (a full event chain
-without spending tokens).
+Swarm gives you three layers of testing, cheapest to most thorough — and none of them needs
+an LLM credential:
 
 ```mermaid
 flowchart LR
-    A["swarm verify: static checks"] --> B["test package: one handler vs expected"]
-    B --> C["agent fixtures: full chain, scripted agents"]
+    A["swarm verify: static checks"] --> B["swarm test: deterministic scenarios"]
+    B --> C["mock backend: agent turns without a provider"]
 ```
-
-<Note>
-  Of the three, **`swarm verify` is the layer you run directly today.** Test packages and agent
-  fixtures are the format the platform's own conformance suite uses; they are exercised through
-  the Go test harness (`go test ./internal/runtime/swarmflowtest`), not a CLI command. There is no
-  `swarm test` yet. So read the two sections below as the *shape* your tests take, with the runner
-  still developer-side.
-</Note>
 
 ## The static analyzer
 
-`swarm verify` validates a contract bundle against the platform specification, the one
+`swarm verify` validates a contract bundle against the platform specification — the one
 command that runs purely on files, with no runtime needed.
 
 ```bash
@@ -32,50 +23,106 @@ swarm verify --contracts ./ticket-flow
 ```
 
 The same checks run at boot. Findings have a severity: an `error` aborts (the bundle cannot
-ship), a `warning` is logged but allows boot. Checks cover payload coverage, state
+ship), a `warning` is logged but allows boot. Checks cover payload coverage, stage
 reachability, agent fulfillment, handler-field validity, entity write targets, CEL parsing,
 single-node-per-event, and event cycles, among others. See
 [Analyzer checks](/reference/analyzer-checks) for the catalog.
 
-## Test packages
+## Scenario tests: `swarm test`
 
-A test package is a minimal flow plus an `expected.yaml` that exercises one capability. It
-declares a trigger and the expected outcome, so you can assert a handler's behavior
-deterministically:
+A **scenario** is a YAML file that publishes events into your real flow and asserts what came
+out — events, entity state, gates — through the public API, against a real runtime. Scenarios
+live with the contracts they prove:
 
-```yaml expected.yaml
-trigger:
-  event: ticket.classified
-  payload:
-    ticket_id: t-001
-    category: billing
-    priority: high
-expected:
-  handler_outcome: success
-  entity_state: assigned
-  emitted_events: [ticket.assigned]
-  entity_fields:
-    category: billing
-    priority: high
+- `contracts/tests/…` — package-wide, cross-flow scenarios
+- `contracts/flows/<flow>/tests/…` — flow-local scenarios (these ship with a published flow,
+  so consumers can run your conformance against their own bindings)
+
+```yaml contracts/tests/classify-and-assign.yaml
+name: billing ticket is classified and assigned
+vars:
+  ticket_id: "${scenario.uuid('t1')}"   # deterministic — derived, never random
+steps:
+  - publish: ticket.created
+    payload:
+      ticket_id: "${vars.ticket_id}"
+      subject: "double charge"
+  - publish: ticket.classified
+    payload:
+      from: fixtures/classified.yaml    # load a fixture file…
+      set:
+        ticket_id: "${vars.ticket_id}"  # …and override fields
+expect:
+  events:                               # unordered include-match by default
+    - ticket.assigned
+  entities:
+    - type: ticket
+      current_state: assigned
+      fields:
+        category: billing
 ```
 
-`handler_outcome` is one of `success`, `reject`, `discard`, `kill`, `escalate`,
-`dead_letter`, `terminal_reject`, `waiting`, or `fanned_out`.
+The rules that keep scenarios deterministic and honest:
 
-## Agent fixtures
+- **Plain YAML is literal; `${...}` is CEL.** No other expression grammar.
+- **Helpers are deterministic**: `scenario.uuid(label)` derives from the scenario's identity
+  and recorded seed — never wall-clock, never random. Reruns are byte-identical.
+- **Payloads are schema-validated before publish** — a fixture that doesn't match the event
+  schema fails the scenario before anything mutates.
+- **The runner only speaks the public API** (`event.publish`, `entity.get`, run readback). It
+  cannot touch the store, the bus, or delivery rows — a scenario proves what a real client
+  could observe, nothing more.
+- **`expect` runs at quiescence** — after the run settles, not on a sleep. `expect.events`
+  supports `include` (default), `exact`, and `ordered` matching; entity assertions compare
+  exactly against `entity.get`.
+- A `setup:` block can seed deterministic entity rows (through the public setup owner) when a
+  scenario needs pre-state, and an `invalid:` table asserts that malformed fixture variants
+  are rejected fail-closed.
 
-To test full event chains without spending tokens, run agents in a scripted mode and supply
-fixture responses. The platform intercepts an agent's subscriptions and replays the fixture
-events instead of calling the model, which is how the conformance suite validates behavior
-against a scripted runtime rather than a live LLM.
+Run them with:
+
+```bash
+swarm test --contracts ./ticket-flow            # all scenarios under the roots
+swarm test contracts/tests/classify-and-assign.yaml
+```
+
+## The mock LLM backend
+
+Scenario steps drive the deterministic side of a flow. To execute **agent turns** without a
+provider credential, give agents a mock performance — a small Python module, run by the
+embedded interpreter, standing in for the model:
+
+```yaml agents.yaml
+classifier-agent:
+  model: regular
+  subscriptions: [ticket.created]
+  emit_events: [ticket.classified]
+  memory: false
+  mock: {kind: python, module: mocks/classifier.py}
+```
+
+The module's `handle` entrypoint receives the turn input and returns the tool calls the agent
+would make (typically an `emit_*`). The platform runs it through the **real runtime** — real
+subscriptions, real tool surfaces, real persistence — so what you prove is the actual event
+chain, not a simulation. Guarantees worth knowing:
+
+- The module is captured at contract compilation (path, bytes, digest) into the bundle —
+  runtime never re-reads the ambient file, so a run and its replay see identical behavior.
+- External writes are **fail-closed in mock mode**: a mocked agent cannot accidentally send a
+  real Telegram message or hit a real connector.
+- Cost accounting shows `~$… (mock estimate)` — separated from real spend, never mixed.
+
+Mock performances and scenarios compose: a scenario publishes the triggering event, the
+mocked agent takes its turn through the real runtime, and `expect` asserts the outcome — a
+full agent flow, end to end, with zero credentials and zero Docker.
 
 ## Before you deploy
 
-<Check>Every `advances_to` target is a declared state.</Check>
+<Check>Every `advances_to` target is a declared stage.</Check>
 <Check>Every emitted event has a payload schema, and emit sites supply all declared fields.</Check>
 <Check>Every entity field a handler writes exists in `entities.yaml`.</Check>
 <Check>Every condition is prefixed (`payload.`, `entity.`, `policy.`) and references real fields.</Check>
 <Check>No two system nodes handle the same event.</Check>
 <Check>`on_complete` is a list; it is not combined with `rules`.</Check>
 <Check>Each stateful input-pin handler declares one entity-acquisition mode.</Check>
-<Check>`swarm verify` returns no errors.</Check>
+<Check>`swarm verify` returns no errors, and `swarm test` passes your scenarios.</Check>

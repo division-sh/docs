@@ -1,0 +1,171 @@
+---
+title: "Parallel work and convergence"
+description: "Fan out to template instances, converge with fan-in joins, and revise with bounded loops."
+icon: "arrows-split-up-and-left"
+---
+
+Swarm's parallelism is declarative end to end: a handler **fans out** one event per work item,
+each item resolves into its own **template flow instance** (with its own agent, session, and
+workspace), and the results **converge through a join** that owns completion, deduplication,
+and timeout. You declare the split key and the membership; the platform owns dispatch,
+per-instance identity, and completion tracking. No counters, no polling, no shared state.
+
+## Fan out: one event per item
+
+```yaml scout/nodes.yaml
+startups.found:
+  fan_out:
+    items_from: payload.startups
+    as: lead
+    identity: lead.startup_id       # stable identity per item
+    max_items: 25
+    emit:
+      event: startup.discovered
+      fields:
+        startup_id: lead.startup_id
+        name: lead.name
+  data_accumulation:
+    writes:
+      - target_field: startup_ids   # remember the membership for the join
+        expression: payload.startups.map(s, s.startup_id)
+      - target_field: batch_id
+        expression: payload.batch_id
+```
+
+`identity` names the stable per-item key; `max_items` bounds the fan-out. Record the member
+list (and a window key, such as a batch id) in entity fields — the join below reads them.
+
+## One instance per item
+
+The receiving flow declares its identity once, and instances mint themselves on first
+delivery — there is no creation call:
+
+```yaml flows/matcher/schema.yaml
+mode: template
+instance: startup_id                # one instance per startup_id
+stages:
+  investigating:
+    initial: true
+  assessed:
+    terminal: true
+pins:
+  inputs:
+    events:
+      - name: startup_discovered
+        event: startup.discovered
+        resolution:
+          mode: select-or-create    # first event for a new startup_id mints the instance
+        carries:
+          startup_id: {from: payload.startup_id, type: text}
+```
+
+Every selecting input pin must carry a field named after `instance:`; the pin's instance key
+derives from it. Each instance materializes **its own copy** of the flow's declared agents,
+keyed by (declaration × flow instance) — one instance finishing never affects a sibling's
+agent, and `memory: true` agents get one conversation per instance.
+
+## Fan in: the barrier join
+
+Convergence is owned by two declarations on the collecting flow: a **fan-in resolution pin**
+(which events count, how they deduplicate, which window they belong to) and a staged **`join:`
+row** (membership, completion, timeout):
+
+```yaml scout/schema.yaml (input pin)
+- name: assessed_reported
+  event: startup.assessed
+  resolution:
+    mode: fan-in
+    aggregation: barrier
+    window: payload.batch_id        # arrivals group by window
+    dedup_by: payload.startup_id    # a redelivery never double-counts
+    singleton: scout                # the collecting instance
+  carries:
+    startup_id: {from: payload.startup_id, type: text}
+    batch_id: {from: payload.batch_id, type: text}
+```
+
+```yaml scout/nodes.yaml (join row)
+startup.assessed:
+  join:
+    stage: awaiting                 # the stage that waits
+    members:
+      from: entity.startup_ids      # who must arrive (written at fan-out time)
+    window:
+      from: entity.batch_id
+    output: payload.match_score
+    on_complete:
+      advances_to: reported
+    timeout:
+      after: 30m
+      advances_to: partial_report   # a late member is a declared outcome, not a hang
+```
+
+The join arms when the entity enters the waiting stage and settles exactly once per window —
+on completion or on timeout, whichever comes first. Do **not** hand-roll this with
+`accumulate` and an `expected_count` comparison: that pattern has no dedup, no timeout, and
+deadlocks when the last result arrives before the expected count is written.
+
+The canonical runnable version of this whole shape is `examples/routing/fan-in/barrier` in
+the repository.
+
+## Bounded loops: declared revision cycles
+
+When work legitimately cycles — draft, review, revise, review again — the cycle is declared,
+capped, and given an explicit exit. `loops:` replaces counter guards and backward-edge
+conventions as the loop authority:
+
+```yaml nodes.yaml
+loops:
+  revision:
+    revision_field: revision_id     # the event field carrying the current revision identity
+    max_attempts: "{{policy.inner_revision_max}}"
+    escape:                         # reaching the cap is a declared outcome, not a failure
+      advances_to: escalated
+      emit:
+        event: review.escalated
+        fields:
+          revision_id: {cel: loop.revision_id}
+
+event_handlers:
+  work.started:
+    loop: {start: revision, from: queued}
+    advances_to: drafting
+  draft.ready:
+    loop: {admit: revision, from: drafting}
+    advances_to: review
+  review.revision_requested:
+    loop: {repeat: revision, from: review}   # below the cap: new revision, back to drafting
+    advances_to: drafting
+  review.approved:
+    loop: {close: revision, from: review}
+    advances_to: approved
+```
+
+Four operations cover a loop's life: `start` creates the activation at attempt 1, `admit`
+accepts work for the current revision, `repeat` increments the attempt and mints a new
+revision (or, at the cap, atomically takes the declared `escape`), and `close` exits the
+region. `max_attempts` is evaluated once at start and stamped into the activation — editing
+policy mid-run never changes an active loop's cap, and replay sees the same cap the run did.
+Every operation declares its exact `from:` stage; the runtime accepts no inferred source.
+
+Verify checks the loop's shape statically: one `start` from outside the cycle, at least one
+`repeat` and `close`, an escape target outside the cycle, and every handler inside the cycle
+declaring its loop operation. Nested and unbounded loops are rejected.
+
+## Stage timers: time as a lifecycle edge
+
+Both shapes above compose with **stage timers** — one-shot temporal rows declared on the
+stage itself:
+
+```yaml schema.yaml
+stages:
+  awaiting_review:
+    timers:
+      - after: 48h
+        emit: review.sla_escalated      # emit-only: stays in the stage
+      - after: "{{marginal_park_days}}d"
+        advances_to: expired            # advances: ends the stage
+```
+
+A timer arms when the entity enters the stage and cancels when it leaves. A row with
+`advances_to` is a real lifecycle edge — reachability analysis and `describe --graph` see it.
