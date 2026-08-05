@@ -101,7 +101,11 @@ startup.assessed:
 ```
 
 The join arms when the entity enters the waiting stage and settles exactly once per window —
-on completion or on timeout, whichever comes first. Do **not** hand-roll this with
+on completion or on timeout, whichever comes first. Two aggregation modes exist:
+`aggregation: barrier` (shown here) delivers once when the window completes, while
+`aggregation: stream` delivers every deduplicated arrival as it comes *and* still tracks
+window completion — use stream when the collector should react per result (progress updates,
+incremental writes) rather than only at the end (`examples/routing/fan-in/stream`). Do **not** hand-roll this with
 `accumulate` and an `expected_count` comparison: that pattern has no dedup, no timeout, and
 deadlocks when the last result arrives before the expected count is written.
 

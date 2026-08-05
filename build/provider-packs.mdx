@@ -1,0 +1,97 @@
+---
+title: "Provider and connector packs"
+description: "Receive provider webhooks and call provider APIs without writing integration code."
+icon: "plug"
+---
+
+An integration in Swarm is a **pack** — a declarative bundle the platform loads, verifies, and
+enforces, not SDK code you write. Two kinds cover the two directions:
+
+- **Provider trigger packs** (inbound): a provider's webhooks become typed, normalized events
+  your flow subscribes to. Telegram, Slack, Stripe, Shopify, Twilio, GitHub, Intercom, and
+  Typeform ship with the platform under `packs/provider-triggers/`.
+- **Connector packs** (outbound): a provider's API operations become declared tools your
+  agents and handlers call, with credentials, rate limits, and permissions owned by the
+  platform.
+
+## Inbound: trigger packs and normalized events
+
+A trigger pack manifest declares everything the platform needs to admit a webhook safely:
+the signature scheme and its secret requirement, the delivery-id path used for
+deduplication, and the **normalized events** it produces:
+
+```yaml packs/provider-triggers/telegram/trigger.yaml (excerpt)
+provider: telegram
+signature:
+  type: token_equality
+  header: X-Telegram-Bot-Api-Secret-Token
+delivery_id:
+  json_path: $.update_id
+normalized_events:
+  - event: inbound.telegram.message
+    fields:
+      conversation_reference:
+        from: message.chat.id
+        schema: {type: string, pattern: '^-?[0-9]+$'}
+        convert: number_to_text
+      text:
+        from: message.text
+        schema: {type: string, minLength: 1}
+```
+
+Your flow never sees the raw update object: it subscribes to the flat, typed normalized
+event, and the pack owns extraction, conversion (`number_to_text` for numeric IDs), and
+schema validation. Wire the pack to a flow with [standing ingress](/build/standing-ingress) —
+`activation: standing` plus an `ingress:` block naming the provider — and the endpoint
+`/webhooks/{alias}/{provider}` exists, signature-checked, when the runtime is ready.
+
+Raw payload admission is verified statically: which fields a normalized event needs, whether
+the provider signs requests, and whether an unsigned endpoint was explicitly acknowledged.
+
+## Outbound: connector packs
+
+A flow imports the provider operations it uses; each import becomes a declared tool:
+
+```yaml package.yaml
+connector_packs:
+  imports:
+    - provider: telegram
+      tool: telegram.send_message
+```
+
+Agents list the tool like any other (`tools: [telegram.send_message]`); handlers can invoke
+connector operations through actions. The platform owns what your code would otherwise
+hand-roll: credential resolution (API keys and OAuth through the managed credential store —
+see `swarm connections` for the OAuth flow), per-provider rate limits, permission gating, and
+typed operation schemas.
+
+Connector packs for new providers can be **generated from an OpenAPI description**, so adding
+an integration is a generation step plus review, not an SDK project. In test and mock runs,
+connector calls are fenced: a mock-mode flow cannot accidentally send a real message, and
+mock responses can be generated from the operation's schema (see
+[Testing](/build/testing)).
+
+## Credentials
+
+Pack credentials are deployment concerns, never package data:
+
+- **Webhook signing secrets** are referenced by name (`signing_secret: webhook_signing.telegram`)
+  and resolved from the credential store at boot.
+- **API credentials** live in the managed credential store; `swarm secrets` manages local
+  secret material, and `swarm connections` manages OAuth-style connections with token
+  refresh.
+- A missing credential is a **boot error naming the credential**, not a runtime 401 three
+  days later.
+
+## What ships today
+
+| Provider | Trigger (inbound) | Connector (outbound) |
+|---|---|---|
+| Telegram | ✓ | ✓ (`send_message`, …) |
+| Slack | ✓ | ✓ (managed connector) |
+| GitHub | ✓ (issue-comment app loop) | ✓ |
+| Stripe, Shopify, Twilio, Intercom, Typeform | ✓ | via OpenAPI generation |
+| Notion, Microsoft Graph | — | ✓ (OAuth / client-credentials proofs) |
+
+Platform packs load from the binary's inventory; project-local packs load from
+`provider_triggers.packs.external_dirs` in `swarm.yaml`.

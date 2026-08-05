@@ -20,6 +20,16 @@ ticket.classified:
       priority: entity.priority
 ```
 
+Two pieces of sugar reduce the restating, both lowering to the explicit map (which is what
+verify and the runtime actually see):
+
+- `emit.from: entity` (or `payload` — exactly one namespace, no lists) auto-fills every
+  **required** declared payload field whose name matches a source field. Optional fields are
+  never auto-filled; explicit `fields:` entries win over `from:`.
+- Inside `fields:`, a bare namespace value means the same-named source field:
+  `category: entity` lowers to `category: entity.category`. Dotted CEL stays the form for
+  renames and computed values.
+
 The bare string form, `emit: ticket.assigned`, emits with an **empty** payload. The analyzer
 accepts it, so the empty payload only shows up at runtime when a subscriber receives `{}`. Use
 the bare form only for events that declare no fields; use `fields` the moment an event carries

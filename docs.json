@@ -51,6 +51,8 @@
               "build/composition",
               "build/parallel-work",
               "build/standing-ingress",
+              "build/provider-packs",
+              "build/compute-modules",
               "build/testing",
               "build/agentic-authoring"
             ]

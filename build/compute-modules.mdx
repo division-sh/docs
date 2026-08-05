@@ -1,0 +1,85 @@
+---
+title: "Compute modules"
+description: "Deterministic algorithmic logic in sandboxed Python or WASM, declared and verified."
+icon: "microchip"
+---
+
+Handlers express orchestration; CEL expresses conditions and field math. When you genuinely
+need **algorithmic work** — bounded iteration, aggregation, parsing, structured rendering — a
+**compute module** runs it deterministically in a sandbox, without giving up replay or
+verification.
+
+## Declaring a module
+
+Modules are declared in `policy.yaml`, with their contract stated up front:
+
+```yaml policy.yaml
+modules:
+  structured_renderer:
+    kind: python                 # or wasm
+    path: modules/renderer.py
+    abi: python-json-v1          # wasm: core-json-v1
+    input_schema:
+      type: object
+      properties:
+        component: {type: string}
+        files: {type: array}
+    output_schema:
+      type: object
+    limits:
+      gas: 10000000              # execution budget
+      memory_pages: 64
+      output_bytes: 262144
+```
+
+Python modules run on the embedded CPython-WASI interpreter (shipped in the binary — no local
+Python needed); `kind: wasm` runs a compiled module. Either way the module's bytes are
+digest-captured into the bundle at compile time, execution is metered by the declared limits,
+and the sandbox has **no I/O**: no filesystem, no network, no clock, no randomness. Same
+input, same output, forever — which is what makes module calls replayable.
+
+## Calling a module
+
+A rule invokes a module in the compute phase and binds the result to the handler-local
+`computed.*` namespace:
+
+```yaml nodes.yaml
+component.submitted:
+  rules:
+    - id: render_file_bundle
+      compute_module:
+        module: structured_renderer
+        input:                          # simple explicit paths only
+          component: payload.component
+          files: payload.files
+        into: computed.rendered_bundle  # handler-local, never persisted implicitly
+      advances_to: rendered
+      emit:
+        event: component.rendered
+        fields:
+          bundle: computed.rendered_bundle
+```
+
+The rules that keep this honest, all verified at boot:
+
+- `input` values are **simple explicit paths** rooted in `payload`, `entity`, `event`, or
+  `computed` — no expressions smuggled in.
+- `into` must target `computed.*`. Module output is handler context, not state: persisting it
+  requires an explicit `data_accumulation` write, with its own owner.
+- A module row **cannot** emit, advance state, run actions, fan out, or touch entity state —
+  it computes a value, full stop.
+- An unconsumed `into` binding is a boot error: if nothing downstream reads the value, the
+  declaration is dead and verify says so.
+
+## When to reach for one
+
+| Need | Owner |
+|---|---|
+| condition, simple field math | CEL expression |
+| finite lookup table, validation predicate | policy sheet rows |
+| bounded iteration, parsing, aggregation, deterministic rendering | **compute module** |
+| durable external work (API calls, side effects) | activities / connector tools |
+| an LLM judgment | an agent |
+
+Compute modules are the escape hatch that *doesn't* escape the model: logic beyond rows,
+still deterministic, still verified, still replayable.
