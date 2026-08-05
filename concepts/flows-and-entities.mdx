@@ -31,14 +31,14 @@ the runtime mints a fresh instance whenever it needs one, for example one order 
 
 ## Entities
 
-An entity is the thing moving through a flow instance's state machine. It carries three things:
+An entity is the thing moving through a flow instance's staged lifecycle. It carries three things:
 
-- **state**: which named state it is in (`new`, `assigned`, `resolved`), exactly one at a time.
+- **stage**: which lifecycle stage it is in (`new`, `assigned`, `resolved`), exactly one at a time.
 - **gates**: named boolean checkpoints a handler can set and a guard can check (`verified: true`).
 - **fields**: typed data that handlers write (`category`, `total`, `resolution`).
 
 You declare an entity's fields in the flow's `entities.yaml`. Its state is not declared there,
-because state belongs to the flow's state machine (in `schema.yaml`).
+because the lifecycle belongs to the flow's `stages:` declaration (in `schema.yaml`).
 
 ```yaml entities.yaml
 order:
@@ -76,7 +76,7 @@ See [Composing flows](/build/composition) for how pins are wired across flows.
     The deterministic logic that advances an entity through its states.
   </Card>
   <Card title="Gates, timers, and state" icon="toggle-on" href="/concepts/gates-timers-and-state">
-    The state machine, gates, and time-based triggers an entity moves through.
+    The stages, gates, and time-based triggers an entity moves through.
   </Card>
   <Card title="Events and routing" icon="bolt" href="/concepts/events-and-routing">
     How work moves between flows and the actors inside them.

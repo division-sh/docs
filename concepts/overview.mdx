@@ -38,9 +38,11 @@ transaction; a subscribing agent reasons and emits its own event. Notice that on
 node touches state. Both kinds of emitted event re-enter the loop and route to their own
 subscribers.
 
-A third actor is implicit: the **runtime** itself handles transitions you never declare, such
-as a human decision arriving through the mailbox or a flow's own lifecycle. You never write it
-in a contract.
+A third kind of actor is the **human**: a stage can wait on a typed decision gate, and the
+verdict — decided from a dashboard or a phone — is just another event entering the same loop,
+with every outcome declared in the contract. And a fourth is implicit: the **runtime** itself
+handles transitions you never declare, such as a stage timer firing or a flow's own
+lifecycle.
 
 ## The nouns to keep separate
 
@@ -48,19 +50,21 @@ in a contract.
 |---|---|
 | **Flow** | A self-contained package of contracts with typed input/output pins. The composition unit. |
 | **Flow instance** | One running copy of a flow. A flow is the class; the instance is the object. |
-| **Entity** | A mutable document moving through a flow instance's state machine: state, gates, and fields. |
-| **State** | A named state in a flow's state machine. An entity is in exactly one at a time. |
-| **System node** | Deterministic code. Subscribes to events, advances state, emits events. No LLM. |
+| **Entity** | A mutable document moving through a flow instance's lifecycle: stage, gates, and fields. |
+| **Stage** | A named lifecycle stage. An entity is in exactly one at a time; terminal stages end it. |
+| **System node** | Deterministic code. Subscribes to events, advances stages, emits events. No LLM. |
 | **Agent** | An LLM session. Subscribes to events, reasons, calls tools, emits events. |
 | **Handler** | The unit of execution attached to an event on a system node. |
 | **Event** | A typed message with a payload schema, declared in `events.yaml`. |
-| **Gate** | A named boolean on an entity, set by a handler and checked by guards. |
+| **Gate** | A named boolean on an entity, set by a handler and checked by guards — or a stage's typed **decision gate**, which waits for a human verdict. |
+| **Join** | A declared barrier: which arrivals complete a fan-out, with dedup and timeout owned by the platform. |
 | **Timer** | A durable time-based trigger attached to a stage. |
 | **Pin** | A typed input or output of a flow, used to wire flows together. |
+| **Run** | One end-to-end execution, correlated across every table — the unit of trace, replay, and fork. |
 
 ## The runtime in six sentences
 
-1. A flow declares its states, pins, and required roles.
+1. A flow declares its stages, pins, and agents.
 2. System nodes subscribe to events and own deterministic transitions.
 3. Agents subscribe to events and handle reasoning work.
 4. Events move work through the system: they are the only communication mechanism.
