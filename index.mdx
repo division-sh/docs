@@ -4,22 +4,24 @@ description: "The operating system for autonomous multi-agent systems: durable s
 icon: "house"
 ---
 
-Swarm runs fleets of LLM agents as a single, durable, stateful system, built for the conditions
-that break demos: processes crash, costs run away, and a fleet of agents has to coordinate over
-hours or days without stepping on each other. You declare the system as a bundle of YAML contracts,
-a static analyzer validates them against the platform specification before the runtime boots, and a
-deterministic engine runs it. The defining decision is that the LLM does not run the system. Agents
-reason in small, scoped sessions and emit their results as events; deterministic code, never the
-model, decides what each result changes, so an agent can never leave the system in a state it only
-*claimed* to reach.
+**Division Swarm** runs fleets of LLM agents as a single, durable, stateful system, built for
+the conditions that break demos: processes crash, costs run away, and a fleet of agents has to
+coordinate over hours or days without stepping on each other. You declare the system as a
+bundle of YAML contracts, a static analyzer validates them against the platform specification
+before the runtime boots, and a deterministic engine runs it. The defining decision is that
+the LLM does not run the system. Agents reason in small, scoped sessions and emit their
+results as events; deterministic code, never the model, decides what each result changes, so
+an agent can never leave the system in a state it only *claimed* to reach.
 
-This is more than an orchestrator that decides which agent runs next. Work is modeled as entities
-(an order, a ticket, a candidate business), each moving through a state machine you declare: named
-states, guarded transitions, and gates that must be cleared before the next step. An entity sits in
-exactly one state at a time, hundreds advance concurrently without touching each other, and any one
-of them can wait in a state for days, on a timer or a human, then resume exactly where it left off.
-Every transition, with its data writes and the events it emits, commits in one all-or-nothing
-transaction, and the whole history can be replayed or forked from the log.
+This is more than an orchestrator that decides which agent runs next. Work is modeled as
+entities (an order, a ticket, a candidate business), each moving through a lifecycle of
+declared stages: guarded transitions, gates that must clear before the next step, timers that
+fire when something sits too long. An entity waits in a stage for days — on a timer or a
+human — then resumes exactly where it left off. And the parallelism is declarative: fan a
+batch out and each item gets **its own flow instance with its own agent**, hundreds advancing
+concurrently without touching each other, while a declared join owns completion, dedup, and
+timeout. Every transition, with its data writes and the events it emits, commits in one
+all-or-nothing transaction, and the whole history can be replayed or forked from the log.
 
 That is the shape of an operating system. An OS doesn't make your programs correct; it makes them
 runnable: it schedules them, keeps them apart, tracks what they use, saves their state, and brings
@@ -34,15 +36,23 @@ At boot, the engine loads the bundle, runs it through the static analyzer, and s
 event loop. From there:
 
 - **System nodes** are deterministic code. They subscribe to events, run a fixed handler
-  pipeline, advance state, and emit new events. No LLM decides what fires next.
+  pipeline, advance stages, and emit new events. No LLM decides what fires next.
 - **Agents** are LLM sessions. They subscribe to events, reason inside a scoped session,
   call tools, and emit events. They never write state directly; they emit, and a handler
   decides what gets written.
-- **Humans** act through a durable mailbox, using the same event model as everything else.
+- **Humans** decide through typed decision gates: a stage waits for a verdict, every outcome
+  is declared, and the card can be decided from a dashboard or your phone — the platform
+  itself never decides for you.
+- **The outside world** connects through packs: a provider's webhooks arrive as typed,
+  normalized events, and its API becomes declared tools — signature checks, credentials, and
+  rate limits owned by the platform, not your code.
 
 Each event runs through a fixed handler pipeline and commits in a single transaction, so a
 crash mid-handler leaves no partial state. Because every event and every state change is
-persisted, any run can be replayed turn by turn or forked from a point in its history.
+persisted, any run can be replayed turn by turn or forked from a point in its history. And
+because determinism is the substrate, the whole thing is testable without spending a token:
+`swarm test` drives real flows through scripted scenarios, and the embedded mock backend runs
+agent turns with zero LLM credentials and zero Docker.
 
 ## Design positions
 
@@ -70,8 +80,8 @@ Swarm makes a few opinionated choices and holds them:
     together without refactoring.
   </Card>
   <Card title="Humans as a first-class actor" icon="user-check" href="/concepts/human-in-the-loop">
-    Approvals, rejections, and deferrals flow through a durable mailbox. Autonomy is a
-    dial, not a switch.
+    Typed decision gates with every outcome declared — approve from your phone, reject with
+    required reasons, and nothing auto-decides. Autonomy is a dial, not a switch.
   </Card>
 </CardGroup>
 
