@@ -91,8 +91,7 @@ A contract that runs on local dev runs on Docker and production without changes.
 
 ### Docker backing (the `claude_cli` runtime)
 
-When the runtime spawns containers (the Claude CLI runtime, selected with `--backend claude_cli`;
-the legacy alias `cli_test` still resolves to the same backend), it creates one per workspace
+When the runtime spawns containers (the Claude CLI runtime, selected with `--backend claude_cli`), it creates one per workspace
 from a base image, on a shared network, and reuses it by name. The defaults are overridable:
 
 | Variable | Default | Controls |
