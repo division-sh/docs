@@ -1,10 +1,10 @@
 ---
-title: "Gates, timers, and state"
-description: "State machines, gate checkpoints, and durable timers."
+title: "Stages, gates, and timers"
+description: "The staged lifecycle, gate checkpoints, and durable time."
 icon: "timer"
 ---
 
-## State machines
+## Stages: the lifecycle
 
 A flow declares its state machine in `schema.yaml` as a **`stages:` map** — each stage named
 once, with `initial: true` on the entry stage and `terminal: true` on the absorbing ones. An
@@ -19,9 +19,19 @@ A flow that declares no `stages:` is **stateless**: it processes events without 
 `advances_to` is invalid there. Stateless still allows entities: a handler that writes entity
 fields auto-materializes one with no state.
 
-## Terminal states
+A stage is also where the lifecycle's machinery attaches — each of these is declared on the
+stage itself, not scattered through handlers:
 
-Terminal states are absorbing and unconditional. Once an entity is terminal:
+- **Stage timers** (`stages.<stage>.timers`) fire when an entity has sat in the stage too
+  long — see Timers below.
+- **Decision gates** (`stages.<stage>.gate`) pause the stage for a typed human verdict with
+  every outcome declared — see [Human in the loop](/concepts/human-in-the-loop).
+- **Joins** wait in a stage for a declared set of arrivals, with dedup and timeout owned by
+  the platform — see [Parallel work](/build/parallel-work).
+
+## Terminal stages
+
+Terminal stages are absorbing and unconditional. Once an entity is terminal:
 
 - New events targeting it are rejected before any handler runs (outcome `terminal_reject`).
 - Its timers are cancelled and its agent sessions terminated.
@@ -29,8 +39,9 @@ Terminal states are absorbing and unconditional. Once an entity is terminal:
 
 There is no reopen mechanism. To continue work, create a new entity with the relevant data
 copied over; the old one stays terminal to preserve the audit trail. Backward transitions to
-*non-terminal* states (revision loops, resets) are allowed, the prohibition is specifically
-on leaving a terminal state.
+*non-terminal* stages are allowed — declare a cycle as a
+[bounded loop](/build/parallel-work#bounded-loops-declared-revision-cycles) so it carries a
+cap and an explicit escape. The prohibition is specifically on leaving a terminal stage.
 
 ## Gates
 
@@ -42,21 +53,29 @@ position-based namespace), so they stay stable across instance ids.
 
 ## Timers
 
-A timer is a durable, time-based trigger declared on a system node. When it fires, its event
-enters the normal event loop like any other event, timers are just delayed event producers.
+Time is durable and declarative, in two forms with one owner each.
 
-```yaml
-timers:
-  - id: ticket_sla
-    event: timer.ticket_sla
-    delay: "{{sla_hours}}h"      # duration string or a policy reference
-    start_on: state:assigned     # state:<name>, event:<name>, or boot
-    cancel_on: state:resolved    # state:<name> or event:<name> (boot is invalid)
-    recurring: false
+**Stage timers** are the staged-lifecycle form — declared on the stage, armed when an entity
+enters it, cancelled when it leaves:
+
+```yaml schema.yaml
+stages:
+  awaiting_review:
+    timers:
+      - after: 48h
+        emit: review.sla_escalated       # emit-only: stays in the stage
+      - after: "{{marginal_park_days}}d"
+        advances_to: expired             # ends the stage: a real lifecycle edge
 ```
 
-The timer starts when the entity enters the `start_on` state (or the `start_on` event fires,
-or at `boot`), persists a `fire_at` timestamp, and emits its event when the time arrives,
-unless `cancel_on` fires first. Recurring timers restart after firing until cancelled. Timers
-are persisted, so they survive restarts. Trigger values must be prefixed (`state:`/`event:`);
-a bare string is a boot error.
+A row with `advances_to` is part of the state machine — reachability analysis and
+`describe --graph` see it. This is the canonical form for "an entity sat here too long."
+
+**Node timers** cover what stages cannot anchor: event-triggered delays and boot-anchored
+periodic work (a nightly report timer with `start_on: boot`, `recurring: true`). They are
+declared on a system node with prefixed triggers (`state:`/`event:`/`boot`); see
+[nodes.yaml](/reference/contracts/nodes) for the full form.
+
+Both forms are persisted: a timer survives restart, and one that came due while the process
+was down fires on recovery. When any timer fires, its event enters the normal event loop like
+any other — timers are just delayed event producers.

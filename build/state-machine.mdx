@@ -40,7 +40,7 @@ An entity is in exactly one stage, set by a handler's `advances_to`. Terminal st
 absorbing: once reached, new events are rejected and timers are cancelled. A flow that
 declares no `stages:` is stateless. Stages are also where **stage timers** attach — a
 `timers:` block on a stage can advance or escalate an entity that has sat too long; see
-[Gates, timers, and state](/concepts/gates-timers-and-state).
+[Stages, gates, and timers](/concepts/gates-timers-and-state).
 
 Every declared stage must be reachable: it is either the initial stage or the target of some
 `advances_to` (including a stage timer's). The analyzer flags stages that nothing reaches
