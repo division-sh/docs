@@ -31,7 +31,7 @@ Before the files, three ideas. Everything in Swarm is built from them:
 1. **Events are messages.** Nothing happens except in response to an event. `ticket.created`,
    `ticket.classified`, and so on are events, each carrying a typed payload.
 2. **A system node is deterministic code.** No LLM. It subscribes to events and, for each one,
-   runs a fixed pipeline: check a condition, write some data, advance the state, emit the next
+   runs a fixed pipeline: check a condition, write some data, advance the stage, emit the next
    event. Same input, same result, every time.
 3. **Agents are LLM workers.** They subscribe to events, reason, and emit events. An agent
    never changes state directly; it emits an event with its result, and a system node decides
@@ -48,18 +48,18 @@ sequenceDiagram
     participant R as Resolver
     Ext->>O: ticket.created
     Ext->>C: ticket.created
-    Note over O: create ticket, state = new
+    Note over O: create ticket, stage = new
     C->>O: ticket.classified
-    Note over O: save category + priority, state = assigned
+    Note over O: save category + priority, stage = assigned
     O->>R: ticket.assigned
     alt resolver succeeds
         R->>O: ticket.resolved
-        Note over O: save resolution, state = resolved
+        Note over O: save resolution, stage = resolved
         O->>O: ticket.resolution_confirmed
-        Note over O: state = closed
+        Note over O: stage = closed
     else resolver escalates
         R->>O: ticket.escalated
-        Note over O: guard ok, count + 1, state = assigned
+        Note over O: guard ok, count + 1, stage = assigned
         O->>R: ticket.assigned (retry)
     end
 ```
@@ -71,7 +71,7 @@ A flow is a directory of small YAML files, each with one job:
 | File | Its job in this flow |
 |---|---|
 | `package.yaml` | Names the flow and the platform version it targets. |
-| `schema.yaml` | The ticket's lifecycle (states), the event it accepts, and the agent roles it needs. |
+| `schema.yaml` | The ticket's lifecycle (stages), the event it accepts, and the agent roles it needs. |
 | `entities.yaml` | The ticket's data fields. |
 | `events.yaml` | The payload shape of each event. |
 | `nodes.yaml` | The orchestrator and its handlers (the deterministic logic). |
@@ -130,9 +130,9 @@ Create them one at a time.
         emits: [ticket.resolved, ticket.escalated]
     ```
 
-    **States.** A ticket is always in exactly one state. List every state in `states`. The
-    analyzer rejects a state that nothing ever advances to, so the list is exactly the four the
-    flow uses.
+    **Stages.** A ticket is always in exactly one stage; `initial: true` marks where new
+    tickets start and `terminal: true` marks the absorbing end. The analyzer rejects a stage
+    nothing ever advances to, so the map is exactly the four the flow uses.
 
     **Pins** are the flow's public interface. An input event pin is the front door:
     `ticket.created` is the only event the outside world can send in.
@@ -143,8 +143,8 @@ Create them one at a time.
   </Step>
 
   <Step title="Declare the data (entities.yaml)">
-    An **entity** is the thing moving through the state machine, here a single ticket. It is a
-    record with typed fields plus its current state. Declare the fields handlers will fill in.
+    An **entity** is the thing moving through the staged lifecycle, here a single ticket. It is a
+    record with typed fields plus its current stage. Declare the fields handlers will fill in.
 
     ```yaml entities.yaml
     ticket:
@@ -164,8 +164,8 @@ Create them one at a time.
     view`, not by another internal handler. `_unused_reader_reason` tells the analyzer that the
     missing internal reader is intentional. `escalation_count` also uses the longer form because
     it needs an `initial` value: every declared field must have an `initial` or a handler that
-    writes it, or the analyzer reports it as uncovered. You do **not** declare the ticket's state
-    here; the platform tracks `current_state` from the state machine for you.
+    writes it, or the analyzer reports it as uncovered. You do **not** declare the ticket's stage
+    here; the platform tracks it for you (exposed to expressions as `_entity.current_state`).
   </Step>
 
   <Step title="Declare the events (events.yaml)">
@@ -211,7 +211,7 @@ Create them one at a time.
     This is the engine room. A **system node** is deterministic code that subscribes to events
     and runs one **handler** per event. A handler runs a fixed pipeline and commits it in a
     single transaction: optionally **guard** (check a condition), **write** fields, **advance**
-    the state, and **emit** the next event.
+    the stage, and **emit** the next event.
 
     ```yaml nodes.yaml
     ticket-orchestrator:               # the map key is the node's id
