@@ -4,10 +4,12 @@ description: "Canonical example bundles in the repository — clone, verify, run
 icon: "folder-open"
 ---
 
+If pins and `connect` edges are new to you, read [Composing flows](/build/composition) first.
+
 Every pattern in this section has a canonical, runnable bundle in the
 [`examples/`](https://github.com/division-sh/swarm/tree/master/examples) directory of the
-repository. These are conformance-loaded — the platform's own CI verifies them against every
-change — so they are never stale and always the current idiom. Each ships with a README and
+repository. The platform's own CI verifies every one of these against every change, so they
+are never stale and always show the current idiom. Each ships with a README and
 runs with the zero-config defaults:
 
 ```bash
@@ -15,6 +17,8 @@ git clone https://github.com/division-sh/swarm && cd swarm
 swarm verify --contracts examples/routing/fan-in/barrier
 swarm run --contracts examples/routing/fan-in/barrier --event <trigger> --payload <file>
 ```
+
+Each example's README names the trigger event and ships a sample payload file.
 
 ## Routing and composition
 
@@ -39,7 +43,7 @@ swarm run --contracts examples/routing/fan-in/barrier --event <trigger> --payloa
 
 | Example | What it proves |
 |---|---|
-| [`harness-injection`](https://github.com/division-sh/swarm/tree/master/examples/routing/harness-injection) | `source: harness` pins for validation-only event injection (never production-valid). |
+| [`harness-injection`](https://github.com/division-sh/swarm/tree/master/examples/routing/harness-injection) | Injecting test events with `source: harness` pins — accepted during validation, never in production. |
 
 When a page in these docs names a repo path like `examples/routing/fan-in/barrier`, this is
 the directory it means.

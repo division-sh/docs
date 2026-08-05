@@ -16,7 +16,8 @@ ticket.classified:
   advances_to: assigned
 ```
 
-The `check` reads `entity`, `payload`, and `policy`. A guard reads the entity **before** this
+The `check` reads `entity`, `payload`, and `policy`. `on_fail` says what happens when the check
+fails; the values are covered below. A guard reads the entity **before** this
 handler's own writes, so it reflects what earlier handlers left, not what this one is about to
 change.
 
@@ -36,10 +37,12 @@ guard:
 ```
 
 The reason to split them is the failure report. When a guard fails, the trace and the
-dead-letter record the `id` of the check that failed, so you can see *which* condition blocked
-the handler instead of just learning that some combined expression came back false. This is why
-real contracts use `checks` to assert identity and idempotency on a callback, one named clause at
-a time.
+dead-letter queue (where undeliverable events land) record the `id` of the check that failed,
+so you can see *which* condition blocked
+the handler instead of just learning that some combined expression came back false. In
+production this matters: a callback handler usually needs two separate checks — one that the
+callback belongs to this entity, and one that it has not already been processed — and naming
+them separately tells you which one fired.
 
 The list is evaluated top to bottom and stops at the first failure, so every check must pass for
 the guard to pass. There is one `on_fail` for the whole guard; an individual check cannot set its
@@ -77,19 +80,21 @@ request.received:
 
 ### Escalate emits with no implicit passthrough
 
-When `escalate:{event}` fires, the emitted event uses the same payload-construction rules as
-a declarative system-node `emit:` block with no business fields: nothing is auto-copied from
-the triggering event, and the payload stays **empty** unless the event declares fields and a
-matching `escalate_payload:` (or equivalent) supplies them. The runtime-owned envelope
-(`event_id`, `run_id`, `entity_id`, etc.) is still attached; only business fields need
-authoring. Schema validation still runs fail-closed, so an escalate event that declares
-required fields without authored values fails at the emit step rather than silently shipping
-a half-filled payload.
+Payload construction for an escalate event is covered in detail on
+[Emitting events](/build/handlers/emitting).
+
+When `escalate:{event}` fires, the emitted event follows the same payload-construction rules as
+a declarative system-node `emit:` block. Nothing is auto-copied from the triggering event: the
+payload stays **empty** unless the event declares fields and a matching `escalate_payload:`
+supplies them. The runtime-owned envelope (`event_id`, `run_id`, `entity_id`, etc.) is still
+attached; only business fields need authoring. Schema validation still runs fail-closed, so an
+escalate event that declares required fields without authored values fails at the emit step
+rather than silently shipping a half-filled payload.
 
 The practical consequence: if `rate_limit.exceeded` declares `reason: text`, you must author
 `reason` somewhere; the runtime won't fill it from `payload.reason` on the triggering event.
 
----
+## What a failed guard leaves behind
 
 When a guard fails, the handler stops: no state change, no data writes, no emit (other than
 the `escalate` one if configured). Guard failures are business logic, not transient errors,

@@ -4,24 +4,37 @@ description: "Running Swarm in production: topology, Postgres, and versioning."
 icon: "server"
 ---
 
+## Deploy checklist
+
+1. Provision Postgres ([Postgres in production](#postgres-in-production)).
+2. Set `store.backend` and the `database.*` settings in `swarm.yaml`, supplying the password via `database.password_env` ([Configuration](#configuration)).
+3. Prepare the artifact root ([Runtime storage](#runtime-storage)).
+4. Pin `platform_version` in `package.yaml` ([Contract versioning](#contract-versioning)).
+5. Start the runtime — `swarm serve --contracts ./my-flow --store postgres` — remembering that production needs a deliberately bound public address ([the default is loopback-only](/operate/running-the-runtime)).
+6. Check `/readyz` reports ready.
+
 ## Topology
 
 Swarm runs as a single Go binary. Local and development runs use SQLite by default; production
 uses Postgres (opt-in via `--store postgres`). Dynamic per-entity and privileged workspaces are
-created as containers by runtime policy. Today the scope is a single deployment: distributed
-execution and multi-tenant isolation are not yet in scope.
+created as containers by runtime policy.
+
+<Note>
+Today the scope is a single deployment: distributed execution and multi-tenant isolation are
+not yet in scope.
+</Note>
 
 ## Postgres in production
 
-In production, Postgres is the substrate. Every event lands in the event store, every entity
+In production, Postgres holds everything. Every event lands in the event store, every entity
 field change lands in the mutation log, and runs correlate it all by `run_id`. Because the
-mutation log is a complete record, entity state is a rebuildable projection: disaster recovery is
-rebuilding from the log. Size Postgres for your event and mutation volume, and back it up like
+mutation log is a complete record, current entity state can always be rebuilt from it —
+disaster recovery *is* replaying the log. Size Postgres for your event and mutation volume, and back it up like
 the system of record it is.
 
 ## Configuration
 
-Connection, credentials, runtime mode, and ports are set through environment variables; see
+Connection, credentials, runtime mode, and ports are set through `swarm.yaml` keys and flags; see
 [Configuration](/reference/configuration). The binary serves on `127.0.0.1:8081`.
 
 ## Runtime storage
@@ -33,12 +46,16 @@ every agent-visible mount. Agents only ever see opaque `swarm-artifact://` URLs.
 ## Contract versioning
 
 A product declares a `platform_version` range in `package.yaml`; boot rejects a bundle whose
-range excludes the running platform. Because replay and fork depend on contracts,
-roll a new bundle deliberately, and use the persistence layer to reconstruct or fork past runs
-against the new contracts.
+range excludes the running platform. Because replay and fork depend on contracts, roll a new
+bundle deliberately, and [use the persistence layer](/operate/fork-and-replay) to reconstruct
+or fork past runs — forks currently run against the same bundle as the source run.
 
 ## Maintenance and reset
 
 Pause ingress for a maintenance window with `swarm control pause --all`, and resume with
-`swarm control continue --all`. `swarm control nuke` performs a destructive runtime reset;
-`--dry-run` previews the effect without changing state.
+`swarm control continue --all`.
+
+<Warning>
+`swarm control nuke` is a destructive full runtime reset. Lead with `--dry-run`, which
+previews the effect without changing state, before running it for real.
+</Warning>

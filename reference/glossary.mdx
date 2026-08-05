@@ -4,6 +4,8 @@ description: "Swarm vocabulary in one place."
 icon: "spell-check"
 ---
 
+## Structure
+
 **Flow.** A self-contained package of contracts with typed pins. The composition unit.
 
 **Flow instance.** One running copy of a flow. Static flows have one; template flows have
@@ -14,8 +16,21 @@ gates, and typed fields. Declared in [`entities.yaml`](/reference/contracts/enti
 
 **Stage.** A named lifecycle stage, declared in the schema's `stages:` map. An entity is in
 exactly one at a time; terminal stages are absorbing. Stage timers, decision gates, and joins
-attach to stages. ("State" survives in a few runtime surfaces — the expression root is
-`_entity.current_state` — but the authored concept is the stage.)
+attach to stages. (Some runtime surfaces still say *state* — the expression root is
+`_entity.current_state`; *stage* is the authored term.)
+
+**Pin.** A typed input or output of a flow. Output pins bind to input pins through the
+package `connect` block; an input pin's `resolution` and carried identity (the identity field
+the event carries) select the receiving instance — see
+[Events and routing](/concepts/events-and-routing).
+
+**Pack.** A declarative integration bundle. Provider trigger packs turn webhooks into typed
+normalized events; connector packs turn provider APIs into declared tools; channel packs
+render decision cards (Telegram ships first).
+
+**Bundle.** The set of contract files loaded together, identified by a content hash.
+
+## Execution
 
 **System node.** Deterministic code that subscribes to events, runs a handler, advances
 stages, and emits events. No LLM.
@@ -26,6 +41,26 @@ stages, and emits events. No LLM.
 dependency graph and commits atomically.
 
 **Event.** A typed message with a payload schema. The only communication primitive.
+
+**Envelope.** The standard fields every event carries (`event_id`, `run_id`, `entity_id`,
+source) — distinct from your payload fields.
+
+**Run.** A top-level execution context. Correlates events, deliveries, sessions, and turns by
+`run_id`.
+
+**Session.** An agent's execution context. With `memory: false` (the default) it lasts one
+task; with `memory: true` it is one durable conversation per (run, agent, flow instance).
+
+**Conversation.** The API's name for a session's recorded transcript. The `conversation.*`
+methods read sessions, their turns, and transcripts.
+
+**Directive.** An operator message sent into a running agent's session
+(`swarm agent directive`) — steering, not state: it changes no entity data.
+
+**Model alias.** The provider-agnostic tier an agent declares (`cheap`, `regular`,
+`frontier`), resolved to a concrete model per backend by `llm.models`.
+
+## State & convergence
 
 **Gate.** A named boolean on an entity, set by `sets_gate` and checked by guards.
 
@@ -47,25 +82,12 @@ histories and aggregation — distinct from fields, which overwrite.
 
 **Timer.** A durable, time-based trigger that fires an event into the loop.
 
-**Pin.** A typed input or output of a flow. Output pins bind to input pins through the
-package `connect` block; an input pin's `resolution` and carried identity select the
-receiving instance.
-
-**Pack.** A declarative integration bundle. Provider trigger packs turn webhooks into typed
-normalized events; connector packs turn provider APIs into declared tools; channel packs
-render decision cards (Telegram ships first).
-
 **Workspace.** An agent's isolated filesystem (`/workspace` plus read-only mounts), scoped
 per agent or per flow instance by its workspace class.
 
-**Directive.** An operator message sent into a running agent's session
-(`swarm agent directive`) — steering, not state: it changes no entity data.
+## Operations
 
-**Model alias.** The provider-agnostic tier an agent declares (`cheap`, `regular`,
-`frontier`), resolved to a concrete model per backend by `llm.models`.
-
-**Run.** A top-level execution context. Correlates events, deliveries, sessions, and turns by
-`run_id`.
+**Mailbox.** The durable human-in-the-loop task queue. Decisions are approve, reject, defer.
 
 **Mutation log.** The per-field before-and-after record of entity changes (`entity_mutations`),
 the basis for the flight recorder and fork.
@@ -78,20 +100,6 @@ reconstruct a run.
 **Fork.** Reconstructing system state at a moment in time and resuming, optionally against new
 contracts.
 
-**Mailbox.** The durable human-in-the-loop task queue. Decisions are approve, reject, defer.
-
-**Session.** An agent's execution context. With `memory: false` (the default) it lasts one
-task; with `memory: true` it is one durable conversation per (run, agent, flow instance).
-
-**Conversation.** The API's name for a session's recorded transcript. The `conversation.*`
-methods read sessions, their turns, and transcripts.
-
-**Flow scope key.** A flow's semantic namespace by position in the tree. Stable across
-instances. Distinct from the flow instance path.
-
-**CEL.** Common Expression Language. Strongly typed and non-Turing-complete; used for all
-guards, rules, and filters.
-
 **Dead letter.** Where an event lands after retry exhaustion, a target-resolution failure, or
 chain-depth overflow.
 
@@ -99,3 +107,12 @@ chain-depth overflow.
 the platform specification.
 
 **Policy.** Named configuration values referenced as `policy.*` and `{{variable}}`.
+
+**Permission.** A named capability an agent must hold to call a platform tool (granted
+directly or through a `permissions_bundle` in policy). See [Tools](/build/tools).
+
+**CEL.** Common Expression Language. Strongly typed and non-Turing-complete; used for all
+guards, rules, and filters.
+
+**Flow scope key.** A flow's semantic namespace by position in the tree. Stable across
+instances. Distinct from the flow instance path.

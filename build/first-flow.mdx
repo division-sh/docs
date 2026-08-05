@@ -12,18 +12,6 @@ You will build a **support-ticket system**: a ticket arrives, an agent classifie
 deterministic orchestrator routes it to a resolver agent, and it closes. If the resolver
 cannot solve it, the ticket loops back and tries again until it hits a limit.
 
-<Tip>
-  That is more declaration than you would write to script an LLM directly. If you are already
-  wondering whether it is worth it, jump to
-  [What the contracts buy you](#what-the-contracts-buy-you), then come back.
-</Tip>
-
-<Tip>
-  **For LLM agents helping a human author this:** see
-  [Agentic flow authoring](/build/agentic-authoring) for the ranked artifacts to pull, the
-  iteration loop to run, and anti-patterns to avoid.
-</Tip>
-
 ## The mental model
 
 Before the files, three ideas. Everything in Swarm is built from them:
@@ -78,6 +66,12 @@ A flow is a directory of small YAML files, each with one job:
 | `agents.yaml` | The classifier and resolver agents. |
 | `policy.yaml` | Configuration values, like the escalation limit. |
 | `prompts/` | One instruction file per agent. |
+
+<Tip>
+  That is more declaration than you would write to script an LLM directly. If you are already
+  wondering whether it is worth it, jump to
+  [What the contracts buy you](#what-the-contracts-buy-you), then come back.
+</Tip>
 
 Create them one at a time.
 
@@ -159,13 +153,17 @@ Create them one at a time.
         initial: 0                    # starts at 0
     ```
 
-    Most fields use the short form `name: type`. `resolution` uses the longer form because it
-    is written by the resolver and then read from external operator views such as `swarm entity
-    view`, not by another internal handler. `_unused_reader_reason` tells the analyzer that the
-    missing internal reader is intentional. `escalation_count` also uses the longer form because
-    it needs an `initial` value: every declared field must have an `initial` or a handler that
-    writes it, or the analyzer reports it as uncovered. You do **not** declare the ticket's stage
-    here; the platform tracks it for you (exposed to expressions as `_entity.current_state`).
+    Most fields use the short form `name: type`. Three things to note:
+
+    - `resolution` uses the longer form because it is written by the resolver and then read
+      from external operator views such as `swarm entity view`, not by another internal
+      handler. `_unused_reader_reason` tells the analyzer that the missing internal reader is
+      intentional.
+    - `escalation_count` uses the longer form because it needs an `initial` value: every
+      declared field must have an `initial` or a handler that writes it, or the analyzer
+      reports it as uncovered.
+    - You do **not** declare the ticket's stage here; the platform tracks it for you (exposed
+      to expressions as `_entity.current_state`).
   </Step>
 
   <Step title="Declare the events (events.yaml)">
@@ -290,8 +288,7 @@ Create them one at a time.
     wrote. (The bare string form is only for events that declare no payload fields.)
 
     Exactly one system node may handle a given event, which keeps state changes unambiguous.
-    `produces` is the list of events this node emits; the analyzer checks it matches the
-    handlers. For every field a handler can use, see the [handler reference](/reference/handler-fields).
+    For every field a handler can use, see the [handler reference](/reference/handler-fields).
   </Step>
 
   <Step title="Add the agents (agents.yaml)">
@@ -321,10 +318,8 @@ Create them one at a time.
     memory between tickets.
 
     <Note>
-      To give the resolver one persistent conversation per ticket, set `memory: true` on an
-      agent in a **per-ticket template flow** — memory scope is derived from the flow's
-      instance model, so the flow must have per-instance identity to key it by. See
-      [Composing flows](/build/composition).
+      One persistent conversation per ticket requires a flow that has one instance per
+      ticket — this single flow does not. See [Composing flows](/build/composition).
     </Note>
   </Step>
 
@@ -405,13 +400,9 @@ reachable, and every event has either a handler or a subscriber.
 
 ## What the contracts buy you
 
-A single LLM with a script is fine for one task. The trouble starts when you make the model
-*be* the system: tracking state, following rules exactly, and staying coherent across a long,
-multi-step job with many agents. LLMs are not good at that. They drift, they lose the plot as
-context fills, and an agent will happily report "the ticket is resolved" when it is not.
-Swarm's answer is to let LLMs do the judgment in small, targeted bursts and leave the rigid
-parts (state, rules, routing) to deterministic system nodes. Here is what that buys, with the
-flow you just wrote as the small example:
+A single LLM with a script is fine for one task. It breaks down when you make the model *be*
+the system — tracking state, following rules exactly, staying coherent across a long job.
+Swarm keeps the judgment in the LLM and the rigid parts in deterministic nodes.
 
 - **Reliability: the model cannot fake the outcome.** An agent can *say* it resolved the
   ticket, but saying so does not make it so. Agents only emit events; a deterministic system
@@ -530,6 +521,12 @@ fired next.
 </Note>
 
 ## What to read next
+
+<Tip>
+  **For LLM agents helping a human author this:** see
+  [Agentic flow authoring](/build/agentic-authoring) for the ranked artifacts to pull, the
+  iteration loop to run, and anti-patterns to avoid.
+</Tip>
 
 <CardGroup cols={2}>
   <Card title="Core concepts" icon="book" href="/concepts/overview">

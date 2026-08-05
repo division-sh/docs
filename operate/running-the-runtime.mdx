@@ -9,7 +9,8 @@ icon: "play"
 Two ways to start a runtime, picked by how long the work lives:
 
 - **`swarm run`** is a shortcut: boot a runtime in-process, publish one trigger event, stream
-  the trace, **exit when the run quiesces**. It works for any flow that completes from a
+  the trace, **exit when the run goes quiet** — nothing left running and no events waiting
+  to be delivered (we call this quiescing). It works for any flow that completes from a
   single trigger, deterministic *or* agent-driven. The [Quickstart](/quickstart) uses it,
   CI checks use it, and `event publish`-style offline iteration uses it. The process going
   away when the run finishes is the point.
@@ -51,9 +52,10 @@ A few flags matter for operations:
   refuses to start, so you do not quietly process an old run with new contracts. This flag lifts
   that check for recovery or development.
 - **`--abandon-active-runs`** is destructive: at startup it cancels every run that was still
-  `running` or `paused` and dead-letters their in-flight work. Use it to get a clean slate after a
-  crash, not against runs you care about. (It cancels work; it does not delete data or stop
-  containers. That is `swarm control nuke`.)
+  `running` or `paused` and moves their in-flight work to the
+  [dead-letter queue](/operate/reliability) (failed work parked for inspection). Use it to get a
+  clean slate after a crash, not against runs you care about. (It cancels work; it does not delete
+  data or stop containers. That is [`swarm control nuke`](/operate/deployment).)
 - **`--dev`** bundles the loose settings for local work: it turns on `--abandon-active-runs` and
   `--no-require-bundle-match`, makes boot verbose, and deletes the per-entity workspace containers
   when the runtime shuts down. Handy locally, but not something to point at state you want to keep.
@@ -76,15 +78,19 @@ A **run** is one execution of your flow. It moves through a few states you will 
   pending work, so a run with a timer still ticking stays `running` until that timer fires or is
   cancelled.
 - **failed**: something broke at the platform level (the database went away, the contract bundle
-  was corrupt). A failed *handler* or *agent* does **not** fail the run: it becomes a
-  [dead letter](/operate/reliability) and the run keeps going. So a run can reach `completed` with
-  dead letters inside it. Watch dead letters separately rather than trusting run status to surface
-  logic errors.
+  was corrupt).
 - **paused**: held by `swarm control pause` (below).
 - **stalled**: still `running` but not making progress. `swarm run status <run-id>` reports this and
   names the blocking layer and reason.
 
-One thing about querying: entity state is scoped to the current run. `swarm entities` and the
+<Note>
+**Handler and agent failures don't fail the run.** A failed handler becomes a
+[dead letter](/operate/reliability) and the run keeps going — so a run can reach `completed`
+with dead letters inside it. Watch dead letters separately; run status won't surface logic
+errors.
+</Note>
+
+One thing about querying: entity state is scoped to the current run. `swarm entity list` and the
 entity query tools see the entities in the run you are looking at, not across past runs, so any
 "have I seen this before?" check spanning runs has to be built explicitly.
 
@@ -97,8 +103,8 @@ method).
 
 ## Pausing ingress
 
-`swarm control pause --all` pauses runtime ingress (the `runtime.pause` method); `swarm control
-continue --all` resumes it. Use it for maintenance windows.
+`swarm control pause --all` pauses runtime ingress — the runtime stops handing new events and
+calls to your flow (the `runtime.pause` method); `swarm control continue --all` resumes it. Use it for maintenance windows.
 
 While paused:
 
@@ -111,8 +117,9 @@ While paused:
 
 Note what `--all` does and does not do. `pause --all` gates *new* ingress; it does not reach into
 each running run and freeze it in place. To act on one run, name it: `swarm control pause
-<run-id>`. `stop --all` works differently again, it stops each active run one at a time rather
-than flipping a single ingress switch, so it asks for confirmation.
+<run-id>`. A third control, `swarm control stop`, ends runs rather than pausing them.
+`stop --all` works differently again: it stops each active run one at a time rather than
+flipping a single ingress switch, so it asks for confirmation.
 
 ## Surfaces
 

@@ -23,16 +23,17 @@ happens downstream).
 ## Deciding
 
 ```bash
-swarm mailbox approve <id> [--decision-payload-json '{...}']
-swarm mailbox reject <id> --reason "..."
-swarm mailbox defer <id> --until 2026-06-01T00:00:00Z
+swarm mailbox approve <mailbox-item-id> --decision-payload-json '{"approved_amount": 500, "note": "within policy"}'
+swarm mailbox reject <mailbox-item-id> --reason "..."
+swarm mailbox defer <mailbox-item-id> --until 2026-06-01T00:00:00Z
 ```
 
 - **Approve** emits the configured downstream event and resumes the flow.
 - **Reject** records a reason; no downstream event.
 - **Defer** postpones the item until a time.
 
-A decided item cannot be decided again (a second attempt returns a conflict). Pass an
+A decided item cannot be decided again (a second attempt fails with a conflict error rather
+than overwriting the first decision). Pass an
 `--idempotency-key` to make a decision safely retryable.
 
 ## How a decision resumes a flow

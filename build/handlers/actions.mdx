@@ -5,10 +5,9 @@ icon: "bolt"
 ---
 
 An `action` runs a platform-provided operation as a near-final step of the handler (after the
-writes and the emit). There are exactly four; product-specific actions are not supported.
-
-For calling **your own declared tools** durably from a handler, use `activity:` instead —
-see [Durable activities](#durable-activities) below.
+writes and the emit). There are exactly four `action` types, and you cannot define your own —
+calling *your* tools is a different step, [`activity:`](#durable-activities), covered at the
+end of this page. Actions are platform operations; activities are your integrations.
 
 `action` comes in two forms, and which one an action uses depends on its parameters:
 
@@ -262,7 +261,7 @@ report.ready:
     artifact_repo:
       provider: local_git            # the only provider
       repo_id: reports
-      request_id: { ref: payload.report_id }  # idempotency key (a reference, not a literal)
+      request_id: { ref: payload.report_id }  # same id + same content = safe retry (a reference, not a literal)
       allowed_paths: ["reports/summary.md"]
       files:
         - path: "reports/summary.md"
@@ -305,7 +304,7 @@ pins:
 report:
   report_id: text
   body: text
-  # bound by the action's output block; initial "" satisfies writer coverage
+  # the action writes these; every field needs an initial value so `swarm verify` can prove it is always defined
   repo_url: { type: text, initial: "" }
   current_ref: { type: text, initial: "" }
   file_manifest: { type: text, initial: "" }
@@ -356,7 +355,8 @@ report-publisher:
 `reports/summary.md` to the `reports` repo. The `output` block writes the commit's result (the
 repo URL, the new ref, a file manifest, status) back onto the entity, so later handlers can read
 where the artifact landed. `request_id` makes the commit idempotent: the same id with the same
-content is a safe repeat, while the same id with different content fails closed. For the full
+content is a safe repeat, while the same id with *different* content is rejected rather than
+silently overwriting. For the full
 field list (provenance, limits, success/failure events) see
 [Handler fields](/reference/handler-fields).
 </Accordion>
@@ -381,15 +381,16 @@ The durability contract:
 
 - The request is **persisted in the handler's transaction** (`platform.activity_requested`);
   the actual tool call executes only after the transaction commits and the entity lock is
-  released. A crash between the two replays the persisted request — the call is never lost
-  and never runs inside your state transaction.
+  released.
+- A crash between the two replays the persisted request — the call is never lost and never
+  runs inside your state transaction.
 - The outcome comes back as **generated typed result events** (success and failure families
   derived from the tool declaration), which your handlers subscribe to like any event — no
   hidden runtime state.
-- **Non-idempotent writes can require human approval**: add
-  `approval: {decision: <stable-decision-id>}` and the platform persists a pending
-  `proposed_effect` [decision card](/concepts/human-in-the-loop) instead of the request — no
-  attempt, no credential lookup, no provider call exists until a human approves. Approval
-  releases the exact recorded request through the same durable path.
+- **Writes that cannot safely be retried — charging a card, sending an email — can require
+  human approval.** Add `approval: {decision: <stable-decision-id>}` and the platform records
+  a pending [decision card](/concepts/human-in-the-loop) (`proposed_effect`) instead of the
+  request — no attempt, no credential lookup, no provider call exists until a human approves.
+  Approval releases the exact recorded request through the same durable path.
 - In mock mode, activities fail closed — a test run cannot leak a real external call
   (see [Testing](/build/testing)).

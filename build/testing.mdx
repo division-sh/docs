@@ -36,7 +36,8 @@ live with the contracts they prove:
 
 - `contracts/tests/…` — package-wide, cross-flow scenarios
 - `contracts/flows/<flow>/tests/…` — flow-local scenarios (these ship with a published flow,
-  so consumers can run your conformance against their own bindings)
+  so consumers can run your tests against their own agents and wiring, and see whether their
+  version still behaves the way yours does)
 
 ```yaml contracts/tests/classify-and-assign.yaml
 name: billing ticket is classified and assigned
@@ -70,14 +71,15 @@ The rules that keep scenarios deterministic and honest:
 - **Payloads are schema-validated before publish** — a fixture that doesn't match the event
   schema fails the scenario before anything mutates.
 - **The runner only speaks the public API** (`event.publish`, `entity.get`, run readback). It
-  cannot touch the store, the bus, or delivery rows — a scenario proves what a real client
-  could observe, nothing more.
+  cannot reach behind the API into the database or the event bus — a scenario proves what a
+  real client could observe, nothing more.
 - **`expect` runs at quiescence** — after the run settles, not on a sleep. `expect.events`
   supports `include` (default), `exact`, and `ordered` matching; entity assertions compare
   exactly against `entity.get`.
 - A `setup:` block can seed deterministic entity rows (through the public setup owner) when a
   scenario needs pre-state, and an `invalid:` table asserts that malformed fixture variants
-  are rejected fail-closed.
+  are rejected outright rather than partly applied (fail-closed). See the scenario format for
+  both.
 
 Run them with:
 
@@ -108,8 +110,8 @@ chain, not a simulation. Guarantees worth knowing:
 
 - The module is captured at contract compilation (path, bytes, digest) into the bundle —
   runtime never re-reads the ambient file, so a run and its replay see identical behavior.
-- External writes are **fail-closed in mock mode**: a mocked agent cannot accidentally send a
-  real Telegram message or hit a real connector.
+- External writes are **fail-closed in mock mode**: a mocked agent simply cannot reach a real
+  connector.
 - Cost accounting shows `~$… (mock estimate)` — separated from real spend, never mixed.
 
 Mock performances and scenarios compose: a scenario publishes the triggering event, the
@@ -123,6 +125,6 @@ full agent flow, end to end, with zero credentials and zero Docker.
 <Check>Every entity field a handler writes exists in `entities.yaml`.</Check>
 <Check>Every condition is prefixed (`payload.`, `entity.`, `policy.`) and references real fields.</Check>
 <Check>No two system nodes handle the same event.</Check>
-<Check>`on_complete` is a list; it is not combined with `rules`.</Check>
+<Check>A handler uses either `rules:` or `on_complete:`, never both.</Check>
 <Check>Each stateful input-pin handler declares one entity-acquisition mode.</Check>
 <Check>`swarm verify` returns no errors, and `swarm test` passes your scenarios.</Check>

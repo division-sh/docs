@@ -20,41 +20,46 @@ ticket.classified:
       priority: entity.priority
 ```
 
-Two pieces of sugar reduce the restating, both lowering to the explicit map (which is what
-verify and the runtime actually see):
+Two pieces of sugar reduce the restating; both are shorthand that expands into the explicit
+map before anything runs — that expanded map is what `swarm verify` and the runtime actually
+see:
 
 - `emit.from: entity` (or `payload` — exactly one namespace, no lists) auto-fills every
   **required** declared payload field whose name matches a source field. Optional fields are
-  never auto-filled; explicit `fields:` entries win over `from:`.
+  never auto-filled; explicit `fields:` entries win over `from:`. So if `ticket.assigned`
+  declares `category` (required) and `note` (optional), `from: entity` fills `category` from
+  `entity.category` and leaves `note` unset.
 - Inside `fields:`, a bare namespace value means the same-named source field:
   `category: entity` lowers to `category: entity.category`. Dotted CEL stays the form for
   renames and computed values.
 
-The bare string form, `emit: ticket.assigned`, emits with an **empty** payload. The analyzer
+The bare string form, `emit: ticket.assigned`, emits with an **empty** payload. `swarm verify`
 accepts it, so the empty payload only shows up at runtime when a subscriber receives `{}`. Use
 the bare form only for events that declare no fields; use `fields` the moment an event carries
 data.
 
 ## Routing is not the producer's job
 
-An emit carries **no routing authority**. The producer says *what happened*; who receives it
-is owned entirely by the receiving side:
+An emit does not choose who receives it. The producer says *what happened*; the receiving side
+decides who hears it:
 
 - **Inside a flow** — delivery comes from subscriptions (`subscribes_to` on nodes, `subscriptions`
   on agents). An internal emit needs nothing beyond `event` and `fields`.
-- **Across flows** — the event leaves through a **declared output pin**, the parent package
-  binds it with a `connect` edge, and the *receiver's* input pin owns instance selection via
-  `resolution` and its declared `carries`. See [Composing flows](/build/composition).
+- **Across flows** — the event leaves through a declared output pin, and the *receiving* flow
+  decides which instance gets it. See [Composing flows](/build/composition) for pins,
+  `connect` edges, and `resolution`.
 - **Replies** — reply correlation is declared on the receiving pin, not chosen per-emit by the
   producer.
 
+A handler's top-level `emit` is valid only when the handler has a single emit site. If the
+handler also branches with `rules` or `on_complete`, the emit moves onto the branch; a
+handler-level `emit` alongside `rules` is a boot error. See [Branching](/build/handlers/branching).
+
+<Accordion title="Migrating from emit.target / emit.broadcast">
 Older Swarm versions accepted `emit.target` and `emit.broadcast` — producer-side recipient and
 cardinality selection. Both are retired and now fail at load with a `RETIRED-EMIT-ROUTING`
 error naming the replacement. If you are migrating: a `target: sender` reply becomes
 receiver-owned reply correlation on the pin; a `broadcast: true` fan-out becomes either
 ordinary subscriptions (every subscriber in the flow already receives an internal event) or
 explicit `connect` edges per receiving flow.
-
-A handler's top-level `emit` is valid only when the handler has a single emit site. If the
-handler also branches with `rules` or `on_complete`, the emit moves onto the branch; a
-handler-level `emit` alongside `rules` is a boot error. See [Branching](/build/handlers/branching).
+</Accordion>

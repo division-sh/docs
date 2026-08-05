@@ -39,19 +39,21 @@ resolver-agent:                       # map key = agent id = role (the default)
 
 | Field | Purpose |
 |---|---|
-| `model` | Provider-agnostic model alias: `cheap`, `regular`, or `frontier`. Resolved per backend by `llm.models`. The older `model_tier` is retired. |
+| `model` | Provider-agnostic model alias: `cheap`, `regular`, or `frontier`. Resolved per backend by `llm.models`. |
 | `subscriptions` | The events the agent receives. |
 | `emit_events` | The events it may emit (each gets an auto-generated `emit_*` tool). |
-| `memory` | `true` or `false`. `false` (the default) means each task starts a fresh conversation. `true` keeps a durable conversation whose scope is **derived from the flow's instance model** — one conversation per flow instance (so in a `mode: template` flow, one per instance/entity). The older `conversation_mode`/`session_scope` pair is retired; `memory:` replaces both. |
+| `memory` | `false` (default): a fresh conversation each task. `true`: one durable conversation per flow instance. |
 | `permissions_bundle` | A named permission set from `policy.yaml`; combined with any inline `permissions`. See [Tools](/build/tools). |
-| `manager_fallback` | The escalation/hierarchy parent. Omit (or set `null`) for a top-level coordinator, which then resolves to the runtime default. Not a messaging grant. |
-| `entity_writes` | Which entity fields the agent's generated `save_*`/`update_*` tools may write. |
+| `manager_fallback` | Which agent this one escalates to. Setting it does not by itself let the two message each other — that comes from permissions. |
+| `entity_writes` | Narrow, explicitly granted exceptions to the emit-only rule: the fields the agent's generated `save_*`/`update_*` tools may write. Anything not listed still goes through an event. |
 | `max_turns_per_task` | Turn budget before the session is terminated. |
 | `type` | Optional classification label (defaults to `generic`); used to tag agents, for example by division. Does not change tool or permission gating. |
 | `role` | Optional override; defaults to the map key. Set it when the prompt file is named differently from the id, so the runtime loads `prompts/<role>.md` instead of `prompts/<map-key>.md`. |
 
-`memory: true` on a flow with no per-instance identity (a plain root flow) fails at boot with
-a teaching error: there is no flow-instance owner to scope the conversation to.
+Memory scope is **derived from the flow's instance model** — one conversation per flow
+instance, so in a `mode: template` flow that means one per instance/entity. `memory: true` on
+a flow with no per-instance identity (a plain root flow) fails at boot with an error
+explaining why: there is no flow-instance owner to scope the conversation to.
 
 ## What an agent can call
 
@@ -71,10 +73,15 @@ Host capabilities (`bash`, `web_search`, `file_io`) are gated separately by the
 ## Prompts
 
 Each agent has a markdown prompt at `prompts/{agent-id}.md`. Prompts use `{{variable}}`
-placeholders, substituted at session creation from (in priority order) instance variables,
-policy values, entity-state fields, and a small runtime-token allowlist
-(`current_date`, `agent_id`, `flow_instance_path`). Substitution is plain string replacement with no logic, and a variable that resolves
-nowhere is left as-is.
+placeholders, substituted at session creation from four sources, in priority order:
+
+1. Instance variables
+2. Policy values
+3. Entity-state fields
+4. A small runtime-token allowlist (`current_date`, `agent_id`, `flow_instance_path`)
+
+Substitution is plain string replacement with no logic, and a variable that resolves nowhere
+is left as-is.
 
 ```markdown
 # Resolver
@@ -92,6 +99,20 @@ prompt. It does not list tools; the model sees those through the tool definition
 
 ## Keeping reviewers independent
 
-To stop two agents from sharing context, give a role two pools with different subscriptions,
-route originals to one and appeals to the other. Same prompt, separate sessions, no shared
-context.
+To stop two agents from sharing context, give a role two pools — separate agent entries for
+the same role with different subscriptions — and route originals to one and appeals to the
+other. Same prompt, separate sessions, no shared context.
+
+```yaml
+reviewer-first-pass:
+  role: reviewer
+  subscriptions: [review.requested]
+reviewer-appeals:
+  role: reviewer
+  subscriptions: [review.appealed]
+```
+
+<Note>
+  The older `model_tier` and `conversation_mode`/`session_scope` fields are retired; `model`
+  and `memory` replace them.
+</Note>

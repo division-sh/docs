@@ -7,6 +7,10 @@ icon: "folder-tree"
 A flow is a directory of YAML contracts plus agent prompts. The engine reads the package and
 executes it, no product-specific code.
 
+<Card title="Build your first flow" icon="rocket" href="/build/first-flow">
+  A complete support-ticket flow, file by file.
+</Card>
+
 The files are not independent; they describe one running system from different angles. Events
 are the messages, the nodes and agents say who reacts to them, and the entity and schema say
 what data and states result:
@@ -23,7 +27,7 @@ flowchart LR
 ```text
 my-flow/
   package.yaml      # identity, version, platform constraint, child flows
-  schema.yaml       # stages, pins, instance identity
+  schema.yaml       # stages, pins, required agents
   entities.yaml     # the entity contract (typed persistent fields)
   types.yaml        # shared named types, enums, lists (optional)
   nodes.yaml        # system nodes and their handlers
@@ -38,10 +42,13 @@ my-flow/
 
 ## What each file does
 
+Terms used below: an **entity** is the record moving through the flow; a **pin** is an event or
+field the flow exposes at its edge; **stages** are the steps of the entity's lifecycle.
+
 | File | Responsibility |
 |---|---|
 | `package.yaml` | Flow identity: `name`, `version`, `platform_version`, and child `flows`. |
-| [`schema.yaml`](/build/state-machine) | States, pins, and `required_agents`: the flow's public surface. |
+| [`schema.yaml`](/build/state-machine) | Stages, pins, and required agents: the flow's public surface. |
 | [`entities.yaml`](/reference/contracts/entities) | The typed persistent fields of the entity this flow owns. |
 | `types.yaml` | Shared named types, enums, and lists used by entities and events. |
 | [`nodes.yaml`](/build/handlers) | System nodes and their event handlers. |
@@ -56,7 +63,3 @@ my-flow/
 Only `package.yaml` and `schema.yaml` are strictly required. The rest follow the work: no
 agents means no `agents.yaml` or `prompts/`, no handlers means no `nodes.yaml`, no events means
 no `events.yaml`. A flow with only system nodes and no agents is valid.
-
-<Card title="Build your first flow" icon="rocket" href="/build/first-flow">
-  A complete support-ticket flow, file by file.
-</Card>

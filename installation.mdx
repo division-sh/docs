@@ -15,6 +15,8 @@ is the default store and needs no service.
 
 ## Build and run
 
+From a clone of the repository:
+
 ```bash
 go install ./cmd/swarm
 swarm serve --contracts ./my-flow
@@ -32,21 +34,19 @@ docker run -d --name swarm-postgres \
 swarm serve --store postgres --contracts ./my-flow
 ```
 
-`swarm serve` is the long-running runtime, the API, health, and MCP startup owner. By default
+`swarm serve` is the long-running process: it runs the engine and serves the HTTP API, the
+health endpoints, and the MCP server. By default
 it binds **`http://127.0.0.1:8081`**. (The [Quickstart](/quickstart)'s `swarm run` is the
 one-shot, in-process alternative; `serve` is what you operate.)
 
-- **API token.** On a numeric-loopback bind, `swarm serve` uses a built-in dev token (bearer
-  auth still enabled). Exposing the API beyond loopback requires an explicit token, supplied
-  with `--api-token-file` or `serve.api_token_file` in `swarm.yaml`.
-- **LLM credential.** Needed only when the flow runs agents (see below).
+- **Credentials** — the API token and LLM credential rules — are covered
+  [below](#credentials-and-backend-selection).
 - **CLI target.** Every other `swarm` command targets the same address; point them elsewhere
   with `--api-server`, a named `--context`, or `connection.api_server` in config.
 
 Configuration is **explicit by design**: flags and typed `swarm.yaml` keys, not ambient
-environment variables. The old `SWARM_API_TOKEN` / `SWARM_API_SERVER` / `SWARM_LLM_BACKEND`
-env sources are retired — setting one fails with a teaching error naming the flag or config
-key that replaced it. See [Configuration](/reference/configuration).
+environment variables. (Retired `SWARM_*` variables fail with an error naming the
+replacement — see [Configuration](/reference/configuration).)
 
 ## Runtime store
 
@@ -68,7 +68,8 @@ named variable becomes the one accepted environment read.
 Beyond `swarm verify`, you always need an API token, and an LLM credential once your flow runs
 agents:
 
-- **An API token.** A numeric-loopback `swarm serve`/`swarm run` uses a built-in dev token (with
+- **An API token.** A `swarm serve`/`swarm run` bound to a loopback address like `127.0.0.1`
+  (numeric, not a hostname) uses a built-in dev token (with
   bearer auth still enabled); any non-loopback bind requires an explicit token via
   `--api-token-file` / `serve.api_token_file`. Every command except `swarm verify`
   authenticates against this.

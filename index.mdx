@@ -8,8 +8,9 @@ icon: "house"
 the conditions that break demos: processes crash, costs run away, and a fleet of agents has to
 coordinate over hours or days without stepping on each other. You declare the system as a
 bundle of YAML contracts, a static analyzer validates them against the platform specification
-before the runtime boots, and a deterministic engine runs it. The defining decision is that
-the LLM does not run the system. Agents reason in small, scoped sessions and emit their
+before the runtime boots, and a deterministic engine runs it.
+
+The defining decision is that the LLM does not run the system. Agents reason in small, scoped sessions and emit their
 results as events; deterministic code, never the model, decides what each result changes, so
 an agent can never leave the system in a state it only *claimed* to reach.
 
@@ -19,8 +20,8 @@ declared stages: guarded transitions, gates that must clear before the next step
 fire when something sits too long. An entity waits in a stage for days — on a timer or a
 human — then resumes exactly where it left off. And the parallelism is declarative: fan a
 batch out and each item gets **its own flow instance with its own agent**, hundreds advancing
-concurrently without touching each other, while a declared join owns completion, dedup, and
-timeout. Every transition, with its data writes and the events it emits, commits in one
+concurrently without touching each other, while a declared **join** decides when the batch is
+finished, ignores duplicate results, and enforces a deadline. Every transition, with its data writes and the events it emits, commits in one
 all-or-nothing transaction, and the whole history can be replayed or forked from the log.
 
 That is the shape of an operating system. An OS doesn't make your programs correct; it makes them
@@ -41,12 +42,12 @@ event loop. From there:
   call tools, and emit events. They never write state directly; they emit, and a handler
   decides what gets written.
 - **Humans** decide through typed decision gates: a stage waits for a verdict, every outcome
-  is declared, and the card can be decided from the CLI, the API, or a chat channel on
-  your phone (Telegram ships as the first channel pack) — the platform
-  itself never decides for you.
-- **The outside world** connects through packs: a provider's webhooks arrive as typed,
-  normalized events, and its API becomes declared tools — signature checks, credentials, and
-  rate limits owned by the platform, not your code.
+  is declared, and the platform shows the decision as a **card** — a small typed form a
+  person approves or rejects from the CLI, the API, or a chat channel on your phone
+  (Telegram ships as the first channel pack). The platform itself never decides for you.
+- **The outside world** connects through **packs** — prebuilt provider integrations:
+  webhooks arrive as typed, normalized events, and provider APIs become declared tools —
+  signature checks, credentials, and rate limits owned by the platform, not your code.
 
 Each event runs through a fixed handler pipeline and commits in a single transaction, so a
 crash mid-handler leaves no partial state. Because every event and every state change is
@@ -70,7 +71,8 @@ Swarm makes a few opinionated choices and holds them:
   </Card>
   <Card title="Isolated agents" icon="box" href="/concepts/agents-and-sessions">
     Each agent runs in a scoped session and sees only the events it subscribes to.
-    Hierarchical addressing keeps context windows from exploding.
+    Agents talk through a chain (coordinator → manager → worker) instead of one shared
+    chat, so context windows stay small.
   </Card>
   <Card title="Replayable and forkable" icon="clock-rotate-left" href="/concepts/persistence-replay-and-fork">
     Every event and state mutation is persisted. Reconstruct any run, or fork it from any

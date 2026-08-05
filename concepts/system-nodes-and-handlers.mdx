@@ -50,6 +50,8 @@ Read as a sentence: *if* the category is valid, save `category` and `priority` o
 advance it to `assigned`, and send a `ticket.assigned` event. The agent that classified the ticket
 never touched the ticket's state to make any of this happen.
 
+(`data_accumulation` is just the name for "copy these fields off the event onto the item".)
+
 Every handler has that same shape: an event comes in, the handler looks at the item it concerns
 (here, the ticket), changes that item, and sends the next event. That is the whole job.
 
@@ -82,8 +84,8 @@ was not actually committed.
 ## Branching
 
 A handler can also take different paths, based on the incoming event or on something it worked
-out along the way. Swarm has two ways to do that, `rules` and `on_complete`. See
-[Writing handlers](/build/handlers) for how to use them.
+out along the way. Swarm has two ways to do that: `rules` picks a branch by condition;
+`on_complete` decides after gathered work completes. See [Writing handlers](/build/handlers).
 
 <CardGroup cols={2}>
   <Card title="Writing handlers" icon="gears" href="/build/handlers">

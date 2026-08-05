@@ -12,13 +12,13 @@ human author a Swarm flow.
 
 ## Pull these first
 
-Ranked by binding authority. Read them in order; do not skip past one expecting the next to
-make up the gap.
+Ranked by how authoritative they are. Read them in order; do not skip past one expecting the
+next to make up the gap.
 
-1. **[`platform-spec.yaml`](https://github.com/division-sh/swarm/blob/master/platform-spec.yaml)**: the merge-bearing source of truth for every field, every value, every check id. Machine-readable YAML, designed to be queried. When this page and any docs page disagree, this wins.
+1. **[`platform-spec.yaml`](https://github.com/division-sh/swarm/blob/master/platform-spec.yaml)**: the source of truth for every field, every value, every check id — if this page and any doc disagree, the spec wins. Machine-readable YAML, designed to be queried.
 2. **[`openrpc.json`](https://github.com/division-sh/swarm/blob/master/openrpc.json)**: the generated public API surface. Use it for runtime/RPC questions instead of grepping handler code.
 3. **[`/reference/field-index`](/reference/field-index)**: human-friendly orientation across every YAML field, with links to the deeper docs for each.
-4. **[`tests/`](https://github.com/division-sh/swarm/tree/master/tests)**: 200+ conformance bundles across 12 tiers. The most reliable place to learn a pattern is to find a bundle that already uses it. Verify-passing by construction.
+4. **[`tests/`](https://github.com/division-sh/swarm/tree/master/tests)**: 200+ test bundles, all of which pass `swarm verify` — the most reliable way to learn a pattern is to find a bundle that already uses it.
 
 Two governance rules in the spec to internalize before authoring:
 
@@ -34,13 +34,22 @@ Run this loop, not a freestyle "write the whole thing then verify" pass.
 3. **Read analyzer errors literally.** They cite a check id (e.g. `entity_writer_coverage`, `event_producer_exists`, `transition_reference_validation`), a scope (`[root]`, `[<state>]`, `[<event>]`), and the exact field or path. The check id is searchable in `platform-spec.yaml` and on [`/reference/analyzer-checks`](/reference/analyzer-checks).
 4. **Add one thing, re-verify.** Three small iterations beat one large one.
 5. **When you need a pattern you haven't authored before, grep `tests/`** for the construct (`grep -rln "rules:" tests/`, `grep -rln "mailbox_write" tests/`, etc.). Read a bundle that uses it; mirror its shape.
-6. **`swarm run`** is the fastest end-to-end check: it boots a runtime in-process, fires one event, exits when the run quiesces. No DB service, SQLite by default. Use it for one-shot deterministic flows. For flows that need follow-up interaction (timers, human mailbox decisions, multiple external events), use `swarm serve` instead and drive it with the CLI from a second terminal; see [Running the runtime → swarm run vs swarm serve](/operate/running-the-runtime#swarm-run-vs-swarm-serve).
+6. **`swarm run`** is the fastest end-to-end check: it boots a runtime in-process, fires one event, exits when the run quiesces. No DB service, SQLite by default; use it for one-shot deterministic flows.
+
+<Note>
+  For flows that need follow-up interaction (timers, human mailbox decisions, multiple
+  external events), use `swarm serve` instead and drive it with the CLI from a second
+  terminal; see
+  [Running the runtime → swarm run vs swarm serve](/operate/running-the-runtime#swarm-run-vs-swarm-serve).
+</Note>
 
 ## Cost-free testing of agent-flow contracts
 
 A flow that declares agents normally needs an LLM credential to advance past agent
-deliveries. To exercise the deterministic half offline (CI, repeated iteration, no token
-spend):
+deliveries. For agent turns themselves, use the
+[mock backend](/build/testing#the-mock-llm-backend) — zero credentials. The `event publish`
+pattern below is for skipping the agent entirely and driving the deterministic half (CI,
+repeated iteration, no token spend):
 
 ```bash
 # Drive the flow forward by publishing the events an agent would emit:
@@ -52,18 +61,10 @@ identically; both are just events. Your handler advances regardless of who produ
 trigger.
 
 <Warning>
-  `event publish` is reliable for **starting** a run from a flow's root input-pin event.
-  Driving an *existing* run forward from outside (injecting a follow-up event with `--run-id`,
-  or supplying a caller-chosen `entity_id`) is a separate surface still evolving on the
-  operator-event-publish RPC; whether it works end-to-end for a multi-trigger offline test
-  depends on the current state of that work. Check the issue tracker before relying on it.
-  An agent author can always exercise the first hop of a multi-step flow offline (the
-  input-pin handler and whatever it emits internally) regardless.
+  `swarm event publish` reliably **starts** a run from a root input-pin event. Injecting a
+  follow-up event into a run that is already going is not yet reliable — use `swarm test`
+  scenarios or a long-lived `swarm serve` for multi-step offline tests.
 </Warning>
-
-A user-selectable scripted backend for fully cost-free agent-flow testing is on the
-roadmap. Until it lands, the `event publish` pattern above (with the limits noted) is the
-supported offline path.
 
 ## Implementation gaps: expected, tracked, fix them with us
 
@@ -74,7 +75,7 @@ one:
 - **Treat the spec as binding when it disagrees with the docs.** The docs aim to track the
   spec; when they drift, that's a docs bug.
 - **Treat the binary as the bug when it disagrees with the spec.** That's a runtime issue.
-- **File it.** Concrete repros land in the [issue tracker](https://github.com/division-sh/swarm/issues) and have been turning around quickly; most P0/P1 issues filed during the recent QA audit closed within hours. Your repro is the highest-leverage contribution you can make as an agent author.
+- **File it.** Concrete repros in the [issue tracker](https://github.com/division-sh/swarm/issues) get turned around quickly; a repro is the highest-leverage thing you can contribute.
 
 A good gap report has:
 
@@ -86,8 +87,7 @@ A good gap report has:
 
 For known gaps currently under work, browse the
 [open issues on the swarm repo](https://github.com/division-sh/swarm/issues). Search before
-filing; a recent QA cycle moved fast, and several surfaces an agent author hits today have
-issues already tracked or freshly closed. The most useful filter is the symptom itself
+filing. The most useful filter is the symptom itself
 (`mailbox`, `entity.list`, `event publish`, `lint_evidence`, etc.); the issue tracker is
 the live source for "is this me, or is this a known thing." If your symptom doesn't match
 anything open or recently closed, file fresh.

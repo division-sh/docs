@@ -10,12 +10,13 @@ and the agent roles it requires.
 ## State machine
 
 <ParamField path="stages" type="map">
-  The entity's lifecycle stages, each a map entry. Mark the entry stage `initial: true` and
-  absorbing stages `terminal: true` (once an entity reaches one, new events for it are
-  rejected and its timers are cancelled). A stage may also declare `timers:` that fire when an
-  entity has sat in it too long. Omit `stages:` entirely for a stateless flow. The older
-  `initial_state`/`states`/`terminal_states` list grammar still parses, but `stages:` is the
-  canonical form and the only one stage timers attach to.
+  The entity's lifecycle stages, each a map entry. Omit `stages:` entirely for a stateless
+  flow.
+
+  - Mark the entry stage `initial: true` and terminal stages `terminal: true`.
+  - Terminal stages — once an entity reaches one it never leaves: new events for it are
+    rejected and its timers are cancelled.
+  - A stage may also declare `timers:` that fire when an entity has sat in it too long.
 </ParamField>
 <ParamField path="mode" type="string">
   `singleton` (default) or `template` — one instance per identity value.
@@ -23,8 +24,7 @@ and the agent roles it requires.
 <ParamField path="instance" type="string">
   Template flows only: the scalar identity field (`instance: order_id` = one instance per
   order_id). Every selecting input pin must carry a field with this name; the pin's instance
-  key derives from it. The older `instance: {by:}` block and `resolution.instance_key` are
-  retired and rejected at load.
+  key derives from it.
 </ParamField>
 
 ## Pins
@@ -71,9 +71,15 @@ matches the `role`, and whose subscriptions and `emit_events` cover the declared
 ## Example
 
 ```yaml schema.yaml
-initial_state: new
-terminal_states: [fulfilled, cancelled]
-states: [new, validated, fulfilling, fulfilled, cancelled]
+stages:
+  new:
+    initial: true
+  validated: {}
+  fulfilling: {}
+  fulfilled:
+    terminal: true
+  cancelled:
+    terminal: true
 pins:
   inputs:
     events: [order.created]
@@ -84,3 +90,10 @@ required_agents:
     subscribes_to: [order.created]
     emits: [order.validated]
 ```
+
+<Note>
+  **Retired grammar.** The older `initial_state`/`states`/`terminal_states` list grammar
+  still parses, but `stages:` is the canonical form and the only one stage timers attach to.
+  The older `instance: {by:}` block and `resolution.instance_key` are retired and rejected at
+  load.
+</Note>

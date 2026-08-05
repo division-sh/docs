@@ -6,12 +6,11 @@ icon: "code"
 
 Swarm exposes one user-facing API: JSON-RPC 2.0 over HTTP for request and response, and
 JSON-RPC subscriptions over WebSocket for live streams. One transport, one auth model, one
-envelope. The `swarm` CLI, channel packs, and any custom client all route through it.
+request/response shape. The `swarm` CLI, channel packs, and any custom client all route
+through it.
 
-The method pages here are generated from an OpenAPI description (`openapi.json` in this repo),
-converted from the platform's OpenRPC method catalog. That catalog is the source of truth: the
-spec generates it and treats it as authoritative, and drift between the spec and the catalog
-fails the platform's boot verification.
+Method pages are generated from the platform's method catalog, so they track the runtime
+exactly.
 
 <Note>
   Every method is a single `POST /v1/rpc` with the method name in the JSON-RPC body. The
@@ -33,6 +32,11 @@ fails the platform's boot verification.
 | `runtime.*` | Logs, incidents, pause and resume, destructive reset. |
 | `health.*` | Liveness, structured health, and a heartbeat subscription. |
 | `rpc.*` | The subscription protocol (`rpc.unsubscribe`). |
+
+<Note>
+  `run.start` remains available as a **deprecated wrapper** with `event.publish` semantics;
+  new clients should call `event.publish` directly (it allocates a run when none is given).
+</Note>
 
 ## Conventions at a glance
 
@@ -56,8 +60,3 @@ A few things a client should plan around, because v1 deliberately does not have 
 Browse the methods in the sidebar, or start with
 [Transport and auth](/api-reference/transport-and-auth) and
 [Subscriptions](/api-reference/subscriptions).
-
-<Note>
-  `run.start` remains available as a **deprecated wrapper** with `event.publish` semantics;
-  new clients should call `event.publish` directly (it allocates a run when none is given).
-</Note>

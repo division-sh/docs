@@ -18,7 +18,7 @@ modules:
   structured_renderer:
     kind: python
     path: modules/renderer.py
-    abi: python-json-v1
+    abi: python-json-v1          # how input/output are passed (python-json-v1 for Python)
     entry: handle                # python: always handle
     digest: sha256:<64-hex>      # of the source bytes; pins what runs
     input_schema:
@@ -29,8 +29,8 @@ modules:
     output_schema:
       type: object
     limits:
-      gas: 10000000              # execution budget
-      memory_pages: 64
+      gas: 10000000              # how much work the module may do before it is stopped
+      memory_pages: 64           # memory cap, in 64 KB pages
       output_bytes: 262144
 ```
 
@@ -66,15 +66,18 @@ modules:
 
 Python modules run on the embedded CPython-WASI interpreter (shipped in the binary, executed
 through Wasmtime — no local Python needed); `kind: wasm` runs your compiled module through
-the same engine. Either way the declared digest pins the exact bytes into the bundle at
-compile time, execution is metered by the declared limits, and the sandbox has **no I/O**: no
-filesystem, no network, no clock, no randomness. Same input, same output, forever — which is
-what makes module calls replayable.
+the same engine. Either way:
+
+- the declared digest pins the exact bytes into the bundle at compile time
+- execution is metered by the declared limits
+- the sandbox has **no I/O** — no filesystem, network, clock, or randomness
+
+Same input, same output, forever — which is what makes module calls replayable.
 
 ## Calling a module
 
-A rule invokes a module in the compute phase and binds the result to the handler-local
-`computed.*` namespace:
+A handler runs its `rules:` before deciding what to do; a compute-module rule runs there and
+stores its result in `computed.*`, which lives only for that handler:
 
 ```yaml nodes.yaml
 component.submitted:
@@ -111,8 +114,8 @@ The rules that keep this honest, all verified at boot:
 | condition, simple field math | CEL expression |
 | finite lookup table, validation predicate | policy sheet rows |
 | bounded iteration, parsing, aggregation, deterministic rendering | **compute module** |
-| durable external work (API calls, side effects) | activities / connector tools |
+| durable external work (API calls, side effects) | [activities](/build/handlers/actions#durable-activities) / connector tools |
 | an LLM judgment | an agent |
 
-Compute modules are the escape hatch that *doesn't* escape the model: logic beyond rows,
-still deterministic, still verified, still replayable.
+A compute module is an escape hatch that stays inside the model: logic beyond what rows can
+express, still deterministic, still verified, still replayable.

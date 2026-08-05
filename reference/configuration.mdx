@@ -4,8 +4,8 @@ description: "Connecting to the runtime, credentials, and environment variables.
 icon: "gear"
 ---
 
-Swarm favors CLI flags; each flag has an environment-variable equivalent for deployment.
-`swarm verify` is the only command that runs without a runtime or a token. Every other command
+Swarm is configured by CLI flags and `swarm.yaml`; environment variables are not a
+configuration source. `swarm verify` is the only command that runs without a runtime or a token. Every other command
 targets the runtime's API and needs a bearer token.
 
 ## Connecting to the runtime
@@ -21,8 +21,8 @@ overriding earlier ones:
 3. local operator `./.swarm/swarm.yaml` (machine-local overrides; keep it out of git)
 4. explicit `--config <path>` (or `SWARM_CONFIG`, the one accepted env pointer)
 
-Flags override config. Ambient environment variables are **not** a configuration source: the
-retired `SWARM_*` family fails with a teaching error naming the replacement.
+Flags override config. Ambient environment variables are **not** a configuration source
+(see [Retired settings](#retired-settings)).
 
 <ParamField path="--api-server <url>" type="string">
   Base URL of the runtime. Default `http://127.0.0.1:8081`. Config: `connection.api_server`.
@@ -50,9 +50,14 @@ These flags configure a runtime that `swarm serve` or `swarm run` boots in-proce
 effect when attaching to a running runtime with `--connect`.
 
 <ParamField path="--config <path>" type="string">
-  Path to a Swarm runtime config (`config.yaml`). Resolution order: explicit `--config` first,
-  then a `config.yaml` next to the running binary, then built-in defaults.
+  Explicit `swarm.yaml` config file; overrides the discovered layers listed above, then
+  built-in defaults apply for anything unset.
 </ParamField>
+
+<Note>
+  Older releases read a separate `config.yaml` next to the running binary. That two-file model
+  was unified into the layered `swarm.yaml` described on this page.
+</Note>
 <ParamField path="--data <path>" type="string">
   Path to the agent-visible read-only `/data` reference directory. Resolution order:
   `--data` > `workspace.data_source` in `swarm.yaml` > the auto-default `.swarm/data/`
@@ -74,11 +79,14 @@ One schema, discovered in layers (later overrides earlier):
 | local operator | `./.swarm/swarm.yaml` | machine-local overrides; keep out of git |
 | explicit | `--config <path>` (or `SWARM_CONFIG`) | scripts, tests, alternates |
 
-Keys are **trust-tiered**: project-safe keys (llm backend/models, runtime tuning, budgets,
-loopback listeners) are accepted from any layer, while sensitive settings — public/wildcard
-listener binds, host-escaping paths, elevated workspace capabilities — are accepted only from
-the local-operator/user layers or a flag. A committed `swarm.yaml` in a cloned repo cannot
-expose your machine.
+Keys are **trust-tiered**:
+
+| Tier | Example keys | Accepted from |
+|---|---|---|
+| Project-safe | LLM backend/models, runtime tuning, budgets, loopback listeners | Any layer |
+| Sensitive | Public/wildcard listener binds, host-escaping paths, elevated workspace capabilities | Local-operator/user layers, or a flag |
+
+A committed `swarm.yaml` in a cloned repo cannot expose your machine.
 
 The top-level sections (`swarm doctor` reports which layers loaded and what each supplied):
 
@@ -90,6 +98,7 @@ The top-level sections (`swarm doctor` reports which layers loaded and what each
 - `workspace.*` — backend preference, `data_source`, image settings
 - `runtime.*` — `recovery_on_startup`, decision-card cadence (first reminder, urgency, reminder interval, input draft TTL)
 - `budget.*` — global/per-entity/system monthly caps, human-task budgets
+- `sharding.*` — parallelism bounds for sharded agent workloads
 - `provider_triggers.*` / `channels.*` — pack directories
 
 ### Runtime section shape
@@ -154,11 +163,10 @@ CLI flags override config keys (`--store > store.backend`, `--backend > llm.back
 `--data > workspace.data_source`). There are no env-var equivalents. See the sections below
 for each subsystem's precedence.
 
-<Warning>
-  **`llm.runtime_mode` is retired** and rejected at boot; use `llm.backend`. The env-var
-  equivalents `SWARM_LLM_RUNTIME_MODE` and `SWARM_LLM_BACKEND` are also rejected; backend
-  selection is `--backend` or `llm.backend` only.
-</Warning>
+<Note>
+  Backend selection is `--backend` or `llm.backend` only; for the removed spellings, see
+  [Retired settings](#retired-settings).
+</Note>
 
 ## Runtime store
 
@@ -179,17 +187,16 @@ Select the backend with `--store sqlite` or `--store postgres`, or `store.backen
   `database.port`, `database.name`, `database.user`, `database.sslmode`,
   `database.pool_size`. Defaults: `127.0.0.1`, `5432`, `swarm`, `postgres`, `disable`. The
   password is never read implicitly: declare `database.password_env: <VAR>` and exactly that
-  named environment variable becomes the accepted source. The old `SWARM_DB_*`/`PG*` implicit
-  fallbacks are retired.
+  named environment variable becomes the accepted source (see
+  [Retired settings](#retired-settings)).
 </ParamField>
 
 ## LLM backend and credentials
 
 Select the LLM backend with the `--backend` flag on `swarm serve` or `swarm run`, or with
-`llm.backend` in `config.yaml`. **Environment variables never select the backend**: both
-`SWARM_LLM_BACKEND` and the older `SWARM_LLM_RUNTIME_MODE` are retired and rejected at boot. The
-default backend when nothing is set is `anthropic`. A flow with no agents boots without any
-credential.
+`llm.backend` in `swarm.yaml`. **Environment variables never select the backend** (see
+[Retired settings](#retired-settings)). The default backend when nothing is set is
+`anthropic`. A flow with no agents boots without any credential.
 
 | Backend | Required credential | Notes |
 |---|---|---|
@@ -197,15 +204,15 @@ credential.
 | `claude_cli` | `CLAUDE_CODE_OAUTH_TOKEN` | Drives the Claude CLI as a subprocess. Validated at boot when the bundle declares agents. Also needs the tool-gateway variables `SWARM_TOOL_GATEWAY_URL`, `SWARM_TOOL_GATEWAY_CONTAINER_URL`, `SWARM_TOOL_GATEWAY_TOKEN` (the repository `.env` provides them). |
 | `openai_compatible` | `OPENAI_COMPATIBLE_API_KEY` | Any Chat Completions-compatible HTTP JSON endpoint. Also needs `llm.openai_compatible.base_url` (or `SWARM_OPENAI_COMPATIBLE_BASE_URL`) and `SWARM_OPENAI_COMPATIBLE_DEFAULT_MODEL`. `SWARM_OPENAI_COMPATIBLE_LOW_COST_MODEL` is optional, used when budget policy throttles an actor. |
 
-The older profile ids `api` and `cli_test` are retired — `--backend api` is rejected with
-`unsupported llm backend profile`; use `anthropic` / `claude_cli`. Credentials are read from
-the environment and a local credential store, and are never logged or persisted.
+Credentials are read from the environment and a local credential store, and are never logged
+or persisted. For the removed profile ids, see [Retired settings](#retired-settings).
 
 ## Storage
 
 <ParamField path="SWARM_ARTIFACT_ROOT" type="string">
-  Runtime-private root for git repositories written by `artifact_repo_commit`. Default
-  `/var/lib/swarm/artifacts`. Never mounted into agent sessions.
+  Runtime-private root for git repositories written by `artifact_repo_commit` (a
+  deployment-environment variable, not a config key — one of the few the runtime reads
+  directly). Default `/var/lib/swarm/artifacts`. Never mounted into agent sessions.
 </ParamField>
 
 ## Budget caps
@@ -214,7 +221,7 @@ The `budget_*_percent` thresholds in `policy.yaml` are percentages of a monthly 
 the `budget:` configuration section. A scope is monitored only when its cap is above zero. See
 [Budget and cost](/operate/budget-and-cost).
 
-```yaml
+```yaml swarm.yaml
 budget:
   global_monthly_cap: 500       # USD per month across the deployment
   per_entity_monthly_cap: 5     # USD per month per entity
@@ -227,7 +234,7 @@ When a node fans a workload across multiple instances of an agent
 ([Agent sharding](/concepts/agents-and-sessions)), the `sharding:` section bounds the
 parallelism so it cannot run away. The defaults apply when a key is omitted.
 
-```yaml
+```yaml swarm.yaml
 sharding:
   max_shards_per_job: 8         # most shards a single job may split into
   max_concurrent_shards: 12     # most shards running at once across the runtime
@@ -236,3 +243,15 @@ sharding:
   max_retries_per_shard: 0      # retries before a shard is given up on
   circuit_breaker_threshold: 0  # shard failure rate that trips the breaker (0 = off)
 ```
+
+### Retired settings
+
+These spellings are removed and fail with a teaching error naming the replacement:
+
+| Removed | Replacement |
+|---|---|
+| Ambient `SWARM_*` configuration variables | The CLI flag or `swarm.yaml` key named in the error (`SWARM_CONFIG` remains the one accepted env pointer) |
+| `llm.runtime_mode` | `llm.backend` |
+| `SWARM_LLM_BACKEND` / `SWARM_LLM_RUNTIME_MODE` | `--backend` flag or `llm.backend` |
+| Backend profile ids `api` / `cli_test` (`--backend api` is rejected with `unsupported llm backend profile`) | `anthropic` / `claude_cli` |
+| `SWARM_DB_*` / `PG*` implicit password fallbacks | `database.password_env: <VAR>` |

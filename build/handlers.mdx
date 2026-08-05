@@ -4,14 +4,17 @@ description: "How a system node turns an event into a state change and the next 
 icon: "gears"
 ---
 
-A handler is what a system node runs when a matching event arrives. You declare it as YAML, and
-the engine runs its parts in a fixed order (not the order you write them) and commits them all
-in one transaction, so a crash never leaves a half-applied change. The common path:
+A handler is what a system node (the deterministic, non-LLM worker in a flow) runs when a
+matching event arrives, declared as YAML. The engine runs a handler's parts in a fixed order —
+not the order you wrote them — and commits them all in one transaction, so a crash never leaves
+a half-applied change. The common path:
 
 ```mermaid
 flowchart LR
     AQ["get the<br/>entity"] --> G[guard] --> W["record data,<br/>advance state"] --> E["emit the<br/>next event"] --> A["action<br/>(optional)"]
 ```
+
+That order is: acquire entity → guard → accumulate/compute → write and advance → emit → action.
 
 This page is the overview; each part below has its own page with the syntax and examples. For
 the conceptual model see [System nodes and handlers](/concepts/system-nodes-and-handlers); for
@@ -20,9 +23,10 @@ the exhaustive field list see [Handler fields](/reference/handler-fields).
 
 ## How data moves between steps
 
-Three places hold data, and each is reached a different way:
+Two places hold data, and one rule governs what an agent can see:
 
-- **The entity** is the durable store. Write to it with `data_accumulation`; read it anywhere
+- **The entity** is the durable store. Write to it with `data_accumulation` (the step that
+  records fields on the entity; unrelated to `accumulate`); read it anywhere
   with `entity.*`. Entity fields persist across handlers, so a value written when the ticket was
   created is still readable when a later event arrives.
 - **The emitted payload** is how a handler hands data to the next subscriber. You build it with

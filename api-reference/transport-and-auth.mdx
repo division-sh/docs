@@ -40,8 +40,8 @@ up a new token, reconnect.
 { "jsonrpc": "2.0", "id": 1, "error": { "code": -32000, "message": "...", "data": { "code": "RUN_NOT_FOUND", "retryable": false, "correlation_id": "..." } } }
 ```
 
-The canonical error discriminator is the string `data.code` (for example `BUNDLE_MISMATCH`,
-`IDEMPOTENCY_CONFLICT`), distinct from the numeric JSON-RPC `code`. `data` also carries
+Branch on `data.code` (a string, e.g. `BUNDLE_MISMATCH`), not on the numeric JSON-RPC
+`code`. `data` also carries
 `details` (per-code structured fields), `retryable` (a boolean), and `correlation_id`.
 
 ## Pagination

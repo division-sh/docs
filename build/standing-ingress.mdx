@@ -6,9 +6,9 @@ icon: "tower-broadcast"
 
 Most flows are **guided**: a run starts, events flow, the run reaches terminal and ends. A
 chat bot, a support inbox, or any webhook-driven service is different — it must be *already
-running* when the outside world calls. That is a **standing** flow: the platform materializes
-its instance before readiness, keeps it alive across restarts, and exposes a webhook endpoint
-for it.
+running* when the outside world calls. That is a **standing** flow: Swarm creates the flow's
+instance and its webhook endpoint *before* reporting ready, keeps them alive across
+restarts — so the first webhook never arrives at a flow that isn't up yet.
 
 ## Declaring a standing flow
 
@@ -29,7 +29,8 @@ flows:
 
 The rules, all checked at verify:
 
-- `activation: standing` is valid only for `mode: singleton` flows.
+- `activation: standing` is valid only for `mode: singleton` flows (one instance for the
+  whole system).
 - Standing **without** `ingress` is valid — a timer-driven or connect-fed always-on service.
 - `ingress` **requires** `activation: standing`, and its `alias` defaults to the flow id. The
   alias is one URL path segment: the endpoint is `/webhooks/{alias}/{provider}` — here,
@@ -41,15 +42,21 @@ The rules, all checked at verify:
 
 ## Provider events, normalized
 
-A provider pack (Telegram, Slack, Stripe, …) declares the raw webhook's admission policy and
-its **normalized events** — flat, typed projections of the provider payload that your flow
-subscribes to. Your contracts consume `telegram.message` with `chat_id: text`; the pack owns
-signature verification, payload dispatch, and field extraction. You never parse a raw webhook
-body in a handler.
+A provider pack (Telegram, Slack, Stripe, …) declares which webhooks it accepts and how
+they're checked (**admission**), plus the **normalized events** — small, flat, typed versions
+of the provider payload that your flow subscribes to. Your contracts consume
+`inbound.telegram.text_message` with typed flat fields; the pack owns signature verification, payload
+dispatch, and field extraction. You never parse a raw webhook body in a handler.
 
-Accepting **unsigned** webhooks (a provider with no signature scheme, or local testing) must
-be acknowledged explicitly in the admission declaration — an unsigned public endpoint is
-something you say out loud, or boot warns.
+```yaml agents.yaml
+chat-agent:
+  subscriptions: [inbound.telegram.text_message]  # the normalized event, not the raw webhook
+  emit_events: [chat.reply_drafted]
+  memory: true
+```
+
+If a provider has no signature scheme, or you're testing locally, say so explicitly in the
+admission declaration; otherwise Swarm warns at boot that a public endpoint is unsigned.
 
 ## Lifecycle: what "standing" means operationally
 
@@ -57,8 +64,8 @@ something you say out loud, or boot warns.
   before the runtime reports readiness — the first webhook never races activation.
 - **Durable across restarts**: the service's identity is stable (derived from package + flow
   id); a restart reconciles the declared set against the store and resumes, it does not
-  re-create. Removing or renaming the flow in a later revision explicitly **orphans** the old
-  service — quiesced, paused, inspectable — rather than silently deleting it.
+  re-create. Removing or renaming the flow in a later revision marks the old service as
+  **orphaned**: it stops taking work but stays paused and inspectable rather than deleted.
 - **Operator control**: suspend, resume, and reset act on the same durable identity and
   survive restart.
 

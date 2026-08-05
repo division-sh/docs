@@ -13,9 +13,15 @@ Call a subscribe method with an optional `filter` and `replay_since`. The respon
 `subscription_id`, then the runtime pushes notifications:
 
 ```json
+// request
+{ "jsonrpc": "2.0", "id": 1, "method": "event.subscribe", "params": { "filter": { }, "replay_since": "..." } }
+
 // notification
 { "jsonrpc": "2.0", "method": "rpc.subscription", "params": { "subscription": "<id>", "result": { } } }
 ```
+
+Note the asymmetry: notifications carry `subscription`; `rpc.unsubscribe` takes
+`subscription_id`.
 
 ## Available streams
 
@@ -28,11 +34,12 @@ Call a subscribe method with an optional `filter` and `replay_since`. The respon
 
 A subscribe method and its `list` sibling share the same `filter` type (for example
 `event.subscribe` and `event.list`). Pagination is list-only; subscriptions accept
-`replay_since` for catch-up, not `until`.
+`replay_since` for catch-up.
 
 ## Delivery semantics
 
-Notifications are ordered per stream key within one subscription, with no ordering guarantee
+Notifications are ordered per stream key (the unit the stream is keyed by) within one
+subscription, with no ordering guarantee
 across subscriptions. Delivery is eventual, not durable across disconnects, and may drop under
 backpressure. To recover, re-subscribe with `replay_since`, or reconcile with the matching
 `list` method using the same filter and a `since` bound.

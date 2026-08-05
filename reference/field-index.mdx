@@ -76,6 +76,7 @@ short form (`field_name: type`) or a verbose block.
 | `immutable` | If `true`, only the first writer succeeds. |
 | `materialize_from` | Project a node accumulator into an entity field. See [Accumulation → materialize_from](/reference/accumulation#projecting-to-an-entity-field-with-materialize_from). |
 | `_unused_reason` | Suppress the writer-coverage advisory for a field with no writer. |
+| `_unused_reader_reason` | Suppress the reader-coverage advisory for a field only external tools read. |
 | `description` | Human annotation. |
 
 [Reference](/reference/contracts/entities).
@@ -121,8 +122,8 @@ A map of `<agent-role>: { ... }`. The role key must match a role declared in `sc
 | `memory` | `false` (default): fresh conversation per task. `true`: one durable conversation per flow instance (scope derived from the flow's instance model). |
 | `max_turns_per_task` | Turn cap per task. |
 | `workspace_class` | Named workspace from `policy.yaml`. See [Agent workspaces](/reference/workspaces). |
-| `permission_bundle` | Named permissions from `policy.yaml`. |
-| `prompt` | Path to the prompt under `prompts/`. |
+| `permissions_bundle` | Named permission set from `policy.yaml`. |
+| `prompt_ref` | Optional explicit prompt reference; by default the agent loads `prompts/<role>.md`. |
 
 [Reference](/reference/contracts/agents).
 
@@ -198,16 +199,18 @@ Detail: [Actions](/build/handlers/actions). Authoring product-specific actions i
 The older `conversation_mode`/`session_scope` fields are retired and rejected at load.
 Detail: [agents.yaml](/reference/contracts/agents).
 
-### Handler outcomes (what you see in `swarm trace`)
+### Handler outcomes (what you see in `swarm run trace`)
 
-`success`, `reject`, `discard`, `kill`, `escalate`, `dead_letter`, `terminal_reject`,
-`waiting`, `fanned_out`. The first five are guard-related (see `on_fail` above);
-`dead_letter` is delivery-exhaustion after retries; `terminal_reject` is an event aimed at
-an entity already in a terminal state; `waiting` and `fanned_out` are intermediate states
-for `accumulate` and fan-out. Detail: [Execution model](/reference/execution-model).
+| Outcome | Meaning |
+|---|---|
+| `success`, `reject`, `discard`, `kill`, `escalate` | Guard-related; see the `on_fail` values above. |
+| `dead_letter` | Delivery exhaustion after retries. |
+| `terminal_reject` | An event aimed at an entity already in a terminal state. |
+| `waiting`, `fanned_out` | Intermediate states for `accumulate` and fan-out. |
+
+Detail: [Execution model](/reference/execution-model).
 
 ## When in doubt
 
-The merge-bearing source of truth for every field, value, and edge case is
-[`platform-spec.yaml`](https://github.com/division-sh/swarm/blob/master/platform-spec.yaml).
-The docs aim to track it; when they drift, file an issue and trust the spec.
+[`platform-spec.yaml`](https://github.com/division-sh/swarm/blob/master/platform-spec.yaml)
+is authoritative — if this page disagrees with it, the spec wins.

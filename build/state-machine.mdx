@@ -46,12 +46,6 @@ Every declared stage must be reachable: it is either the initial stage or the ta
 `advances_to` (including a stage timer's). The analyzer flags stages that nothing reaches
 (see [Analyzer checks](/reference/analyzer-checks)).
 
-<Note>
-  The older list grammar (`initial_state` / `terminal_states` / `states:`) still parses, but
-  `stages:` is the canonical form — new features (stage timers, join stages) attach to it.
-  New flows should use `stages:`.
-</Note>
-
 ## Pins
 
 Pins are the flow's public interface. Event pins declare what it accepts and emits; data pins
@@ -67,20 +61,17 @@ pins:
     writes: [category, resolution]
 ```
 
-No two flows may write the same data pin, that conflict is a boot error. Output event pins
-are the flow's exit points for cross-flow routing: the parent package binds them with
-`connect` edges, and the *receiving* flow's input pin owns instance selection through its
-`resolution` and `carries` declarations. The producer never chooses recipients — an emit
-carries no routing authority (see [Emitting events](/build/handlers/emitting)). Internal
-events not listed in pins are ordinary event-loop emits delivered by subscription.
+No two flows may write the same data pin; that conflict is a boot error. Events not listed in
+pins stay inside the flow and are delivered by subscription.
+
+Output event pins are how a flow talks to other flows — see
+[Composing flows](/build/composition) for how edges are declared.
 
 ## Required agents
 
-`required_agents` is **optional**: when omitted, the flow's effective required-agent facts
-are derived from `agents.yaml`. Declare it when the flow is an interface boundary — a package
-someone else fulfills with their own agents — because an authored list (including an explicit
-empty one) turns inference off and becomes the contract. Fulfillment has two conditions, both
-checked at boot:
+Leave `required_agents` out and Swarm infers the roles from `agents.yaml`. Write it and your
+list wins — even an empty list, which means *this flow requires no agents*. Declare it when
+someone else will supply the agents.
 
 ```yaml
 required_agents:
@@ -88,6 +79,8 @@ required_agents:
     subscribes_to: [ticket.created]
     emits: [ticket.classified]
 ```
+
+Fulfillment has two conditions, both checked at boot:
 
 1. An agent in `agents.yaml` whose map key matches the `role` name.
 2. That agent's subscriptions cover the required `subscribes_to`, and its `emit_events` cover
@@ -99,9 +92,14 @@ A stateful flow's input-pin handler must say how it gets the entity to operate o
 declares exactly one acquisition mode:
 
 - `create_entity: true`: mint a new entity at the initial stage.
-- `select_entity`: resolve exactly one existing flow-owned entity by a declared business
-  key.
+- `select_entity`: resolve exactly one existing flow-owned entity by a field you nominate as
+  its identity (an order id, a ticket id).
 - `select_or_create_entity`: resolve one existing, or deterministically mint one.
 
 Omitting all three on a stateful input-pin handler is a boot error. See
 [Composing flows](/build/composition) for cross-flow handoff patterns.
+
+<Note>
+  Older flows may use `initial_state`/`terminal_states`/`states:`; `stages:` is the current
+  form and new features attach only to it.
+</Note>

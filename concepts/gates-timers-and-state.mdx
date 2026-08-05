@@ -4,6 +4,10 @@ description: "The staged lifecycle, gate checkpoints, and durable time."
 icon: "timer"
 ---
 
+A stage is where an entity is; a gate is a checkpoint it has passed; a timer is what happens
+if it sits somewhere too long. All three are declared on the flow, not scattered through
+handlers.
+
 ## Stages: the lifecycle
 
 A flow declares its lifecycle in `schema.yaml` as a **`stages:` map**:
@@ -30,7 +34,7 @@ Three rules give the lifecycle its shape:
 
 A flow that declares no `stages:` is **stateless**: it processes events without a lifecycle,
 and `advances_to` is invalid there. Stateless still allows entities — a handler that writes
-entity fields auto-materializes one with no stage.
+entity fields automatically creates one, with no stage attached.
 
 The stage is also where the lifecycle's machinery attaches, declared on the stage itself
 rather than scattered through handlers:
@@ -44,9 +48,9 @@ rather than scattered through handlers:
 
 ## Terminal stages
 
-Terminal stages are absorbing and unconditional. Once an entity is terminal:
+Terminal is a one-way door. Once an entity is terminal:
 
-- New events targeting it are rejected before any handler runs (outcome `terminal_reject`).
+- New events targeting it are rejected before any handler runs (recorded as `terminal_reject`).
 - Its timers are cancelled and its agent sessions terminated.
 - All of its state is preserved: queryable, never deleted.
 
@@ -61,8 +65,8 @@ cap and an explicit escape. The prohibition is specifically on leaving a termina
 A gate is a named boolean on the entity, set by `sets_gate` and checked by guards. Gates
 model "which milestones are complete" in validation-style flows. They default to unset and
 are not auto-reset; `clear_gates: true` resets *every* gate on the entity at once (it is
-all-or-nothing). Gates are projected by [`flow_scope_key`](/reference/glossary) (a flow's stable
-position-based namespace), so they stay stable across instance ids.
+all-or-nothing). Gate names are scoped to the flow, so they stay stable as instances come
+and go.
 
 ## Timers
 
@@ -81,8 +85,9 @@ stages:
         advances_to: expired             # ends the stage: a real lifecycle edge
 ```
 
-A row with `advances_to` is part of the state machine — reachability analysis and
-`describe --graph` see it. This is the canonical form for "an entity sat here too long."
+Each entry in the `timers:` list is one timer. An entry with `advances_to` is part of the
+state machine — it shows up as a real edge when you inspect the flow
+(`swarm describe --graph`). This is the canonical form for "an entity sat here too long."
 
 **Node timers** cover what stages cannot anchor: event-triggered delays and boot-anchored
 periodic work (a nightly report timer with `start_on: boot`, `recurring: true`). They are

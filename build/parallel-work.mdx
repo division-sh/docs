@@ -4,11 +4,11 @@ description: "Fan out to template instances, converge with fan-in joins, and rev
 icon: "arrows-split-up-and-left"
 ---
 
-Swarm's parallelism is declarative end to end: a handler **fans out** one event per work item,
-each item resolves into its own **template flow instance** (with its own agent, session, and
-workspace), and the results **converge through a join** that owns completion, deduplication,
-and timeout. You declare the split key and the membership; the platform owns dispatch,
-per-instance identity, and completion tracking. No counters, no polling, no shared state.
+Say twenty startups arrive in one event and each needs its own agent to investigate it. You
+**fan out** one event per startup, each startup gets its own flow instance with its own
+agent, and a **join** collects the results and says when they're all in. You declare how to
+split and what counts as done; the platform owns dispatch, duplicates, and deadlines. No
+counters, no polling, no shared state.
 
 ## Fan out: one event per item
 
@@ -33,7 +33,9 @@ startups.found:
 ```
 
 `identity` names the stable per-item key; `max_items` bounds the fan-out. Record the member
-list (and a window key, such as a batch id) in entity fields — the join below reads them.
+list (and a window key, such as a batch id) in entity fields — the join below reads them. A
+**window** groups arrivals into one batch — here, every result carrying the same `batch_id`
+counts toward the same join.
 
 ## One instance per item
 
@@ -60,9 +62,9 @@ pins:
 ```
 
 Every selecting input pin must carry a field named after `instance:`; the pin's instance key
-derives from it. Each instance materializes **its own copy** of the flow's declared agents,
-keyed by (declaration × flow instance) — one instance finishing never affects a sibling's
-agent, and `memory: true` agents get one conversation per instance.
+derives from it. Each instance materializes **its own copy** of the flow's declared agents —
+one live agent per (agent declaration, instance) pair — so one instance finishing never
+affects a sibling's agent, and `memory: true` agents get one conversation per instance.
 
 ## Fan in: the barrier join
 
@@ -100,14 +102,19 @@ startup.assessed:
       advances_to: partial_report   # a late member is a declared outcome, not a hang
 ```
 
-The join arms when the entity enters the waiting stage and settles exactly once per window —
+The join arms when the entity enters the waiting stage. It settles exactly once per window —
 on completion or on timeout, whichever comes first. Two aggregation modes exist:
-`aggregation: barrier` (shown here) delivers once when the window completes, while
-`aggregation: stream` delivers every deduplicated arrival as it comes *and* still tracks
-window completion — use stream when the collector should react per result (progress updates,
-incremental writes) rather than only at the end ([`examples/routing/fan-in/stream`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/stream)). Do **not** hand-roll this with
-`accumulate` and an `expected_count` comparison: that pattern has no dedup, no timeout, and
-deadlocks when the last result arrives before the expected count is written.
+
+| Mode | Delivers | Use when |
+|---|---|---|
+| `barrier` (shown here) | once, when the window completes | you only need the finished set |
+| `stream` | every deduplicated arrival as it comes, and still tracks window completion | the collector should react per result (progress updates, incremental writes); see [`examples/routing/fan-in/stream`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/stream) |
+
+<Warning>
+  Do **not** hand-roll this with `accumulate` and an `expected_count` comparison: that
+  pattern has no dedup, no timeout, and deadlocks when the last result arrives before the
+  expected count is written.
+</Warning>
 
 The canonical runnable version of this whole shape is [`examples/routing/fan-in/barrier`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/barrier).
 
@@ -115,18 +122,29 @@ The canonical runnable version of this whole shape is [`examples/routing/fan-in/
 
 When many template instances need **shared state** — a rate budget, an aggregate score, a
 cross-instance learning table — that state gets one owner: a `mode: singleton` coordinator
-flow whose primary entity holds it as **typed contained map/list fields**. Instances report
-to the coordinator through ordinary events (often the fan-in pin above); the coordinator's
-handlers update the contained state deterministically. Two rules keep this from becoming a
-god-flow: contained items get no independent lifecycle (no timers, retries, or terminality of
-their own — an item that needs them must be promoted to a real template instance), and a
-plain `mode: static` flow is not coordinator authority — the coordinator role is explicit.
+flow whose entity holds it as **typed contained map/list fields**. Instances report to the
+coordinator through ordinary events (often the fan-in pin above); the coordinator's handlers
+update the contained state deterministically.
+
+```yaml
+# flows/coordinator/schema.yaml
+mode: singleton              # one instance for the whole system
+# flows/coordinator/entities.yaml
+budget:
+  scores: [LeadScore]        # typed contained state with one owner
+```
+
+Two rules:
+
+- Items in that contained state have no lifecycle of their own — no timers, retries, or
+  terminal stage. If an item needs those, promote it to a template instance.
+- The coordinator role is explicit — a plain `mode: static` flow does not qualify.
 
 ## Bounded loops: declared revision cycles
 
 When work legitimately cycles — draft, review, revise, review again — the cycle is declared,
-capped, and given an explicit exit. `loops:` replaces counter guards and backward-edge
-conventions as the loop authority:
+capped, and given an explicit exit. Declare the cycle with `loops:` rather than hand-rolling
+a counter in a guard:
 
 ```yaml nodes.yaml
 loops:
@@ -155,7 +173,7 @@ event_handlers:
     advances_to: approved
 ```
 
-Four operations cover a loop's life: `start` creates the activation at attempt 1, `admit`
+Four operations cover a loop's life: `start` creates the loop's durable record at attempt 1, `admit`
 accepts work for the current revision, `repeat` increments the attempt and mints a new
 revision (or, at the cap, atomically takes the declared `escape`), and `close` exits the
 region. `max_attempts` is evaluated once at start and stamped into the activation — editing

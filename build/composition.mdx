@@ -10,8 +10,11 @@ fields at their edges, so a child can be reused or swapped without touching the 
 internals.
 
 Beyond declaring children, composition is mostly the **round trip**: getting work into a child
-and getting a result back out to the right place. This page works one example end to end. The parent is an `orders` flow; it has a `notify` child (one instance, wired at
-boot) and a `fulfillment` child (one instance per order, created at runtime).
+and getting a result back out to the right place.
+
+This page works one example end to end. The parent is an `orders` flow; it has a `notify`
+child (one instance, wired at boot) and a `fulfillment` child (one instance per order, created
+at runtime).
 
 ```mermaid
 flowchart LR
@@ -28,7 +31,7 @@ flowchart LR
     F2 -->|"parent route"| OR
 ```
 
-## Why crossing a boundary needs a target
+## Why crossing a boundary needs an address
 
 Inside a flow, an event just goes to its subscribers. Across a boundary it is not that simple,
 and the reason is multiplicity: **a flow is not a single recipient.** A static flow can hold many
@@ -37,8 +40,8 @@ instances (one per order). So "send `fulfillment.completed` to the orders flow" 
 *which* order?
 
 Every cross-flow hop therefore has to answer one question, **which entity, in which instance**,
-the event is for. `target`, the parent route, and a receiver-side `select_entity` are just
-different ways to answer it. That question is the whole reason wiring across flows takes more
+the event is for. The `connect` edge, the parent route, and a receiver-side `select_entity` are
+just different ways to answer it. That question is the whole reason wiring across flows takes more
 than a subscription, and it is worth keeping in mind as you read the rest of this page.
 
 ## Declare the children
@@ -114,18 +117,29 @@ connect:
     to: .job_done               #   back to the root
 ```
 
-The compiled connect graph is the **single routing authority**: verify proves every edge at
-boot — a `from` with no producer, a `to` with no pin, an event mismatch across an edge, or an
-output pin bound nowhere is a boot error, never a silent no-delivery. Subscriptions never
-cross a flow boundary: the older scoped form (`validation/mailbox.review_requested`) and
-cross-flow wildcards are retired and fail verify with `legacy_qualified_subscription` —
-inside a flow, subscriptions; between flows, edges.
+Every cross-flow delivery comes from this graph and nowhere else. `swarm verify` checks each
+edge at boot, so a broken wire is an error you see immediately rather than an event that
+quietly goes nowhere:
+
+- a `from` with no producer
+- a `to` with no pin
+- an event mismatch across an edge
+- an output pin bound nowhere
+
+Subscriptions never cross a flow boundary: inside a flow, subscriptions; between flows,
+edges.
 
 Once an edge exists, the producer just emits: the event leaves through its output pin, the
 edge carries it, and the *receiving* pin's `resolution` + `carries` decide which instance
 handles it (next pattern).
 
 ## Pattern 2: spawn a template instance
+
+<Note>
+  Two ways to get an instance: mint it explicitly with `create_flow_instance` (below), or let
+  the receiving pin mint it on first event — often simpler; see *Addressing an existing
+  instance*.
+</Note>
 
 A template child does not exist until you create one. A handler mints an instance with the
 `create_flow_instance` action, passing data in through `config_from` (there is no shared memory
@@ -142,21 +156,20 @@ order.paid:
   advances_to: fulfilling
 ```
 
-The platform validates the template, builds the instance path, registers its nodes and agents,
-records a **parent route** back to this flow, creates the child's entity at its `initial_state`,
-and starts it. A child can declare `auto_emit_on_create` in its schema to fire its first event
+What `create_flow_instance` does:
+
+- validates the template and builds the instance path
+- registers the instance's nodes and agents
+- records a **parent route** — a standing return address so the child's output events come
+  back here
+- creates the child's entity at its `initial_state` and starts it
+
+A child can declare `auto_emit_on_create` in its schema to fire its first event
 from that config.
 
 `instance_id_from` must resolve to an id that is unique per instance you intend to create.
 Creating an instance whose id already exists fails closed (the handler errors rather than reusing
 or overwriting the live instance), so derive the id from a stable business key like the order id.
-
-<Note>
-  The declarative alternative — usually the better one — is to let the **receiving pin mint
-  instances**: declare the child's input pin with `resolution: {mode: select-or-create}` and a
-  carried identity, and instances come into existence when their first event arrives. No
-  creation handler needed. See the addressing section below.
-</Note>
 
 **Addressing an existing instance.** The *receiver* owns instance selection, not the emitting
 handler. The child's input pin declares how an arriving event finds its instance — by the
@@ -177,8 +190,7 @@ pins:
 ```
 
 The parent just emits `fulfillment.expedite` through its output pin and the `connect` edge; the
-carried `order_id` does the addressing. (Older Swarm accepted producer-side
-`target: { instance_id }` / `target: { flow, match }` — both are retired and fail at load.)
+carried `order_id` does the addressing.
 
 ## The return path
 
@@ -197,8 +209,7 @@ fulfillment.packed:
 
 Because the instance was created with a parent route, that output pin returns to the parent
 automatically — the producer never targets anything. (Request/reply correlation, when you need
-it, is declared on the *receiving* pin, not chosen per-emit; the retired `target: sender`
-spelling fails at load.)
+it, is declared on the *receiving* pin, not chosen per-emit.)
 
 The parent receives it on a handler, and here is the key move: the parent must **re-attach to
 the right order**, because the event arrived at the `orders` flow, which holds many orders, not
@@ -243,6 +254,14 @@ When you name an event or flow, it resolves by whether it contains a slash:
 
 Child flows inherit parent and root policy and override specific keys. See
 [Policy](/build/policy).
+
+<Note>
+  **Retired spellings.** Older bundles may contain these; all fail at load or verify:
+  scoped subscriptions (`validation/mailbox.review_requested`) and cross-flow wildcards,
+  which fail verify with `legacy_qualified_subscription`; producer-side
+  `target: { instance_id }` / `target: { flow, match }`; and `target: sender` for
+  request/reply.
+</Note>
 
 <CardGroup cols={2}>
   <Card title="Events and routing" icon="bolt" href="/concepts/events-and-routing">

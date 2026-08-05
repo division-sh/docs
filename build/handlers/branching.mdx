@@ -41,7 +41,10 @@ when it is under a policy limit, otherwise fire `mailbox_write` for a human. See
 ## on_complete: decide after computing
 
 `on_complete` decides *after* the handler has gathered or computed something, for example once
-enough scores have accumulated. It is an ordered list, and the first matching condition wins:
+enough scores have accumulated. It is an ordered list, and the first matching condition wins.
+(`accumulate` waits for several events — covered on the
+[next page](/build/handlers/accumulation); here, just read it as "the handler has gathered its
+inputs".)
 
 ```yaml
 score.received:
@@ -51,7 +54,7 @@ score.received:
   on_complete:
     - condition: "entity.composite_score >= policy.threshold"
       advances_to: approved
-      emit: candidate.approved
+      emit: candidate.approved     # these events declare no fields
     - condition: "entity.composite_score < policy.threshold"
       advances_to: rejected
       emit: candidate.rejected

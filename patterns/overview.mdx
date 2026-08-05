@@ -22,6 +22,8 @@ request.received:
 
 `on_fail` is one of `reject` (default), `discard`, `kill`, or `escalate:{event}`.
 
+See [Guards](/build/handlers/guards).
+
 ## Multi-gate pipeline
 
 Track sub-steps with gates, then reset them when re-entering a cycle.
@@ -36,6 +38,8 @@ resubmission.requested:
   clear_gates: true     # resets every gate on the entity
   advances_to: draft
 ```
+
+See [Writing data and advancing state](/build/handlers/data-and-state).
 
 ## Accumulate and compute
 
@@ -67,6 +71,8 @@ score.received:
       emit: candidate.rejected
 ```
 
+See [Accumulation and computation](/build/handlers/accumulation).
+
 ## Fan out
 
 Dispatch one event per item; each event resolves into its own template-flow instance (with its
@@ -76,8 +82,8 @@ own agent), and a staged `join:` owns completion.
 batch.requested:
   fan_out:
     items_from: payload.items
-    as: item
-    identity: item.item_id
+    as: item      # the loop variable used in fields:
+    identity: item.item_id  # what makes each dispatched item distinct
     emit:
       event: item.assigned
       fields:
@@ -88,11 +94,11 @@ batch.requested:
         expression: payload.items.map(i, i.item_id)
 ```
 
-Delivery is receiver-owned: a `mode: template` flow declares `instance: item_id` and an input
-pin with `resolution: {mode: select-or-create}` carrying `item_id` — one instance and one
-agent per item, minted on first delivery. Completion is a fan-in barrier pin plus a `join:`
-row (members, dedup, timeout) — see `examples/routing/fan-in/barrier` for the canonical
-shape, and [one role, many instances](/concepts/agents-and-sessions).
+Delivery is receiver-owned: the template flow's input pin decides whether each item gets a new
+instance or joins an existing one, so you get one instance and one agent per item. Completion
+is owned by a fan-in barrier, not by counting in the handler — see
+[`examples/routing/fan-in/barrier`](https://github.com/division-sh/swarm/tree/master/examples/routing/fan-in/barrier)
+and [Parallel work](/build/parallel-work).
 
 ## Rules-based routing
 
@@ -113,7 +119,10 @@ request.received:
         event: tech.requested
 ```
 
-`rules` and `on_complete` are mutually exclusive.
+`rules` and `on_complete` are mutually exclusive; using both is a load-time error caught by
+`swarm verify`.
+
+See [Branching](/build/handlers/branching).
 
 ## Dynamic flow instances
 
@@ -151,6 +160,8 @@ timer.payment_deadline:
   emit: payment.overdue_notification
 ```
 
+`{{...}}` reads a value from the flow's policy.
+
 ## Cross-entity queries
 
 Read across entities to build a report.
@@ -186,8 +197,11 @@ order.finalized:
       customer: entity.customer_name
 ```
 
+See [Emitting events](/build/handlers/emitting).
+
 ## Keep reviewers independent
 
-When two agents must not share context, give a role two pools with different subscriptions:
+When two agents must not share context, give a role two **pools** (independent groups of
+sessions for the same agent role) with different subscriptions:
 route originals to one and appeals to the other. Same prompt, separate sessions, no shared
 context.

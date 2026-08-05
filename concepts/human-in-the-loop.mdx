@@ -7,8 +7,8 @@ icon: "user-check"
 ## Humans as a first-class actor
 
 A human decision in Swarm is a typed, durable object — not a chat message and not a webhook
-callback. You choose per transition where a human belongs; everything else stays autonomous.
-We call this: autonomy is a dial, not a switch.
+callback. You choose per transition where a human belongs; everything else stays
+autonomous — autonomy is a dial, not a switch.
 
 ## Decision gates: pause a stage for a verdict
 
@@ -36,13 +36,15 @@ stages:
             fields: {feedback: decision.feedback}
 ```
 
-When an entity enters the stage, the platform creates a **decision card**: a typed resource
-carrying the declared context, the possible verdicts, and any input fields an outcome
-requires. Channels (Telegram ships first; any renderer you attach) *display* the
-card; the decision itself is committed through one API — which means a decision made on your
-phone and a decision made through the CLI or API are the same object, and the flow resumes
-identically. The card's content is hashed, and a verdict must reference the content it saw —
-a decision against a stale card is rejected, never silently applied to changed facts.
+When an entity enters the stage, the platform creates a **decision card** — a typed object
+carrying the context you declared, the possible verdicts, and any input an outcome requires.
+
+Channels (Telegram ships first; any renderer you attach) *display* the card; the decision
+itself is committed through one API — which means a decision made on your phone and a
+decision made through the CLI or API are the same object, and the flow resumes identically.
+
+If the facts change after a card is shown, the old card stops being valid: an approval based
+on stale information is rejected rather than applied to the new situation.
 
 Every outcome is a declared lifecycle edge: `advances_to` and `emit` are verified statically,
 so "what happens if they reject?" has an answer at boot, not at 2am. The platform itself
@@ -50,11 +52,14 @@ so "what happens if they reject?" has an answer at boot, not at 2am. The platfor
 
 ## The mailbox
 
+Gates pause a stage until someone answers; the mailbox is a queue of work items that do not
+block a stage. Gates produce decision cards; mailbox items carry decision sheets.
+
 Alongside gates, the **mailbox** is the persisted queue for human *tasks* — work items that
 are not a stage verdict (review this draft, investigate this alert). A handler writes an item
 with the `mailbox_write` action, declaring the item type, severity (`normal`, `urgent`,
-`critical`), a summary, and an explicit payload. Writes are row-idempotent per source event,
-so a replayed delivery never creates a duplicate item.
+`critical`), a summary, and an explicit payload. If the same event is delivered twice, you
+still get one item, not two.
 
 Each item carries a server-built **decision sheet**: the entity context and a preview of
 what happens downstream, so an operator can decide without reconstructing the situation by
@@ -105,12 +110,11 @@ A decided item cannot be decided again (a second attempt returns a conflict). Ap
 review, approval, and operational-decision items emit `mailbox.item_decided`, which the flow
 subscribes to in order to continue.
 
-`mailbox.item_decided` is platform-emitted and **auto-registered**: subscribe to it directly,
-no declaration in your own `events.yaml`. (Redeclaring it locally now fails verify with
-`platform_namespace_violation`.) The payload carries `mailbox_id`, `mailbox_decision_id`,
-`decision` (`approved` | `rejected` | `deferred` | `expired`), `decision_payload`, `item_type`,
-`mailbox_payload`, `source_event_id`, `source_flow`, `source_entity_id`, `decided_by`, and
-`decided_at`.
+`mailbox.item_decided` is platform-emitted and **auto-registered**: subscribe to it
+directly. Don't declare it in your own `events.yaml` — the platform owns that name. The
+payload carries `mailbox_id`, `decision` (`approved` | `rejected` | `deferred` | `expired`),
+`decision_payload`, and `source_entity_id`, plus provenance fields; the full payload is in
+the API reference.
 
 ```yaml nodes.yaml
 # the flow resumes when the operator approves

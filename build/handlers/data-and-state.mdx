@@ -26,9 +26,14 @@ ticket.classified:
     source_event: ticket.classified           # defaults to the triggering event
 ```
 
-`value` and `expression` are mutually exclusive on one item, and the literal key is `value`,
-not `literal`. The direct and mapped forms read from `source_event` (the triggering event by
+`value` and `expression` are mutually exclusive on one item. The direct and mapped forms read
+from `source_event` (the triggering event by
 default), and that event must declare every field they reference.
+
+<Note>
+The key is `value`. `literal:` is not accepted here — that key is used inside action blocks
+instead.
+</Note>
 
 What you write here **persists**: a value written by one handler is readable as `entity.<field>`
 in later handlers, not just this one. See the
@@ -46,7 +51,10 @@ ticket.resolution_confirmed:
 
 ## Gates
 
-A gate is a named boolean checkpoint on the entity. `sets_gate` raises one; a later guard reads
+A gate is a named boolean checkpoint on the entity. Gates are separate from ordinary boolean
+fields because the runtime knows about them: they can be cleared as a set with `clear_gates`,
+and they must be declared up front so `swarm verify` can prove every guard reads a gate
+somebody sets. `sets_gate` raises one; a later guard reads
 it as `entity.gates.<name>`:
 
 ```yaml
@@ -71,11 +79,11 @@ doc-node:
   gate_state:
     g_reviewed: false        # declare each gate the node uses
   event_handlers:
-    ...
+    # handlers omitted
 ```
 
-To reset, `clear_gates: true` clears **every** gate on the entity (it is entity-wide, not scoped
-to this node), which is how you re-enter a cycle:
+To reset, `clear_gates: true` clears **every** gate on the entity — it is entity-wide, not
+scoped to this node. There is no way to clear a single gate. This is how you re-enter a cycle:
 
 ```yaml
 resubmission.requested:

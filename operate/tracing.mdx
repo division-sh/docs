@@ -7,18 +7,22 @@ icon: "magnifying-glass-chart"
 ## The serve story feed
 
 `swarm serve --dev` narrates what the runtime is doing as a **story feed**: one line per
-semantic fact (event published, delivery made, agent turn completed, stage advanced, decision
-pending), rendered for whoever is watching:
+meaningful thing that happened — an event published, a delivery made, an agent turn finished,
+a stage advanced, a decision pending — rendered for whoever is watching:
 
 - **In a terminal**, lines are colored semantically (red is reserved for real failures) with
   a live status footer.
-- **Piped or `--json`**, the feed is NDJSON — typed fact lines an agent or script can parse.
-  Anything a human can see in the feed, a monitoring agent can consume structurally,
-  including degradation notices (for example, a detached trace follower).
+- **Piped or `--json`**, the feed is NDJSON — structured lines (one JSON object per fact) an
+  agent or script can parse. Anything a human can see in the feed, a monitoring agent can
+  consume structurally, including notices that the feed itself is degraded — for example,
+  when a trace follower loses its connection and stops receiving lines.
 
 `--no-feed` turns it off. `swarm logs --follow` remains the *diagnostic* stream — component
 internals at log level — while the feed is the *narrative* stream; they answer different
 questions.
+
+Commands on this page are shown with their API method names (like `run.trace`) so API users
+can find the same data; CLI users can ignore them.
 
 ## Following a run
 
@@ -30,8 +34,14 @@ swarm run trace <run-id> -f
 ```
 
 It accepts filters (`--event-name`, `--entity-id`, `--delivery-status`, `--subscriber-type`,
-`--since`, `--until`, `--limit`). The snapshot uses `run.trace`; `-f` opens a
-`run.subscribe_trace` stream. To list runs, use `swarm run list`.
+`--since`, `--until`, `--limit`):
+
+```bash
+swarm run trace <run-id> --entity-id order-42 --delivery-status failed
+```
+
+The snapshot uses `run.trace`; `-f` opens a `run.subscribe_trace` stream. To list runs, use
+`swarm run list`.
 
 ## Diagnosing why a run is stuck
 

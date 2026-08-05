@@ -8,6 +8,9 @@ The static analyzer runs at boot, after loading all contracts and before startin
 or agents, and on demand with `swarm verify`. It is the authoritative integration test for a
 contract bundle: a bundle that boots has passed it.
 
+Every check below runs on `states`-era and `stages`-era grammar alike; the docs use *stage*,
+some check messages still say *state*.
+
 ```bash
 swarm verify --contracts ./my-flow
 ```
@@ -32,10 +35,8 @@ choice; the advisories are hints, not mandates.
 
 - **`cross_surface_named_type_use`** (`lint_evidence`). Multiple entity/event/node-state
   surfaces reuse the same structural shape and may be clearer as a named type in `types.yaml`.
-  Exact duplicate shapes emit only when `field_count >= 3 OR candidate_count >= 3`; this avoids
-  low-signal two-field/two-surface tutorial handoffs while still catching larger repeated shapes.
-  Near-duplicate shapes remain conservative: at least 4 shared field/type pairs, at least 75%
-  overlap, and size delta no greater than 2.
+  (The thresholds are tuned to skip small two-field handoffs and flag only larger or
+  substantially overlapping repeated shapes.)
 - **`entity_reader_coverage`** (`lint_evidence`). A declared entity field has no internal
   handler reader. This is often intentional for audit/operator readout fields. Add
   `_unused_reader_reason: <reason>` to the entity field when the value is externally read
@@ -44,10 +45,8 @@ choice; the advisories are hints, not mandates.
   does not satisfy writer coverage, authorize runtime/API reads, or change persistence
   semantics.
 
-The spec states **43 primary checks plus 3 supplemental**. The catalog below documents the
-full set: the boot-verification checks plus the entity-contract checks that also run in
-`swarm verify` (the "Wave 1" slices). All checks run on every boot; there is no way to
-disable an individual check.
+This catalog covers every check that runs at boot and in `swarm verify`; none can be
+disabled.
 
 ## Events and routing
 
@@ -173,11 +172,10 @@ disable an individual check.
 
 - **`write_pin_ownership_validation`** (error). Two flows declare writes to the same output
   data pin. *Rationale: one writer per field keeps entity state authoritative.*
-- **`RETIRED-EMIT-ROUTING`** (error, at parse). An emit declares `target:` or
-  `broadcast:` — producer-side routing authority is retired; the error names the receiver-owned
-  replacement (subscriptions, `connect` edges, pin `resolution`). Pin-declared outputs route
-  through the parent's `connect` edges and the structural parent route; the compiled connect
-  graph is the single routing authority and verify proves every edge at boot.
+- **`RETIRED-EMIT-ROUTING`** (error, at parse). Emits no longer choose their recipients:
+  delivery is decided by the receiver's subscriptions and the parent's `connect` edges, and
+  `swarm verify` checks every edge at boot. This error fires when an emit still carries
+  `target:` or `broadcast:`.
 - **`missing_external_select_entity`** (error). A stateful handler consumes an external or
   no-target event but declares no `select_entity`/`select_or_create_entity`, so it would run
   against the sender instead of a receiving-flow-owned entity.

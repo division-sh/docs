@@ -45,7 +45,8 @@ error):
 </ParamField>
 <ParamField path="select_entity" type="object">
   Resolve exactly one existing flow-owned entity by a declared business key (`by` maps entity
-  fields to `payload.*` references). Zero or multiple matches fail closed.
+  fields to `payload.*` references). Zero or multiple matches stop the handler with an error
+  rather than guessing (fail closed).
 </ParamField>
 <ParamField path="select_or_create_entity" type="object">
   Resolve one active match, or deterministically mint one from the declared key.
@@ -83,7 +84,8 @@ error):
 </ParamField>
 <ParamField path="clear_gates" type="boolean">
   Reset gates to false (runs before guard). All-or-nothing, and **entity-wide**: it clears every
-  gate on the entity, not just the gates this node declares. Selective clearing is not current.
+  gate on the entity, not just the gates this node declares. Selective clearing is not
+  supported.
 </ParamField>
 <ParamField path="data_accumulation" type="object">
   Write fields to entity state. `writes` is a list; `source_event` defaults to the trigger
@@ -114,16 +116,16 @@ the emit step runs after the writes and sees the new values.
 ## Emit
 
 <ParamField path="emit" type="string or object">
-  Publish the follow-up event. The object form `{event, fields, target, broadcast}` populates
-  and routes it; the bare string form emits with an empty payload. A handler top-level `emit`
-  is valid only when the handler has a single emit site.
+  Publish the follow-up event. The object form `{event, fields}` populates it; the bare
+  string form emits with an empty payload. A handler top-level `emit` is valid only when the
+  handler has a single emit site.
 </ParamField>
 
-The emitted payload is producer-complete: `fields` must set every field the event declares,
-each as a CEL expression (typically `entity.*` or `payload.*`). Nothing is copied from the
-triggering event, so the bare string form is correct only for events with no payload fields.
-The analyzer accepts a bare emit of a field-carrying event, so the empty payload surfaces only
-at runtime; populate `fields` whenever the event carries data.
+`fields` must set every field the event declares — nothing is copied from the triggering
+event (the payload is *producer-complete*). Each field is a CEL expression (typically
+`entity.*` or `payload.*`), so the bare string form is correct only for events with no
+payload fields. The analyzer accepts a bare emit of a field-carrying event, so the empty
+payload surfaces only at runtime; populate `fields` whenever the event carries data.
 
 An emit carries no routing fields at all: intra-flow delivery comes from subscriptions, and a
 pin-declared output routes through the parent's `connect` edges with instance selection owned
@@ -152,7 +154,7 @@ load with a `RETIRED-EMIT-ROUTING` error naming the replacement.)
   Count items matching a condition. Fields: `items_from`, `condition`, `store_as`.
 </ParamField>
 <ParamField path="fan_out" type="object">
-  Emit one event per item. Fields: `items_from`, `target`, `emit`. Writes `fan_out.count` to
+  Emit one event per item. Fields: `items_from`, `emit`. Writes `fan_out.count` to
   handler context.
 </ParamField>
 <ParamField path="query" type="object or list">
@@ -186,19 +188,20 @@ is what a **bare scalar** means, which is decided per block:
 
 | Block | A bare scalar `foo: payload.x` is | Explicit forms |
 |---|---|---|
-| `emit.fields`, `emit.target.match` | a CEL expression (so `payload.x` resolves) | `{ ref }`, `{ literal }`, `{ cel }` |
+| `emit.fields` | a CEL expression (so `payload.x` resolves) | `{ ref }`, `{ literal }`, `{ cel }` |
 | `mailbox.*`, `artifact_repo.*` | a **literal string** | `{ ref }`, `{ literal }`, `{ cel }` (a reference needs `ref:`) |
 | `config_from` (`create_flow_instance`) | a **reference path** | reference strings only |
 | `data_accumulation.writes` | a direct copy from `source_event` | `value:` (literal), `expression:` (CEL), `{source_field, target_field}` (mapped) |
 
 In the `{ ref / literal / cel }` object form, give exactly one key; `expression:` is an accepted
-alias for `cel:`. The practical rule: in `emit.fields`, `emit.target.match`, and `config_from` a
+alias for `cel:`. The practical rule: in `emit.fields` and `config_from` a
 bare path resolves, but in the `mailbox` and `artifact_repo` blocks a bare path is a constant
 string, so write `{ ref: ... }` when you mean a reference. See
 [Actions](/build/handlers/actions) for worked examples.
 
 <Warning>
   Retired handler fields: `emits` (use `emit`), `payload_transform` (use `emit.fields`),
-  `fan_out.emit_per_item` and `fan_out.emit_mapping` (use `fan_out.emit`). Selective
-  `clear_gates: [gate]` is not current; gate clearing is all-or-nothing.
+  `target:`/`broadcast:` on emits (fail at load with `RETIRED-EMIT-ROUTING`; delivery is
+  receiver-owned), `fan_out.emit_per_item` and `fan_out.emit_mapping` (use `fan_out.emit`).
+  Selective `clear_gates: [gate]` is not supported; gate clearing is all-or-nothing.
 </Warning>

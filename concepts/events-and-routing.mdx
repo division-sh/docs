@@ -60,7 +60,7 @@ after persisting, the event replays on recovery and nothing is lost.
 Here is what makes runs reproducible: no LLM decides who acts next. Who receives an event follows
 entirely from who declared a **subscription** to it.
 
-- A system node subscribes in `nodes.yaml`: its `event_handlers` keys are its subscriptions. Subscriptions are same-flow only; cross-flow delivery goes through the package `connect` block.
+- A system node subscribes in `nodes.yaml`: its `event_handlers` keys are its subscriptions. Subscriptions only match inside one flow — see *Crossing flow boundaries* below.
 - An agent subscribes in `agents.yaml` (`subscriptions`).
 
 `events.yaml` defines payload *shapes*, never routing. So you change who receives an event by
@@ -116,11 +116,11 @@ subscribes. The payload does not move.
 ## Crossing flow boundaries
 
 Inside one flow, routing is just subscription matching, and that is most of what you write.
-Between flows there is exactly one mechanism: the event leaves through a declared **output
-pin**, a `connect` edge in the package binds it to an **input pin**, and the receiving pin's
-`resolution` and carried identity decide which instance handles it — including instances that
-did not exist yet (`select-or-create` mints them on first delivery). The compiled connect
-graph is the single routing authority, and verify proves every edge at boot.
+Between flows there is exactly one mechanism. An event leaves a flow through a declared
+**output pin**. A `connect` line in the package wires that output pin to another flow's
+**input pin**. The receiving pin decides which instance handles it — and can create one on
+the spot if it doesn't exist yet. `swarm verify` checks every edge at boot. The full grammar
+is in [Composing flows](/build/composition).
 
 <CardGroup cols={2}>
   <Card title="Composing flows" icon="puzzle-piece" href="/build/composition">

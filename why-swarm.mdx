@@ -39,10 +39,10 @@ and state change is persisted, so runs are reproducible, auditable, and crash-sa
 Declaring agent steps in YAML and dispatching them in a fixed order, with no LLM in the routing
 loop, is the right baseline, and increasingly a standard one. But routing only decides
 who-acts-next. Running a multi-agent system in production is the larger problem, and it is the layer
-Swarm adds: work is a set of entities, each moving through a durable state machine, so the runtime
-always knows where every one of them is and resumes mid-flight after a crash; each agent is isolated
-down to its own workspace, so one cannot reach into another's work; token spend is metered per
-entity and per actor, with automatic throttling before a budget runs away; and humans act through
+Swarm adds. Work is a set of entities, each moving through a durable state machine, so the runtime
+always knows where every one of them is and resumes mid-flight after a crash. Each agent is isolated
+down to its own workspace, so one cannot reach into another's work. Token spend is metered per
+entity and per actor, with automatic throttling before a budget runs away. And humans act through
 the same event pipeline as everything else.
 
 A workflow runner dispatches agents and exits. Swarm is the runtime they would run inside.
@@ -54,7 +54,7 @@ A workflow runner dispatches agents and exits. Swarm is the runtime they would r
   when?" later.
 - **Coordinating many agents, from a handful to a hundred or more.** Fan a batch out and
   [each item gets its own flow instance with its own agent](/build/parallel-work) — isolated
-  session, workspace, and lifecycle — while a declared join owns completion. Agent count
+  session, workspace, and lifecycle — while a declared join decides when the batch is complete. Agent count
   scales on a single deployment without the context-window blowup of a flat chat.
 - **Approval-gated automation.** A risky external effect can require a typed human verdict
   before it *exists*: no request, no credential lookup, no provider call until someone
@@ -65,8 +65,9 @@ A workflow runner dispatches agents and exits. Swarm is the runtime they would r
   a better version, without refactoring.
 - **Crash recovery as a requirement.** Atomic transitions and event replay are the
   baseline, not a bolt-on.
-- **Regulated or audited environments.** Two-layer event-plus-mutation persistence makes
-  "what changed, when, and because of which event" a single query.
+- **Regulated or audited environments.** Every event is stored, and so is every field change
+  with its before/after value — so "what changed, when, and because of which event" is a
+  single query.
 - **High-volume parallel entities.** Orders, tickets, claims: hundreds flow through one
   contract without interfering, each in its own scoped state.
 - **Cost-controlled deployments.** Token usage is tracked per entity and per actor, with
@@ -78,8 +79,8 @@ A workflow runner dispatches agents and exits. Swarm is the runtime they would r
 - **Conversational chatbots — with a line worth drawing.** A chatbot whose value ends at the
   reply is the provider SDK's job; the contract overhead does not pay for itself. A durable
   assistant that remembers per conversation, waits on timers, and asks permission through
-  chat is a different animal — that is a [standing flow](/build/standing-ingress), and it is
-  strong fit.
+  chat is a different animal — that is a [standing flow](/build/standing-ingress) — a
+  long-lived flow that stays up and reacts to incoming messages — and it is strong fit.
 - **Exploratory prototyping that changes hourly.** The analyzer refusing to boot a
   half-finished contract is exactly the wrong friction while you are still sketching. (The
   sketch loop is cheaper than it was — `swarm test` and the mock backend iterate a flow with
@@ -97,7 +98,7 @@ libraries; it applies that rigor to multi-agent LLM systems.
 | Routing | LLM-managed (non-deterministic) | Declared, deterministic | Code-defined graph | Contract-defined, subscription-derived |
 | Unit of work | A shared conversation | A workflow, run once top to bottom | A graph execution | Entities through a durable state machine |
 | Crash recovery | None | Re-run from the top | Manual checkpointing | Atomic transitions + event replay |
-| Agent isolation | Shared chat | Per-step process | Shared state | Scoped sessions, per-agent workspaces, role authority |
+| Agent isolation | Shared chat | Per-step process | Shared state | Scoped sessions, per-agent workspaces, per-role permissions |
 | Cost control | None | None | None | Per-entity and per-actor budgets, throttle and emergency states |
 | Humans | Out of band | Out of band | Out of band | Typed decision gates: declared outcomes, phone-decidable, nothing auto-decides |
 | Scaling | Single process | One workflow per run | Single process | Per-entity parallelism (one instance + agent per item), runs spanning days |
@@ -119,14 +120,11 @@ What you can always replay and audit in production is what the *system* did with
 answer, and the fact that the answer only changed state by passing through a deterministic
 handler. Swarm does not make the model deterministic; it
 makes everything around the model deterministic, which is the part worth auditing, replaying, and
-recovering. That is the whole bet, restated as a cost: you accept a fuzzy model and wrap it in a
-system that is not.
+recovering. You accept a fuzzy model and wrap it in a system that is not.
 
-There is also an upfront price worth saying outright: real contracts to write and a contract
-model to learn before complex flows pay off. (Local setup is cheap now: SQLite ships with the
-binary, the platform spec is embedded, and agent-free flows boot with no credential, so the
-Quickstart runs with zero env vars.) The bill is conceptual, not infrastructural, but it is real.
-The payoff is everything above; the bill comes first.
+The cost is conceptual: real contracts to write, and a contract model to learn before complex
+flows pay off. Local setup is cheap — SQLite ships with the binary and the Quickstart runs with
+zero env vars. The payoff is everything above; the cost comes first.
 
 <Card title="Ready to try it?" icon="rocket" href="/quickstart">
   Boot the runtime and trigger your first run.

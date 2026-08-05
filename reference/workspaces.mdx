@@ -74,7 +74,7 @@ at its declared scope; it aborts if any mount cannot be satisfied.
   It persists across turns for `memory: true` agents, and is ephemeral per task for
   `memory: false`.
 - **per-flow-instance**: created when the instance is created, and preserved when the instance
-  terminates (for post-mortem); archiving it is an operational concern.
+  terminates (for post-mortem). Nothing cleans it up automatically.
 
 ## Deployment and configuration
 
@@ -85,14 +85,16 @@ laptop, in Docker, and in production. Only the backing storage changes.
 |---|---|---|---|
 | Local dev | host dir, read-only bind | host dir under a managed root | host dir from the contract loader |
 | Docker | shared volume or bind, read-only | per-scope volumes (per-agent or per-instance) | read-only volume |
-| Production | network storage (NFS, EFS, GCS FUSE), read-only | follows mode: ephemeral for `task`, persistent for session modes | read-only volume from the deploy artifact |
+| Production | network storage (NFS, EFS, GCS FUSE), read-only | ephemeral for `memory: false`, persistent for `memory: true` | read-only volume from the deploy artifact |
 
 A contract that runs on local dev runs on Docker and production without changes.
 
 ### Docker backing (the `claude_cli` runtime)
 
 When the runtime spawns containers (the Claude CLI runtime, selected with `--backend claude_cli`), it creates one per workspace
-from a base image, on a shared network, and reuses it by name. The defaults are overridable:
+from a base image, on a shared network, and reuses it by name. The defaults are overridable.
+These Docker-backing variables are read from the process environment — they are deployment
+settings, not `swarm.yaml` keys.
 
 | Variable | Default | Controls |
 |---|---|---|
@@ -119,7 +121,8 @@ from a base image, on a shared network, and reuses it by name. The defaults are 
 Platform-created containers are labeled so recovery and reset tools identify them by label, not
 by name guessing.
 
-- **Kinds:** `scaffold`, `system`, `entity`, `agent`, `flow`.
+- **Kinds:** `scaffold`, `system`, `entity`, `agent`, `flow`. Filter with
+  `docker ps --filter label=dev.swarm.container.kind=agent`.
 - **Names:** per-agent workspaces are `swarm-agent-<id>`; per-flow-instance workspaces are
   `swarm-flow-<path>`.
 - **Labels:** `dev.swarm.owner`, `dev.swarm.container.kind`, `dev.swarm.reset.eligible`, plus

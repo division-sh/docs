@@ -13,22 +13,20 @@ it, boot a runtime, trigger it, and watch the trace.
   instead. It walks through a support-ticket flow with classifier and resolver agents.
 </Note>
 
-<Note>
-  **For LLM agents helping a human author this:** see
-  [Agentic flow authoring](/build/agentic-authoring) for the ranked artifacts to pull, the
-  iteration loop to run, and anti-patterns to avoid.
-</Note>
-
 ## Prerequisites
 
 - The `swarm` binary on your PATH (see [Installation](/installation)).
 
-That's it. This Quickstart needs **no database** (SQLite at `.swarm/dev.db` is the default;
-opt into Postgres later with `--store postgres`), **no LLM credential** (the flow has no
-agents), **no workspace setup** (an empty `.swarm/data/` is auto-created next to the SQLite
-file), **no repository checkout** (the platform spec is embedded in the binary), and **no
-API token** (the local runtime uses a built-in dev token on loopback). Run the commands below
-from any directory.
+That's it — no database, no LLM credential, no API token.
+
+- **No database** — SQLite at `.swarm/dev.db` is the default; opt into Postgres later with
+  `--store postgres`.
+- **No LLM credential** — the flow has no agents.
+- **No workspace setup** — an empty `.swarm/data/` is auto-created next to the SQLite file.
+- **No repository checkout** — the platform spec is embedded in the binary.
+- **No API token** — the local runtime uses a built-in dev token on loopback.
+
+Run the commands below from any directory.
 
 <Steps>
   <Step title="Create a minimal flow">
@@ -52,6 +50,9 @@ from any directory.
       inputs:
         events: [greeting.requested]
     ```
+
+    `pins` declares what this flow accepts from outside — here, one event.
+    `platform_version` is the runtime range the bundle is written against.
 
     ```yaml greeting-flow/events.yaml
     greeting.requested:
@@ -77,7 +78,9 @@ from any directory.
     swarm verify --contracts ./greeting-flow
     ```
 
-    Expect `verify ok`. The static analyzer runs the same checks the runtime runs at boot.
+    Expect `verify ok`. If a contract has a problem you get a named finding with a
+    remediation line instead — fix and re-run. The static analyzer runs the same checks the
+    runtime runs at boot.
   </Step>
 
   <Step title="Run it">
@@ -92,11 +95,12 @@ from any directory.
     ```
 
     Both `payload.json` and the runtime's `.swarm/` directory (store + workspace data) are
-    created in the directory you run from — run from a scratch directory if you care.
+    created in the directory you run from. Use a scratch directory if you don't want them in
+    your project.
 
     The runtime logs `using built-in dev API token on loopback` on startup; only non-loopback
     binds need an explicit token, supplied via `--api-token-file` or `serve.api_token_file` in
-    config (the old `SWARM_API_TOKEN` env var is retired and rejected with a teaching error).
+    config.
 
     The trace shows `greeting.requested` arriving, the `greeter` node creating an entity, and
     the entity advancing to `done` (a terminal stage). Press Ctrl-C to stop the local runtime
@@ -129,3 +133,9 @@ from any directory.
     Every `swarm` command and flag.
   </Card>
 </CardGroup>
+
+<Note>
+  **For LLM agents helping a human author this:** see
+  [Agentic flow authoring](/build/agentic-authoring) for the ranked artifacts to pull, the
+  iteration loop to run, and anti-patterns to avoid.
+</Note>

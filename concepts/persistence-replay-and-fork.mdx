@@ -46,22 +46,21 @@ flowchart TD
 Because everything is persisted, work can be re-delivered:
 
 - **Event replay** redelivers a persisted event to its original subscribers (or a subset),
-  creating a new event with `source_event_id` lineage and fresh delivery rows.
+  creating a new event that records which event it came from, so the replay is visible in
+  history rather than hidden.
 - **Agent replay** is the same primitive scoped to one agent; **replay-backlog** redelivers
   an agent's pending events after a restart.
-- **Crash recovery** replays any event that was persisted but not yet marked delivered;
-  idempotency keeps the result the same.
+- **Crash recovery** replays any event that was persisted but not yet marked delivered —
+  and because replaying an event produces the same result as the first delivery, nothing is
+  duplicated.
 
 ## Fork
 
-The mutation log is also an undo log. Combined with the `runs` and `run_fork_*` tables, it
-lets the runtime reconstruct the full system state at a moment in time, optionally swap the
-contract bundle, and resume, so last week's failed run can be replayed against this week's
-fixed contracts.
+Because every field change records its before value, the runtime can wind an entity back to
+any moment. Fork uses that to rebuild a run's state at a chosen point and continue from
+there.
 
 <Note>
-  The persistence and reconstruction plumbing for run-level fork is in place: the mutation
-  log and the `runs`/`run_fork_*` tables. The operator command surface for it is in progress.
-  For replaying individual events today, use the event and agent replay primitives above. See
-  [Fork and replay](/operate/fork-and-replay).
+  Run-level fork is available as [`swarm run fork`](/operate/fork-and-replay); forks
+  currently run against the same contract bundle as the source run.
 </Note>

@@ -7,13 +7,13 @@ icon: "inbox"
 Every handler runs against one entity, the record moving through the flow. Most handlers inherit
 it from the event that triggered them and declare nothing. But the handler that receives a
 flow's **first** event has no entity yet, so it must say where one comes from. Declare exactly
-one of the three modes (declaring none on a stateful input-pin handler is a boot error, and
-declaring more than one is also a boot error).
+one of the three modes. Declaring none, or declaring more than one, is a boot error: the
+package refuses to load, and `swarm verify` catches it before you deploy.
 
 ## create_entity
 
-Mint a new entity at the flow's initial state. Use it when the event starts a new item in this
-flow (a fresh ticket arriving):
+Create ("mint") a new entity at the flow's initial state. Use it when the event starts a new
+item in this flow (a fresh ticket arriving):
 
 ```yaml
 ticket.created:
@@ -22,11 +22,13 @@ ticket.created:
 ```
 
 The new entity gets an auto-generated id, and the inbound event's `entity_id` is ignored for
-state operations. Every declared field is materialized (its `initial:` value, else the type
-default), so a guard in the same handler can read any field immediately. `create_entity` cannot
-be combined with `accumulate` (a single accumulator must target one entity, but `create_entity`
-mints a new one each time). It can be combined with `fan_out`: one entity is created, and every
-fanned-out event shares it.
+state operations. Every declared field already has a value the moment the entity exists — its
+`initial:` value, or the type default — so a guard in the same handler can read any field
+immediately.
+
+- Cannot be combined with `accumulate` — an accumulator targets one entity, but `create_entity`
+  mints a new one each time.
+- Can be combined with `fan_out` — one entity is created and every fanned-out event shares it.
 
 ## select_entity
 
@@ -41,8 +43,9 @@ fulfillment.completed:
   advances_to: shipped
 ```
 
-Exactly one entity must match. Zero matches or more than one both fail closed, rather than the
-handler guessing. This is the mode you use when a result arrives from another flow and has to
+Exactly one entity must match. Zero matches, or more than one, both stop the handler with an
+error rather than letting it guess (that is what "fail closed" means throughout these docs).
+This is the mode you use when a result arrives from another flow and has to
 re-attach to the right entity; see [Composing flows](/build/composition).
 
 ## select_or_create_entity
@@ -57,6 +60,9 @@ order.event_received:
       order_id: payload.order_id
   advances_to: active
 ```
+
+On the create path the entity is minted at the initial stage; the key field is not written for
+you — write it in `data_accumulation`, as the accordion below shows.
 
 ## Complete flows
 

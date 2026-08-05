@@ -23,7 +23,7 @@ on the mode you declare in the parent:
 | Mode | Instances | Created | Use it for |
 |---|---|---|---|
 | `static` | exactly one | at boot | most flows |
-| `template` | zero at boot, many at runtime | a `create_flow_instance` action | one copy per customer, per order, and so on |
+| `template` | zero at boot, many at runtime | on demand, when a handler asks for one (`create_flow_instance`) | one copy per customer, per order, and so on |
 
 A static flow is the common case: one copy boots, and many entities flow through it (a single
 ticket flow handles thousands of tickets). A template flow is a stamp: nothing runs at boot, and
@@ -58,8 +58,8 @@ entities run concurrently. That is what lets one flow carry hundreds or thousand
 parallel without any author-managed concurrency.
 
 This multiplicity has a knock-on effect: because a flow holds many entities at once, an event
-arriving from another flow cannot just go "to the flow," it has to say which entity it is for.
-That is the core of why cross-flow wiring needs targets; see [Composing flows](/build/composition).
+arriving from another flow cannot just go "to the flow" — it has to say **which entity** it
+is for. [Composing flows](/build/composition) covers how that address is declared.
 
 ## Pins: a flow's public interface
 

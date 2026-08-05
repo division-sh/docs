@@ -18,13 +18,22 @@ running runtime.
 | `--contracts <path>` | Contract bundle root. Also `paths.contracts_path` in config. |
 | `--config <path>` | Explicit `swarm.yaml` config; overrides discovered layers. |
 | `--json` | Machine-readable output (one JSON document, or NDJSON when streaming). |
-| `--quiet` | Only the load-bearing value. Mutually exclusive with `--json`. |
+| `--quiet` | Print only the primary value (for scripts) — no labels or formatting. Mutually exclusive with `--json`. |
 | `--no-color` | Disable color. Also `NO_COLOR`. |
 | `--log-level <debug\|info\|warn\|error>` | Diagnostic verbosity (default `info`). |
 
-Resolution precedence is: flag, then layered `swarm.yaml` config (explicit `--config` >
-`./.swarm/swarm.yaml` > `./swarm.yaml` > user-global `$XDG_CONFIG_HOME/swarm/swarm.yaml`),
-then built-in default. Environment variables are **not** an accepted configuration source —
+Resolution precedence, highest first:
+
+1. Command-line flag
+2. Explicit `--config` file
+3. `./.swarm/swarm.yaml`
+4. `./swarm.yaml`
+5. User-global `$XDG_CONFIG_HOME/swarm/swarm.yaml`
+6. Built-in default
+
+(The Configuration page lists the same layers.)
+
+Environment variables are **not** an accepted configuration source —
 retired `SWARM_*` variables fail with a teaching error naming the flag or config key. See
 [Configuration](/reference/configuration).
 
@@ -42,7 +51,7 @@ retired `SWARM_*` variables fail with a teaching error naming the flag or config
 | `swarm secrets` | local | Manage local secrets used by tools and providers. |
 | `swarm connections` | local | Manage managed credential connections (OAuth and friends). |
 | `swarm workspace` | local | Manage local workspace setup (image build, doctor). |
-| `swarm migrate-producer-routing` / `swarm migrate-connect-delivery-one` | local | Deterministic codemods removing retired routing spellings. |
+| `swarm migrate-producer-routing` / `swarm migrate-connect-delivery-one` | local | Rewrite contracts that still use removed routing fields (`target:`/`broadcast:` on emits, `connect.delivery: one`); run these if `swarm verify` reports `RETIRED-EMIT-ROUTING`. |
 | `swarm version [--server]` | local / `health.check` | Print binary version; `--server` adds runtime identity. |
 | `swarm completion <shell>` | local | Generate shell completion. |
 
@@ -57,7 +66,6 @@ running one. It takes `--event <name>` and `--payload <file>`.
 | `swarm run status [run-id]` | `run.diagnose` | Diagnose one run (why it is not progressing). |
 | `swarm run trace [run-id]` | `run.trace` / `run.subscribe_trace` | Print or follow (`-f`) a run's causal trace. |
 | `swarm run fork <source-run-id>` | `run.fork` | Fork a run from an event point. Flags: `--at-event <event-id>`, `--bundle-hash <hash>` (same-bundle only), `--idempotency-key <key>`. |
-| `swarm health` | `health.check` | Authenticated operator health summary. |
 
 ## Events and entities
 
@@ -99,6 +107,7 @@ running one. It takes `--event <name>` and `--payload <file>`.
 | `swarm control continue <run-id> \| --all` | `run.continue` / `runtime.resume` | Resume a run, or ingress. |
 | `swarm control stop <run-id> \| --all` | `run.stop` | Stop a run (or all, with confirmation). |
 | `swarm control nuke` | `runtime.nuke` | Destructive runtime reset (`--dry-run` previews). |
+| `swarm health` | `health.check` | Authenticated operator health summary. |
 | `swarm mailbox list` | `mailbox.list` | List mailbox items. |
 | `swarm mailbox view <id>` | `mailbox.get` | One item with its decision sheet. |
 | `swarm mailbox approve\|reject\|defer <id>` | `mailbox.*` | Decide a pending item. |
@@ -107,7 +116,7 @@ running one. It takes `--event <name>` and `--payload <file>`.
 
 ## Bundles
 
-Persisted contract bundles in the runtime store, identified by canonical bundle hash.
+Persisted contract bundles in the runtime store, identified by canonical bundle hash (a content hash of the bundle's files).
 
 | Command | Method | Purpose |
 |---|---|---|
@@ -119,9 +128,16 @@ Persisted contract bundles in the runtime store, identified by canonical bundle 
 
 ## Exit codes
 
-`0` success, `2` CLI validation or misuse, `3` runtime or transport error, `4` auth or
-missing token, `5` resource not found, `6` resource state or idempotency conflict, `7` run
-terminal failed or cancelled, `130` interrupted or detached.
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | CLI validation or misuse |
+| `3` | Runtime or transport error |
+| `4` | Auth or missing token |
+| `5` | Resource not found |
+| `6` | Resource state or idempotency conflict |
+| `7` | Run terminal failed or cancelled |
+| `130` | Interrupted or detached |
 
 <Note>
   Three replay surfaces, at different granularities:

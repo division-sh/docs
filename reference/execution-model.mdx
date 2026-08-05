@@ -58,6 +58,15 @@ These rules interact, so read them as a unit:
   expression in the same handler observes the projected value. See
   [Accumulation and projection](/reference/accumulation).
 
+In summary:
+
+| Field | Alone | With rules/branch |
+|---|---|---|
+| `advances_to` | Advances the state | Skipped when the branch advances the state; the branch wins |
+| `sets_gate` | Sets the gate | The branch value overrides it when the branch specifies one |
+| `data_accumulation` | Writes the fields | An `on_complete` branch value overrides it; with `rules`, it runs and supplements the matched rule's writes |
+| `emit` | Publishes the event | Fails at boot alongside `rules`; the active emit site owns the payload |
+
 ## When a handler stops early
 
 - **Guard fails.** The handler stops and runs the guard's `on_fail` action: `reject` (default,
@@ -70,7 +79,7 @@ These rules interact, so read them as a unit:
 
 ## Failures, retries, and dead letters
 
-A handler that throws rolls back its atomic boundary. Transient errors are retried (bounded,
+A handler that throws rolls back its whole transaction. Transient errors are retried (bounded,
 with backoff); guard failures, validation errors, and business-logic failures are not retried
 and go to a dead letter.
 
@@ -79,7 +88,8 @@ limit (default 50), the platform intercepts that downstream event before it ente
 writes a `dead_letters` row for it, **but the handler that emitted it still reports success and
 its other side effects (state, gates, data) still commit**. So a handler can succeed while the
 event it meant to emit never fires. If a downstream step silently never happens, check the dead
-letters for `chain_depth_exceeded`.
+letters for `chain_depth_exceeded` (see [Reliability](/operate/reliability) for what a
+dead-lettered chain looks like).
 
 ## Agents are not part of the handler transaction
 

@@ -57,9 +57,12 @@ for a human. See [Budget and cost](/operate/budget-and-cost).
 
 ## Policy-sheet rows: business rules as typed tables
 
-Beyond scalar values, policy owns the flow's **decision tables**, consumed by typed rows in a
-handler's `rules:` list. A rule is either a condition (`when:`/`case:`/`range:`/`else:`) that
-selects a branch, or a **value row** that derives a value in the compute phase:
+A handler can carry a list of `rules:`. Some rules decide *which branch runs*; others just
+*compute a value* the branch will use — by looking something up in a table, running a
+validation, or calling a compute module. Those tables and validations are declared here in
+policy. Condition rules (`when:`/`case:`/`range:`/`else:`) select the branch; **value rows**
+derive their values in the compute phase, before the handler decides what to do. The value
+rows come in three kinds:
 
 **Lookup rows** match an input tuple against an inline finite table:
 
@@ -74,14 +77,10 @@ ticket.classified:
           - {key: [billing, low],   value: billing}
           - {key: [technical, high], value: oncall}
         into: computed.queue
-        default: fail             # a miss is a typed, no-retry diagnostic naming the row and tuple
-    - id: route
-      when: "computed.queue != ''"
-      advances_to: assigned
-      emit:
-        event: ticket.assigned
-        fields: {queue: computed.queue}
+        default: fail             # a miss fails the handler with an error naming this row and the values it looked up
 ```
+
+A later rule reads `computed.queue` to pick the branch.
 
 **Validation rows** run a named validation set (declared under `validation:` in
 `policy.yaml`) and bind a typed result:
@@ -100,13 +99,23 @@ ticket.classified:
 **Compute-module rows** run sandboxed algorithmic logic
 ([Compute modules](/build/compute-modules)).
 
-Value rows derive only — they cannot emit, advance, or write state; a later condition row
-consumes their `computed.*` binding and owns the branch. One rule declares exactly one row
-type, and the `computed.*` namespace is handler-local, never persisted implicitly.
+The constraints on value rows:
+
+- Value rows derive only — they cannot emit, advance, or write state.
+- A condition rule consumes their `computed.*` binding and owns the branch.
+- One rule declares exactly one row type.
+- `computed.*` lives only for the handler — persist a value explicitly with
+  `data_accumulation`.
 
 ## Other policy-owned settings
 
-`policy.yaml` is also where `criteria` sets (agent judgment rules), `validation` sets (used
-by validate rows), `modules` ([compute modules](/build/compute-modules)), `mcp_servers`
-([Tools](/build/tools)), `workspace_classes` (the `/workspace` scope per agent class), and
-`permission_bundles` (named permission sets) are declared.
+`policy.yaml` is also where these are declared:
+
+| Setting | What it is |
+|---|---|
+| `criteria` | Agent judgment rule sets. |
+| `validation` | Validation sets used by validate rows. |
+| `modules` | [Compute modules](/build/compute-modules). |
+| `mcp_servers` | MCP server registrations ([Tools](/build/tools)). |
+| `workspace_classes` | The `/workspace` scope per agent class. |
+| `permission_bundles` | Named permission sets. |

@@ -4,9 +4,9 @@ description: "Declaring tools agents can call, plus MCP and native capabilities.
 icon: "wrench"
 ---
 
-The platform owns all tool schema serving, validation, and routing. Every tool belongs to one
-of three implementation classes. Whatever the class, the platform validates each call against
-the tool's schema and routes it to the right executor:
+A tool is something an agent can call. You declare it once; Swarm validates every call
+against its schema and routes it to whatever runs it. Every tool belongs to one of three
+implementation classes:
 
 ```mermaid
 flowchart TD
@@ -37,15 +37,17 @@ knowledge_base_search:
 | `mcp` | an MCP server | Registered in `policy.yaml`; namespaced by prefix. |
 | `http` | the HTTP executor | Needs an `http` block (`method`, `url`); the default class. |
 
-A custom tool requires a `description`. Optional fields are `handler_type` (defaults to
-`http`), `input_schema`, `output_schema` (and the aliases `parameters`/`returns`), and, for
-HTTP tools, `http`, `response_mapping`, `credentials`. The fields `endpoint` and `type` are
-**not** accepted (use `http.url` and `handler_type`).
+The fields of a custom tool:
+
+- **Required:** `description`.
+- **Optional:** `handler_type` (defaults to `http`), `input_schema`, `output_schema`
+  (aliases `parameters`/`returns`); HTTP tools add `http`, `response_mapping`,
+  `credentials`.
+- **Not accepted:** `endpoint` (use `http.url`), `type` (use `handler_type`).
 
 <Note>
-  `workflow_registered` and `api_call` are deprecated handler types. They still load
-  (`workflow_registered` is normalized to `http` when an `http` block is present), but new
-  tools should use `handler_type: http` or an MCP server.
+  Older bundles may use `workflow_registered` or `api_call`; new tools should use
+  `handler_type: http` or an MCP server.
 </Note>
 
 ## MCP tools
@@ -62,8 +64,8 @@ mcp_servers:
 ```
 
 Tools are namespaced by the server's `prefix` (`pg.list_tables`), and an agent references the
-prefixed name in its `tools` list. An unreachable server logs a warning at boot and does not
-abort the boot. See the [MCP gateway reference](/reference/mcp-gateway).
+prefixed name in its `tools` list. If a server is unreachable, Swarm logs a warning and
+starts anyway. See the [MCP gateway reference](/reference/mcp-gateway).
 
 ## Permissions
 
@@ -107,8 +109,7 @@ the tool is offered to the agent, lack it and the tool is not.
 | `human_task_decide` | Record a human's decision on a task. |
 | `schedule` | Schedule a future timer event. |
 
-The three `agent_*` tools are constrained by the hierarchy: a caller can only hire, fire, or
-reconfigure agents it manages, so a worker cannot reorganize its coordinator. A few permissions
+A few permissions
 gate other platform surfaces rather than a callable tool, such as `configure_routing` (adjust
 routing at runtime) and `approve_spend` (clear a budget hold). And two messaging tools need no
 permission at all: `agent_message` and `mailbox_send` are universal, granted to every agent.

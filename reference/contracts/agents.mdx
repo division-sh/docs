@@ -32,6 +32,10 @@ to fulfill `required_agents`.
   fails at boot with a teaching error otherwise. Replaces the retired
   `conversation_mode`/`session_scope` pair, which is rejected at load.
 </ParamField>
+<ParamField path="workspace_class" type="string">
+  Named workspace from `policy.yaml`'s `workspace_classes`; controls the agent's `/workspace`
+  scope. See [Agent workspaces](/reference/workspaces).
+</ParamField>
 <ParamField path="manager_fallback" type="string">
   The escalation and hierarchy parent. Not a messaging grant.
 </ParamField>

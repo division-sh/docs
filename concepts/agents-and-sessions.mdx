@@ -4,6 +4,9 @@ description: "LLM sessions, isolation, conversation modes, and the tools an agen
 icon: "robot"
 ---
 
+Agents are the half of Swarm that reasons. They read events, think, call tools, and emit
+results — but they never change state themselves.
+
 ## What an agent is
 
 An agent is an LLM session. It receives events, reasons inside a scoped session, calls tools,
@@ -11,7 +14,7 @@ and emits events. An agent is defined in `agents.yaml`: its subscriptions, the e
 emit, its tools, its model tier, and whether it keeps memory.
 
 Agents never write entity state directly. They emit events; a system node handler decides
-what gets written. This keeps state authority deterministic.
+what gets written. So every state change stays in deterministic hands.
 
 ```yaml agents.yaml
 resolver-agent:                                # map key = id and role (the default)
@@ -30,9 +33,10 @@ gives it an auto-generated `emit_ticket_resolved` tool). Its `entity_writes` let
 `resolution` field through a generated `save_ticket_resolution` tool, the only entity write it
 is allowed.
 
-`memory: true` requires a flow-instance owner to scope the conversation to — an agent in a
-flow with per-instance identity. A root-level agent with `memory: true` fails at boot with a
-teaching error; roots have no instance to key memory by.
+`memory: true` needs something to key the conversation on — one conversation per flow
+instance. So the agent must live in a flow that has instances (a `template` flow), not at the
+root; a root-level agent with `memory: true` fails at boot with an error that says exactly
+this.
 
 (If "root" and "child" are new here: a Swarm system is a tree of flows. The top one is the
 **root**; a flow it nests is a **child**. [Composing flows](/build/composition) covers how
@@ -50,19 +54,21 @@ agent (or each flow instance) gets its own `/workspace`, invisible to the others
 ## One role, many instances
 
 When a single agent would be a bottleneck (it has to score 52 categories, or review 200 files),
-you run the role in parallel — **declaratively**. A `fan_out` row splits the workload into one
-event per item; each event resolves into its own instance of a `mode: template` flow
-(`select-or-create` on the pin's carried identity); each instance materializes **its own copy
-of the declared agent**, with its own session, workspace, and lifecycle. Results converge
-through a fan-in barrier pin and a [`join`](/concepts/gates-timers-and-state) row that owns
-completion, dedup, and timeout. You declare the split key and the join membership; the platform
-owns dispatch, per-instance identity, and completion tracking.
+you run the role in parallel — **declaratively**.
 
-Agent identity is exact: each template instance's agent is a separate runtime agent keyed by
-(declaration × flow instance). One instance finishing never affects a sibling's agent.
+1. Split the work — one event per item (`fan_out`).
+2. Each event gets its own flow instance, and each instance its own copy of the agent — its
+   own session, workspace, and lifecycle.
+3. Results converge where a [`join`](/concepts/gates-timers-and-state) decides when the batch
+   is done, drops duplicates, and enforces a deadline.
 
-This is parallelism *within* one run, on a single deployment. Spreading flow instances across
-machines is not in v1; one platform instance runs everything.
+You declare how to split and what counts as done; the platform handles dispatch and identity.
+
+Each instance's agent is a separate runtime agent — one per (declaration, instance) — so one
+instance finishing never touches a sibling's agent.
+
+This is parallelism *within* one run. All of this runs on one deployment; Swarm does not
+distribute flow instances across machines.
 
 ## Memory
 
@@ -77,9 +83,8 @@ machines is not in v1; one platform instance runs everything.
 
 There is nothing else to configure: no mode enum, no scope field. The platform derives the
 memory identity from where the agent is declared, checks it at boot, and never guesses — an
-agent with `memory: true` in a flow with no per-instance identity fails with a teaching error
-naming the fix. (Older Swarm versions used `conversation_mode`/`session_scope` pairs; both
-fields are retired and rejected at load.)
+agent with `memory: true` in a flow with no per-instance identity fails with an error that says exactly this
+naming the fix.
 
 ## The tools an agent can call
 

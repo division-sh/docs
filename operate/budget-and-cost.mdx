@@ -8,11 +8,28 @@ icon: "wallet"
 
 Token usage and cost are tracked in the `spend_ledger`, one row per agent invocation, with
 input tokens, output tokens, cost, model, and invocation type. Spend is attributable per
-entity and per actor.
+entity and per actor — the agent or human that triggered the spend.
+
+## Setting a monthly cap
+
+Budget monitoring measures spend against a **monthly cap in US dollars** — the real cost of
+your LLM calls (the `cost_usd` totals in the spend ledger), not a token count. Caps live in
+`swarm.yaml` (runtime config); the threshold percentages live in the flow's `policy.yaml`.
+Set the cap at whichever scope you want to limit:
+
+```yaml swarm.yaml
+budget:
+  global_monthly_cap: 500       # USD per month across the whole deployment
+  per_entity_monthly_cap: 5     # USD per month for any single entity
+  system_monthly_cap: 100       # USD per month for platform/system work
+```
+
+A scope is only watched when its cap is set above zero, so you can limit, say, per-entity spend
+without a global cap. See [Configuration](/reference/configuration).
 
 ## Thresholds
 
-Budget monitoring is configured in `policy.yaml` as percentages. Crossing one emits
+Threshold percentages are configured in `policy.yaml`. Crossing one emits
 `platform.budget_threshold_crossed` with a matching `level`:
 
 ```yaml policy.yaml
@@ -27,26 +44,11 @@ budget_emergency_percent: 95
 | `throttle` | The runtime cuts back: it reduces how many agents run at once and defers non-critical work. |
 | `emergency` | The runtime pauses all agent sessions and raises a mailbox item for a human. |
 
-If these policy keys are absent, budget monitoring is off entirely.
+With `global_monthly_cap: 500`, a `budget_warning_percent: 60` warns once this month's real
+spend crosses $300.
 
-## The cap the percentages measure against
-
-A percentage needs something to be a percentage *of*. That something is a **monthly cap in US
-dollars**, and the spend it tracks is the real cost of the LLM calls (the `cost_usd` totals in
-the spend ledger), not a token count. You set the cap in the budget configuration, at whichever
-scope you want to limit:
-
-```yaml
-budget:
-  global_monthly_cap: 500       # USD per month across the whole deployment
-  per_entity_monthly_cap: 5     # USD per month for any single entity
-  system_monthly_cap: 100       # USD per month for platform/system work
-```
-
-A scope is only watched when its cap is set above zero, so you can limit, say, per-entity spend
-without a global cap. With `global_monthly_cap: 500`, a `budget_warning_percent: 60` warns once
-this month's real spend crosses $300. With no caps set, there is nothing to take a percentage of,
-and monitoring stays off. See [Configuration](/reference/configuration).
+Monitoring is on only when both a cap and at least one threshold percentage are set;
+otherwise it is off.
 
 ## Responding to an emergency
 

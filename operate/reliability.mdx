@@ -10,7 +10,7 @@ The engine handles failures at each layer with explicit, bounded behavior.
 
 | Failure | Policy |
 |---|---|
-| Handler execution | Up to 3 retries, exponential backoff (1s, 2s, 4s), for transient errors. The atomic boundary rolls back first. |
+| Handler execution | Up to 3 retries, exponential backoff (1s, 2s, 4s), for transient errors. The handler's writes are rolled back before the retry (the atomic boundary). |
 | Agent session | Retried once, then dead-lettered. (Separate from the handler limit.) |
 | Timer | Treated as a regular event; same as handler retries. |
 | Event validation | Rejected, logged, not delivered, no retry. |
@@ -67,13 +67,17 @@ runtime:
     threshold_seconds: 300      # default: 300
 ```
 
-Dedupe rule: at most one `platform.run_stalled` is emitted per
-`(run_id, blocking_layer, blocking_reason, last_progress_at)` tuple. A new event fires only
-when canonical progress advances or the diagnosis tuple changes while the run remains
-stalled. The platform's own `platform.run_stalled` emit does not count as progress, so it
-cannot accidentally suppress later escalations.
+You get one stall alert per stall, not a stream of them: at most one `platform.run_stalled`
+is emitted per `(run_id, blocking_layer, blocking_reason, last_progress_at)` tuple. A new
+event fires only when canonical progress advances or the diagnosis tuple changes while the
+run remains stalled.
 
-The diagnosis underlying the escalation is the same one `swarm status <run-id>` surfaces
+<Note>
+The platform's own `platform.run_stalled` emit does not count as progress, so it cannot
+accidentally suppress later escalations.
+</Note>
+
+The diagnosis underlying the escalation is the same one `swarm run status <run-id>` surfaces
 on demand. The escalation just makes it active rather than poll-only.
 
 ## Incidents and logs
@@ -81,15 +85,15 @@ on demand. The escalation just makes it active rather than poll-only.
 `swarm incidents` aggregates failures by error code and component. `swarm logs [--follow]`
 queries or streams runtime logs. Both read through the runtime API.
 
-## The failure taxonomy
+## How failures are named
 
-Every runtime failure is a **typed envelope** in the closed `platform.*` namespace: a failure
-class, a semantic detail selector, retryability, and a remediation — minted by one owner
-(`internal/runtime/failures`), never by string-matching error text. What this buys you
-operationally:
+Every runtime failure is recorded as a structured record with four parts: what class of
+failure it was, a more specific reason code, whether it can be retried, and what to do about
+it. These are produced by the runtime itself, never guessed from error text. What this buys
+you operationally:
 
-- **Deterministic**: the same recorded inputs re-produce the same failure class on replay —
-  a failure is a fact about the run, not about the weather.
+- **Deterministic**: the same recorded inputs always produce the same failure class on
+  replay.
 - **Closed namespace**: product contracts cannot mint `platform.*` classes; authoring
   mistakes surface as verify findings instead, so a runtime failure always means "valid
   contract, real runtime fact."
@@ -97,8 +101,14 @@ operationally:
   cause chain — `swarm event view` on a dead letter and `swarm incidents` group by the same
   class/selector taxonomy, so "what failed" has one vocabulary from log line to aggregate.
 
-Routing failures are their own taxonomy slice worth knowing: publish-time dead letters
-distinguish `target_unreachable_no_subscriber`, `target_unreachable_terminated`,
-`target_not_subscribed`, and reply-context conflicts (`platform.reply_already_terminal`,
-`platform.stale_arrival`) — each naming the exact identities involved, so a routing gap is a
-one-line diagnosis rather than store archaeology.
+Routing failures are their own taxonomy slice worth knowing. Each publish-time dead letter
+names the exact identities involved, so a routing gap is a one-line diagnosis rather than
+digging through the event store:
+
+| Failure | What happened |
+|---|---|
+| `target_unreachable_no_subscriber` | The event resolved to no recipient at all. |
+| `target_unreachable_terminated` | The target instance existed once but is terminated/gone. |
+| `target_not_subscribed` | The target instance exists but does not subscribe to this event. |
+| `platform.reply_already_terminal` | A second reply tried to use a reply context another reply already settled. |
+| `platform.stale_arrival` | The reply context is missing or no longer maps to a live origin. |

@@ -28,25 +28,23 @@ signature:
 delivery_id:
   json_path: $.update_id
 normalized_events:
-  - event: inbound.telegram.message
+  - event: inbound.telegram.text_message
     fields:
       conversation_reference:
         from: message.chat.id
-        schema: {type: string, pattern: '^-?[0-9]+$'}
-        convert: number_to_text
       text:
         from: message.text
-        schema: {type: string, minLength: 1}
 ```
 
 Your flow never sees the raw update object: it subscribes to the flat, typed normalized
-event, and the pack owns extraction, conversion (`number_to_text` for numeric IDs), and
-schema validation. Wire the pack to a flow with [standing ingress](/build/standing-ingress) —
+event. The pack also converts and validates each field — a numeric chat id becomes `text`,
+patterns are enforced. Wire the pack to a flow with [standing ingress](/build/standing-ingress) —
 `activation: standing` plus an `ingress:` block naming the provider — and the endpoint
 `/webhooks/{alias}/{provider}` exists, signature-checked, when the runtime is ready.
 
-Raw payload admission is verified statically: which fields a normalized event needs, whether
-the provider signs requests, and whether an unsigned endpoint was explicitly acknowledged.
+`swarm verify` checks all of this before anything runs: every field a normalized event needs
+exists in the payload, the provider's signature scheme is configured, and an unsigned
+endpoint was explicitly acknowledged.
 
 ## Outbound: connector packs
 
@@ -92,6 +90,8 @@ Pack credentials are deployment concerns, never package data:
 | GitHub | ✓ (issue-comment app loop) | ✓ |
 | Stripe, Shopify, Twilio, Intercom, Typeform | ✓ | via OpenAPI generation |
 | Notion, Microsoft Graph | — | ✓ (OAuth / client-credentials proofs) |
+
+### Where packs come from
 
 Platform packs load from the binary's inventory; project-local packs load from
 `provider_triggers.packs.external_dirs` in `swarm.yaml`.
