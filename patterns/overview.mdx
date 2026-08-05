@@ -126,41 +126,48 @@ See [Branching](/build/handlers/branching).
 
 ## Dynamic flow instances
 
-Create a per-order or per-customer instance from a template at runtime.
+One instance (and one entity) per order or customer. The usual way needs no creation call at
+all — the template flow's input pin mints the instance when the first event for a new
+identity arrives:
 
-```yaml
-order.created:
-  action: create_flow_instance
-  template: fulfillment
-  instance_id_from: payload.order_id
-  config_from:
-    customer_name: payload.customer_name
-    order_total: payload.total
+```yaml fulfillment/schema.yaml
+mode: template
+instance: order_id
+pins:
+  inputs:
+    events:
+      - name: order_created
+        event: order.created
+        resolution:
+          mode: select-or-create   # first order.created for a new order_id mints the instance
+        carries:
+          order_id: {from: payload.order_id, type: text}
 ```
 
-Results come back through the child's output pin and a `connect` edge to the parent's
-input pin; the parent re-attaches to the right entity via the pin's carried identity (see
-[Composing flows](/build/composition)).
+When you need to create an instance explicitly from a handler (to pass extra config in), use
+the `create_flow_instance` action instead — see [Composing flows](/build/composition) for
+that form and the return path. Either way, results come back through the child's output pin
+and a `connect` edge; the carried identity does the addressing.
 
 ## Timers
 
-Start a durable timer on a state and cancel it on another.
+"An entity sat here too long" is a **stage timer** — declared on the stage, armed on entry,
+cancelled when the entity leaves:
 
-```yaml
-timers:
-  - id: payment_deadline
-    event: timer.payment_deadline
-    delay: "{{payment_deadline_hours}}h"
-    start_on: state:awaiting_payment
-    cancel_on: state:paid
-
-# handler for the timer event
-timer.payment_deadline:
-  advances_to: payment_overdue
-  emit: payment.overdue_notification
+```yaml schema.yaml
+stages:
+  awaiting_payment:
+    timers:
+      - after: "{{payment_deadline_hours}}h"
+        advances_to: payment_overdue     # a real lifecycle edge
+  paid: {}
+  payment_overdue: {}
 ```
 
-`{{...}}` reads a value from the flow's policy.
+`{{...}}` reads a value from the flow's policy. For time that a stage cannot anchor —
+event-triggered delays, or boot-anchored recurring work like a nightly report — declare a
+node timer with `start_on: event:<name>` or `start_on: boot` (see
+[nodes.yaml](/reference/contracts/nodes)).
 
 ## Cross-entity queries
 
@@ -185,7 +192,9 @@ target is an entity field. `store_as` is always entity-prefixed (`entity.<field>
 
 ## Payload transform
 
-Build an output payload from entity state, payload, and policy with `emit.fields`.
+Build an output payload from entity state, payload, and policy with `emit.fields` —
+and when names match, `from: entity` fills the required same-named fields for you
+(see [Emitting events](/build/handlers/emitting)).
 
 ```yaml
 order.finalized:
