@@ -107,9 +107,6 @@ doc:
 
 ```yaml nodes.yaml
 doc-node:
-  id: doc-node
-  execution_type: system_node
-  subscribes_to: [doc.submitted, review.approved, changes.requested, publish.requested]
   gate_state:
     g_reviewed: false              # 1. declare the gate
   event_handlers:

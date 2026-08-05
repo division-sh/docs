@@ -9,22 +9,24 @@ map entry keyed by its id.
 
 ## Node fields
 
-<ParamField path="id" type="string" required>
-  The node identifier (matches the map key).
-</ParamField>
-<ParamField path="execution_type" type="string" required>
-  Must be `system_node`.
-</ParamField>
-<ParamField path="subscribes_to" type="list" required>
-  The events this node handles.
-</ParamField>
 <ParamField path="event_handlers" type="object" required>
-  A map of event name to handler declaration. See [Handler fields](/reference/handler-fields)
-  for every field a handler can declare.
+  A map of event name to handler declaration — the only required field. See
+  [Handler fields](/reference/handler-fields) for every field a handler can declare.
+</ParamField>
+<ParamField path="id" type="string">
+  Derived from the map key. An explicit `id` is accepted only when it equals the map key.
+</ParamField>
+<ParamField path="execution_type" type="string">
+  Derived (`system_node`). Accepted explicitly for compatibility; carries no information.
+</ParamField>
+<ParamField path="subscribes_to" type="list">
+  Derived from the `event_handlers` keys. Declare it explicitly only for subscriptions the
+  handler keys cannot express — a scoped subscription such as
+  `validation/mailbox.review_requested` (qualified by producer flow), or a wildcard form.
 </ParamField>
 <ParamField path="produces" type="list">
-  The events the node emits. Optional; the platform derives it from the handler emit sites if
-  omitted. If present, the analyzer warns on drift (`produces_drift`).
+  Derived from the handler emit sites. If present, the analyzer warns on drift
+  (`produces_drift`).
 </ParamField>
 <ParamField path="state_schema" type="object">
   Per-node state and accumulator fields, keyed by entity.
@@ -151,10 +153,6 @@ treatment alongside gates.
 
 ```yaml nodes.yaml
 order-orchestrator:
-  id: order-orchestrator
-  execution_type: system_node
-  subscribes_to: [order.validated]
-  produces: [order.fulfilling]
   event_handlers:
     order.validated:
       advances_to: fulfilling

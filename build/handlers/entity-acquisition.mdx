@@ -107,9 +107,6 @@ order.delivered:
 
 ```yaml nodes.yaml
 order-tracker:
-  id: order-tracker
-  execution_type: system_node
-  subscribes_to: [order.placed, order.shipped, order.delivered]
   event_handlers:
     order.placed:                    # 1. first event: mint the order
       create_entity: true
@@ -178,9 +175,6 @@ session.ended:
 
 ```yaml nodes.yaml
 session-tracker:
-  id: session-tracker
-  execution_type: system_node
-  subscribes_to: [page.viewed, session.ended]
   event_handlers:
     page.viewed:                     # first view creates the session; the rest find it
       select_or_create_entity:

@@ -99,7 +99,7 @@ A map of `<node-id>: { ... }`.
 | Field | One line |
 |---|---|
 | `id` | Node identifier; must match the map key. |
-| `execution_type` | `system_node` (deterministic, no LLM). |
+| `execution_type` | Derived (`system_node`); explicit form accepted, carries no information. |
 | `subscribes_to` | List of events this node handles. |
 | `produces` | List of events this node emits (analyzer-checked). |
 | `event_handlers` | Map of event → handler block. See [Handler fields](/reference/handler-fields). |

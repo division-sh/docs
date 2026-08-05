@@ -60,7 +60,7 @@ after persisting, the event replays on recovery and nothing is lost.
 Here is what makes runs reproducible: no LLM decides who acts next. Who receives an event follows
 entirely from who declared a **subscription** to it.
 
-- A system node subscribes in `nodes.yaml` (`subscribes_to`, plus an `event_handlers` entry).
+- A system node subscribes in `nodes.yaml`: its `event_handlers` keys are its subscriptions (explicit `subscribes_to` exists only for scoped/wildcard forms).
 - An agent subscribes in `agents.yaml` (`subscriptions`).
 
 `events.yaml` defines payload *shapes*, never routing. So you change who receives an event by
@@ -87,7 +87,6 @@ Say a ticket flow has a node and an agent that both care about `ticket.created`:
 
 ```yaml nodes.yaml
 ticket-orchestrator:
-  subscribes_to: [ticket.created]
   event_handlers:
     ticket.created:
       create_entity: true

@@ -53,7 +53,6 @@ no declaration in your `events.yaml`.
 ```yaml
 # nodes.yaml: react to a stalled run from inside the flow
 n:
-  subscribes_to: [platform.run_stalled]
   event_handlers:
     platform.run_stalled:
       ...

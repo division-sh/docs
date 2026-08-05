@@ -107,9 +107,6 @@ incident.closed:
 
 ```yaml nodes.yaml
 incident-recorder:
-  id: incident-recorder
-  execution_type: system_node
-  subscribes_to: [incident.opened, evidence.submitted, incident.closed]
   event_handlers:
     incident.opened:                 # 1. create the incident
       create_entity: true
@@ -217,9 +214,6 @@ refund.rejected:
 
 ```yaml nodes.yaml
 refund-desk:
-  id: refund-desk
-  execution_type: system_node
-  subscribes_to: [refund.requested, refund.approved, refund.rejected]
   event_handlers:
     refund.requested:                # 1. open a mailbox item, then wait
       create_entity: true
@@ -330,9 +324,6 @@ report.ready:
 
 ```yaml nodes.yaml
 report-publisher:
-  id: report-publisher
-  execution_type: system_node
-  subscribes_to: [report.ready]
   event_handlers:
     report.ready:
       create_entity: true

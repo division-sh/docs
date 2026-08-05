@@ -62,9 +62,6 @@ from any directory.
 
     ```yaml greeting-flow/nodes.yaml
     greeter:
-      id: greeter
-      execution_type: system_node
-      subscribes_to: [greeting.requested]
       event_handlers:
         greeting.requested:
           create_entity: true

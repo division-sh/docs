@@ -214,19 +214,8 @@ Create them one at a time.
     the state, and **emit** the next event.
 
     ```yaml nodes.yaml
-    ticket-orchestrator:
-      id: ticket-orchestrator
-      execution_type: system_node     # deterministic, no LLM
-      produces:                        # the events this node emits
-        - ticket.assigned
-        - ticket.resolution_confirmed
-      subscribes_to:                   # the events this node handles
-        - ticket.created
-        - ticket.classified
-        - ticket.escalated
-        - ticket.resolved
-        - ticket.resolution_confirmed
-      event_handlers:
+    ticket-orchestrator:               # the map key is the node's id
+      event_handlers:                  # what it subscribes to is derived from these keys
 
         ticket.created:                # a brand-new ticket arrives
           create_entity: true          # mint the ticket record
