@@ -7,6 +7,9 @@ icon: "bolt"
 An `action` runs a platform-provided operation as a near-final step of the handler (after the
 writes and the emit). There are exactly four; product-specific actions are not supported.
 
+For calling **your own declared tools** durably from a handler, use `activity:` instead —
+see [Durable activities](#durable-activities) below.
+
 `action` comes in two forms, and which one an action uses depends on its parameters:
 
 - **Name plus sibling fields**, when the parameters are simple. `create_flow_instance` and
@@ -366,3 +369,36 @@ content is a safe repeat, while the same id with different content fails closed.
 field list (provenance, limits, success/failure events) see
 [Handler fields](/reference/handler-fields).
 </Accordion>
+
+## Durable activities
+
+Where `action` runs the four platform operations, **`activity:`** durably calls one of your
+own declared tools (from `tools.yaml`) — with the persistence, retry, and approval semantics
+an external side effect deserves:
+
+```yaml nodes.yaml
+invoice.approved:
+  advances_to: sending
+  activity:
+    tool: stripe.create_invoice        # a declared tool id
+    input:                             # same expression grammar as emit.fields
+      customer: entity.customer_id
+      amount: entity.total
+```
+
+The durability contract:
+
+- The request is **persisted in the handler's transaction** (`platform.activity_requested`);
+  the actual tool call executes only after the transaction commits and the entity lock is
+  released. A crash between the two replays the persisted request — the call is never lost
+  and never runs inside your state transaction.
+- The outcome comes back as **generated typed result events** (success and failure families
+  derived from the tool declaration), which your handlers subscribe to like any event — no
+  hidden runtime state.
+- **Non-idempotent writes can require human approval**: add
+  `approval: {decision: <stable-decision-id>}` and the platform persists a pending
+  `proposed_effect` [decision card](/concepts/human-in-the-loop) instead of the request — no
+  attempt, no credential lookup, no provider call exists until a human approves. Approval
+  releases the exact recorded request through the same durable path.
+- In mock mode, activities fail closed — a test run cannot leak a real external call
+  (see [Testing](/build/testing)).

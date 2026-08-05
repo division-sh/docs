@@ -55,8 +55,58 @@ budget_emergency_percent: 95
 If these keys are absent, budget monitoring is disabled. An emergency raises a mailbox item
 for a human. See [Budget and cost](/operate/budget-and-cost).
 
+## Policy-sheet rows: business rules as typed tables
+
+Beyond scalar values, policy owns the flow's **decision tables**, consumed by typed rows in a
+handler's `rules:` list. A rule is either a condition (`when:`/`case:`/`range:`/`else:`) that
+selects a branch, or a **value row** that derives a value in the compute phase:
+
+**Lookup rows** match an input tuple against an inline finite table:
+
+```yaml nodes.yaml
+ticket.classified:
+  rules:
+    - id: pick_queue
+      lookup:
+        on: [payload.category, payload.priority]
+        entries:
+          - {key: [billing, high],  value: senior-billing}
+          - {key: [billing, low],   value: billing}
+          - {key: [technical, high], value: oncall}
+        into: computed.queue
+        default: fail             # a miss is a typed, no-retry diagnostic naming the row and tuple
+    - id: route
+      when: "computed.queue != ''"
+      advances_to: assigned
+      emit:
+        event: ticket.assigned
+        fields: {queue: computed.queue}
+```
+
+**Validation rows** run a named validation set (declared under `validation:` in
+`policy.yaml`) and bind a typed result:
+
+```yaml
+- id: validate_manifest
+  validate:
+    set: deploy_manifest
+    input: {source_ref: payload.source_ref}
+    into: computed.validation.deploy_manifest
+- id: invalid_manifest
+  when: computed.validation.deploy_manifest.valid == false
+  emit: deploy.manifest_invalid
+```
+
+**Compute-module rows** run sandboxed algorithmic logic
+([Compute modules](/build/compute-modules)).
+
+Value rows derive only — they cannot emit, advance, or write state; a later condition row
+consumes their `computed.*` binding and owns the branch. One rule declares exactly one row
+type, and the `computed.*` namespace is handler-local, never persisted implicitly.
+
 ## Other policy-owned settings
 
-`policy.yaml` is also where `mcp_servers` ([Tools](/build/tools)), `workspace_classes`
-(the `/workspace` scope per agent class), and `permission_bundles` (named permission sets)
-are declared.
+`policy.yaml` is also where `criteria` sets (agent judgment rules), `validation` sets (used
+by validate rows), `modules` ([compute modules](/build/compute-modules)), `mcp_servers`
+([Tools](/build/tools)), `workspace_classes` (the `/workspace` scope per agent class), and
+`permission_bundles` (named permission sets) are declared.
