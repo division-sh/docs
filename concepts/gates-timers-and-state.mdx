@@ -32,6 +32,11 @@ Three rules give the lifecycle its shape:
   expressions read it as `_entity.current_state` (`_entity.*` is platform metadata,
   `entity.*` is your declared fields).
 
+Every stateful flow must declare **at least one terminal stage** — a lifecycle with no exit
+is a boot error. There is no "on stage entry" hook: entry work belongs to the handler whose
+`advances_to` enters the stage (it runs in the same transaction as the transition), and
+time-based follow-ups belong to the stage's timers.
+
 A flow that declares no `stages:` is **stateless**: it processes events without a lifecycle,
 and `advances_to` is invalid there. Stateless still allows entities — a handler that writes
 entity fields automatically creates one, with no stage attached.

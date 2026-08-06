@@ -15,7 +15,7 @@ runs with the zero-config defaults:
 ```bash
 git clone https://github.com/division-sh/swarm && cd swarm
 swarm verify --contracts examples/routing/fan-in/barrier
-swarm run --contracts examples/routing/fan-in/barrier --event <trigger> --payload <file>
+swarm run start --contracts examples/routing/fan-in/barrier --event <trigger> --payload <file> --data ./data
 ```
 
 Each example's README names the trigger event and ships a sample payload file.

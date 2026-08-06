@@ -1,0 +1,22 @@
+# FRICTION: testing.mdx says package-wide scenarios live in "contracts/tests/…" — is
+# that <bundle-root>/tests/ or a literal contracts/ directory next to it? Guessing
+# <bundle-root>/tests/.
+name: two vendors assessed, best one auto-awarded
+vars:
+  rfq_id: "${scenario.uuid('rfq1')}"
+steps:
+  - publish: rfq.submitted
+    payload:
+      rfq_id: "${vars.rfq_id}"
+      title: "Warehouse racking"
+      vendors:
+        - {vendor_id: "v-1", name: "Acme", proposal: "fixed-price install in 6 weeks"}
+        - {vendor_id: "v-2", name: "Bolt", proposal: "time and materials"}
+expect:
+  events:
+    - rfq.awarded
+  entities:
+    - type: rfq
+      current_state: awarded
+      fields:
+        top_vendor: "v-1"

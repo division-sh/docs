@@ -1,0 +1,16 @@
+rfq:
+  rfq_id: text
+  title: text
+  vendor_ids: "[text]"          # FRICTION: types.yaml shows [LineItem] for named types;
+                                # never shows a list of a built-in scalar. Also unclear if
+                                # the bracket form needs quoting in plain YAML (unquoted
+                                # [text] parses as a YAML list!). Guessing quoted string.
+  assessed_count:
+    type: integer
+    initial: 0
+  top_score:
+    type: numeric
+    initial: 0
+  top_vendor:
+    type: text
+    initial: ""

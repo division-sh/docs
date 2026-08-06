@@ -1,0 +1,5 @@
+auto_award_threshold: 85
+assessment_sla_minutes: 45
+budget_warning_percent: 60
+budget_throttle_percent: 80
+budget_emergency_percent: 95

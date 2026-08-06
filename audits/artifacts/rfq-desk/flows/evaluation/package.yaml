@@ -1,0 +1,5 @@
+name: evaluation
+version: 1.0.0
+description: Assess one vendor proposal with a dedicated agent.
+platform_version: ">=0.7.0 <0.8.0"
+flows: []

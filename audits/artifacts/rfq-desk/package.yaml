@@ -1,0 +1,18 @@
+name: rfq-desk
+version: 1.0.0
+description: RFQ vendor evaluation - fan out per-vendor assessments, join, award with a human gate.
+platform_version: ">=0.7.0 <0.8.0"
+flows:
+  - id: evaluation
+    flow: evaluation
+    mode: template          # one instance per vendor under evaluation
+connect:
+  # FRICTION: pin-address grammar is "<flow-id>.<pin-name>" but nothing says what the
+  # pin *name* is when the pin was declared in the short list form
+  # (`outputs: events: [vendor.discovered]`). Event names contain dots, so
+  # ".vendor.discovered" is ambiguous against the "leading dot = root pin" rule.
+  # Guessing: root short-form pins are addressed by event name.
+  - from: .vendor.discovered          # root output pin ->
+    to: evaluation.vendor_discovered  #   child input pin (named in child schema)
+  - from: evaluation.vendor.assessed  # child output pin (short form, guessed address) ->
+    to: .vendor.assessed              #   root input pin (bare form)

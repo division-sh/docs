@@ -1,0 +1,6 @@
+item.assigned:
+  item_id: text
+  batch_id: text
+item.done:
+  item_id: text
+  batch_id: text

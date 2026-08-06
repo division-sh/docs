@@ -1,0 +1,30 @@
+evaluation-recorder:
+  event_handlers:
+
+    vendor.discovered:
+      # FRICTION: the input pin's `resolution: select-or-create` "mints the instance
+      # (with its fresh entity)". But the state-machine page says every stateful
+      # input-pin handler MUST declare one of the three entity-acquisition modes, and
+      # that omitting them is a boot error. Which rule wins for a template flow whose
+      # pin already resolved the instance? Omitting acquisition here on the theory that
+      # the pin owns it — a coin flip.
+      data_accumulation:
+        writes: [vendor_id, rfq_id, name, proposal]
+        source_event: vendor.discovered
+
+    assessment.drafted:
+      guard:
+        id: score_in_range
+        check: "payload.score >= 0.0 && payload.score <= 100.0"
+        on_fail: reject
+      data_accumulation:
+        writes: [score, summary]
+        source_event: assessment.drafted
+      advances_to: assessed
+      emit:
+        event: vendor.assessed
+        fields:
+          rfq_id: entity.rfq_id
+          vendor_id: entity.vendor_id
+          score: entity.score
+          summary: entity.summary

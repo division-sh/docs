@@ -1,0 +1,40 @@
+batcher:
+  event_handlers:
+    batch.requested:
+      create_entity: true
+      data_accumulation:
+        writes:
+          - batch_id
+          - target_field: item_ids
+            expression: "payload.items.map(i, i.item_id)"
+        source_event: batch.requested
+      fan_out:
+        items_from: payload.items
+        as: wi
+        identity: wi.item_id
+        emit:
+          event: item.assigned
+          fields:
+            item_id: wi.item_id
+            batch_id: payload.batch_id
+      advances_to: waiting
+    batch.closed:
+      select_entity:
+        by:
+          batch_id: payload.batch_id
+      advances_to: done
+    item.done:
+      join:
+        stage: waiting
+        members:
+          by: payload.item_id
+          from: entity.item_ids
+        window:
+          by: payload.batch_id
+          from: entity.batch_id
+        output: payload.item_id
+        on_complete:
+          advances_to: done
+        timeout:
+          after: 10m
+          advances_to: done

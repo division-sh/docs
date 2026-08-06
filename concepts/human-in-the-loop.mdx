@@ -47,7 +47,16 @@ If the facts change after a card is shown, the old card stops being valid: an ap
 on stale information is rejected rather than applied to the new situation.
 
 Every outcome is a declared lifecycle edge: `advances_to` and `emit` are verified statically,
-so "what happens if they reject?" has an answer at boot, not at 2am. The platform itself
+so "what happens if they reject?" has an answer at boot, not at 2am. Two rules to know before
+your first gate:
+
+- **Gate emits carry only literals and `decision.<field>` values** — they cannot read the
+  entity. To emit a business event enriched with entity data after an approval, advance to a
+  small relay stage and let its handler build the event (`gate → awarding → handler enriches
+  from entity → terminal`). Budget one relay stage per outcome that needs entity data.
+- **Declare the platform as the producer** of any event only a gate emits:
+  `swarm: {producer: mailbox_human}` on the event declaration — otherwise verify reports
+  `event_producer_exists` (gate emits do not count as ordinary producers). The platform itself
 **never decides** — no timeout auto-approves; an expired card escalates or defers, loudly.
 
 ## The mailbox

@@ -57,3 +57,13 @@ order.created:
 Runtime-owned envelope fields (`event.source`, `event.target`, `event.target_set`, and
 others) are not author-declared; consumers read them through `event.*`. The `platform.`
 event prefix is reserved for the engine's own events.
+
+## Three small rules worth knowing
+
+- **Zero-field events are legal and common** — declare them as an empty map:
+  `award.approved: {}` (decision-gate outcomes often need one).
+- **Scalar list types are quoted**: `vendor_ids: "[text]"` — unquoted `[text]` is YAML flow-list
+  syntax, not a type string.
+- **An event that crosses a flow boundary is declared in both flows' `events.yaml`, and the
+  declarations must agree.** Drift is caught: incompatible types across a `connect` edge fail
+  verify (`key_types_incompatible`) rather than corrupting at runtime.

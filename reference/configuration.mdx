@@ -35,7 +35,7 @@ Flags override config. Ambient environment variables are **not** a configuration
 
 ### swarm run
 
-`swarm run` reaches a runtime in one of two ways:
+`swarm run start` reaches a runtime in one of two ways:
 
 - **Local (default).** With no `--connect`, it boots a runtime in process on
   `127.0.0.1:8081`. Override the port with `--api-port <n>`.
@@ -46,7 +46,7 @@ Either way, a bearer token is required.
 
 ### Local startup flags
 
-These flags configure a runtime that `swarm serve` or `swarm run` boots in-process. They have no
+These flags configure a runtime that `swarm serve` or `swarm run start` boots in-process. They have no
 effect when attaching to a running runtime with `--connect`.
 
 <ParamField path="--config <path>" type="string">
@@ -62,7 +62,7 @@ effect when attaching to a running runtime with `--connect`.
   Path to the agent-visible read-only `/data` reference directory. Resolution order:
   `--data` > `workspace.data_source` in `swarm.yaml` > the auto-default `.swarm/data/`
   (created next to `.swarm/dev.db` if it doesn't exist, so the runtime starts with no `/data`
-  configuration). Available on both `swarm serve` and `swarm run`.
+  configuration). Available on both `swarm serve` and `swarm run start`.
 </ParamField>
 
 `--store` and `--backend` are documented under [Runtime store](#runtime-store) and
@@ -193,7 +193,7 @@ Select the backend with `--store sqlite` or `--store postgres`, or `store.backen
 
 ## LLM backend and credentials
 
-Select the LLM backend with the `--backend` flag on `swarm serve` or `swarm run`, or with
+Select the LLM backend with the `--backend` flag on `swarm serve` or `swarm run start`, or with
 `llm.backend` in `swarm.yaml`. **Environment variables never select the backend** (see
 [Retired settings](#retired-settings)). The default backend when nothing is set is
 `anthropic`. A flow with no agents boots without any credential.

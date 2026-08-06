@@ -1,0 +1,18 @@
+# FRICTION: vendor.discovered and vendor.assessed cross the flow boundary, so both the
+# parent and this child declare them. Must the two declarations be byte-identical? Is a
+# drift between them a verify error? Nothing in the docs says.
+vendor.discovered:
+  rfq_id: text
+  vendor_id: text
+  name: text
+  proposal: text
+
+assessment.drafted:               # the assessor agent's verdict (internal)
+  score: numeric
+  summary: text
+
+vendor.assessed:                  # leaves through the output pin, back to the parent
+  rfq_id: text
+  vendor_id: text
+  score: numeric
+  summary: text

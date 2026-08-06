@@ -1,0 +1,11 @@
+stages:
+  open:
+    initial: true
+  waiting: {}
+  done:
+    terminal: true
+pins:
+  inputs:
+    events: [batch.requested, batch.closed, item.done]
+  outputs:
+    events: [item.assigned]

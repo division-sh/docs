@@ -1,0 +1,49 @@
+rfq.submitted:
+  swarm:
+    source: external
+  rfq_id: text
+  title: text
+  vendors: "[VendorLead]"
+
+vendor.discovered:                 # fanned out, one per vendor; leaves via output pin
+  rfq_id: text
+  vendor_id: text
+  name: text
+  proposal: text
+
+vendor.assessed:                   # returns from the evaluation child via fan-in pin
+  rfq_id: text
+  vendor_id: text
+  score: numeric
+  summary: text
+
+rfq.assessments_complete: {}       # join settled (or a human accepted partial results)
+
+# FRICTION: verify says "'award.approved' subscribed but nobody emits" even though the
+# award_review gate's outcomes emit both of these. A stage-gate emit apparently does not
+# count as a producer; guessing the fix is swarm.producer: mailbox_human, a value the
+# reference mentions once without saying when it is required.
+award.approved:
+  swarm:
+    producer: mailbox_human
+
+award.rejected:
+  swarm:
+    producer: mailbox_human
+  reason: text
+
+award.review_sla_breached: {}
+  # FRICTION: stage-timer events "carry no business payload" (said only for *node*
+  # timers). Is `{}` the right way to declare a zero-field event? Never shown.
+
+rfq.awarded:
+  swarm:
+    consumer: external             # consumed outside the flow graph
+  rfq_id: text
+  vendor_id: text
+
+rfq.no_award:
+  swarm:
+    consumer: external
+  rfq_id: text
+  reason: text

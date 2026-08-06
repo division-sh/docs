@@ -1,0 +1,5 @@
+types:
+  VendorLead:
+    vendor_id: text
+    name: text
+    proposal: text

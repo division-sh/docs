@@ -1,0 +1,13 @@
+batch.requested:
+  swarm: { source: external }
+  batch_id: text
+  items: "[Item]"
+item.assigned:
+  item_id: text
+  batch_id: text
+batch.closed:
+  swarm: { source: external }
+  batch_id: text
+item.done:
+  item_id: text
+  batch_id: text

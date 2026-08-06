@@ -1,0 +1,14 @@
+assessor-agent:
+  model: regular
+  subscriptions: [vendor.discovered]
+  emit_events: [assessment.drafted]
+  memory: true                    # one durable conversation per vendor instance
+  max_turns_per_task: 6
+  mock: {kind: python, module: mocks/assessor.py}
+  # FRICTION: the module path resolves against the BUNDLE ROOT, not the declaring
+  # flow's directory — learned from a verify error, not the docs. Worse: `bundle build`
+  # does not materialize a child flow's mocks/ directory at all, so the module has to
+  # physically live in <bundle-root>/mocks/ for the build to succeed.
+  # FRICTION: `mock:` appears only in build/testing.mdx; the agents.yaml reference
+  # doesn't list it. Does a committed mock: line disable the real model in production,
+  # or is it only honored under `swarm test`?

@@ -1,0 +1,11 @@
+vendor_eval:
+  vendor_id: text
+  rfq_id: text
+  name: text
+  proposal: text
+  score:
+    type: numeric
+    initial: 0
+  summary:
+    type: text
+    initial: ""

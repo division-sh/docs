@@ -153,6 +153,17 @@ load with a `RETIRED-EMIT-ROUTING` error naming the replacement.)
 <ParamField path="count" type="object">
   Count items matching a condition. Fields: `items_from`, `condition`, `store_as`.
 </ParamField>
+<ParamField path="join" type="object">
+  A finite fan-in barrier owned by a stage. Shape: `stage`,
+  `members: {by: payload.<field>, from: entity.<list-field>}`,
+  `window: {by: payload.<text-field>, from: entity.<field>}`, `output: payload.<field>`
+  (required — the value captured per arrival), required `timeout: {after: <duration>, …}`,
+  and `on_complete` (both outcomes accept `data_accumulation`/`emit`/`advances_to` and may
+  read the typed `join.*` context: `expected`, `completed`, `missing`, `results`,
+  `timed_out`). Optional `complete_when` (CEL over `join.*`) with `remaining: ignore`. A
+  join owns its handler exclusively — no sibling handler fields. See
+  [Parallel work](/build/parallel-work).
+</ParamField>
 <ParamField path="fan_out" type="object">
   Emit one event per item. Fields: `items_from`, `emit`. Writes `fan_out.count` to
   handler context.

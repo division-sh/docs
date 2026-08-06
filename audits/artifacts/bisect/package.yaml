@@ -1,0 +1,12 @@
+name: bisect
+version: 1.0.0
+platform_version: ">=0.7.0 <0.8.0"
+flows:
+  - id: child
+    flow: child
+    mode: template
+connect:
+  - from: .item.assigned
+    to: child.item_assigned
+  - from: child.item.done
+    to: .item.done

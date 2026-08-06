@@ -1,0 +1,6 @@
+observer-agent:
+  model: cheap
+  subscriptions: [item.assigned]
+  emit_events: []
+  memory: false
+  max_turns_per_task: 2

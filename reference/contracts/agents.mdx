@@ -9,10 +9,10 @@ to fulfill `required_agents`.
 
 ## Fields
 
-<ParamField path="id" type="string" required>
+<ParamField path="id" type="string">
   The agent identifier (matches the map key).
 </ParamField>
-<ParamField path="role" type="string" required>
+<ParamField path="role" type="string">
   The role this agent fulfills; matches the map key.
 </ParamField>
 <ParamField path="model" type="string">
@@ -25,6 +25,12 @@ to fulfill `required_agents`.
 <ParamField path="emit_events" type="list">
   The events the agent may emit. Each gets an auto-generated `emit_{event}` tool. Defaults to
   empty.
+</ParamField>
+<ParamField path="mock" type="object">
+  A scripted stand-in for the model: `mock: {kind: python, module: mocks/assistant.py}` (path
+  resolves from the **bundle root**, even for child-flow agents). Used when the platform runs
+  mock execution (`swarm test`, the mock backend); a real backend does not execute it. It does
+  not currently waive the boot credential check — see the testing page.
 </ParamField>
 <ParamField path="memory" type="boolean">
   `false` (default): a fresh conversation per task. `true`: one durable conversation per

@@ -43,6 +43,7 @@ The receiving flow declares its identity once, and instances mint themselves on 
 delivery — there is no creation call:
 
 ```yaml flows/matcher/schema.yaml
+name: matcher
 mode: template
 instance: startup_id                # one instance per startup_id
 stages:
@@ -91,15 +92,21 @@ startup.assessed:
   join:
     stage: awaiting                 # the stage that waits
     members:
+      by: payload.startup_id        # which payload field identifies the arriving member
       from: entity.startup_ids      # who must arrive (written at fan-out time)
     window:
+      by: payload.batch_id          # which payload field names the window
       from: entity.batch_id
-    output: payload.match_score
+    output: payload.match_score     # the value captured from each arrival (required)
     on_complete:
+      data_accumulation:
+        writes:
+          - target_field: top_score
+            expression: "join.results.max()"   # aggregate over the collected outputs
       advances_to: reported
-    timeout:
+    timeout:                        # required — bare joins are invalid
       after: 30m
-      advances_to: partial_report   # a late member is a declared outcome, not a hang
+      advances_to: partial_report
 ```
 
 The join arms when the entity enters the waiting stage. It settles exactly once per window —

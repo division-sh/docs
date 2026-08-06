@@ -81,12 +81,19 @@ The rules that keep scenarios deterministic and honest:
   are rejected outright rather than partly applied (fail-closed). See the scenario format for
   both.
 
-Run them with:
+Run them against a serving runtime with a registered bundle:
 
 ```bash
-swarm test --contracts ./ticket-flow            # all scenarios under the roots
-swarm test contracts/tests/classify-and-assign.yaml
+swarm serve --contracts ./ticket-flow --data ./data        # terminal 1
+swarm test --contracts ./ticket-flow --api-server http://127.0.0.1:8081   # terminal 2
 ```
+
+Two current caveats, tracked upstream: the runner may ask for `--platform-spec
+platform-spec.yaml` (from the platform repo) rather than using the binary's embedded copy,
+and bundles whose agents declare `mock:` cannot yet be built/registered (the build step does
+not materialize `mocks/`) — so the zero-credential loop is presently blocked for mocked
+agents. Boot also still requires a stored LLM credential even when every agent is mocked
+(`swarm secrets set ANTHROPIC_API_KEY` with any value unblocks a local run).
 
 ## The mock LLM backend
 
@@ -100,7 +107,7 @@ classifier-agent:
   subscriptions: [ticket.created]
   emit_events: [ticket.classified]
   memory: false
-  mock: {kind: python, module: mocks/classifier.py}
+  mock: {kind: python, module: mocks/classifier.py}   # path resolves from the BUNDLE ROOT, even in child flows
 ```
 
 The module's `handle` entrypoint receives the turn input and returns the tool calls the agent

@@ -1,0 +1,3 @@
+batch:
+  batch_id: text
+  item_ids: "[text]"

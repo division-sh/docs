@@ -1,0 +1,19 @@
+name: child
+mode: template
+instance: item_id
+stages:
+  working:
+    initial: true
+  finished:
+    terminal: true
+pins:
+  inputs:
+    events:
+      - name: item_assigned
+        event: item.assigned
+        resolution:
+          mode: select-or-create
+        carries:
+          item_id: {from: payload.item_id, type: text}
+  outputs:
+    events: [item.done]

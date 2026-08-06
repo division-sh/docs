@@ -1,0 +1,93 @@
+rfq-orchestrator:
+  event_handlers:
+
+    rfq.submitted:                       # a new RFQ arrives with its vendor list
+      create_entity: true
+      data_accumulation:
+        writes:
+          - rfq_id
+          - title
+          - target_field: vendor_ids     # remember membership for the join
+            expression: "payload.vendors.map(v, v.vendor_id)"
+        source_event: rfq.submitted
+      fan_out:
+        items_from: payload.vendors
+        as: vendor
+        identity: vendor.vendor_id
+        max_items: 25
+        emit:
+          event: vendor.discovered
+          fields:
+            rfq_id: payload.rfq_id
+            vendor_id: vendor.vendor_id
+            name: vendor.name
+            proposal: vendor.proposal
+      advances_to: awaiting_assessments
+
+    vendor.assessed:                     # one arrival per vendor
+      # FRICTION: the docs' join grammar (members.from/window.from, optional output,
+      # co-resident data_accumulation) was rejected wholesale by verify. The runtime
+      # wants members.by/window.by as top-level payload paths, a mandatory output, and
+      # NO other handler fields alongside the join.
+      join:
+        stage: awaiting_assessments
+        members:
+          by: payload.vendor_id
+          from: entity.vendor_ids
+        window:
+          by: payload.rfq_id
+          from: entity.rfq_id
+        output: payload.score
+        on_complete:
+          advances_to: deliberating
+          emit: rfq.assessments_complete
+        timeout:
+          after: "{{assessment_sla_minutes}}m"
+          advances_to: partial_review
+
+    rfq.assessments_complete:            # decide: auto-award or send to a human
+      # OPEN QUESTION: the join collected `output: payload.score` per member — but no
+      # doc says how the collector reads the joined outputs afterwards. Falling back to
+      # entity.top_score, which nothing is allowed to write (the join owns the arrival
+      # handler exclusively), so the auto-award branch below can never fire. The docs
+      # leave no legal way to compute an aggregate over join results. Routing
+      # everything to the human gate is the only honest option.
+      rules:
+        - id: auto_award
+          condition: "entity.top_score >= policy.auto_award_threshold"
+          advances_to: awarded
+          emit:
+            event: rfq.awarded
+            fields:
+              rfq_id: entity.rfq_id
+              vendor_id: entity.top_vendor
+        - id: needs_human
+          condition: "entity.top_score < policy.auto_award_threshold"
+          advances_to: awaiting_award_approval
+
+    award.approved:                      # relay from the gate: enrich from entity
+      advances_to: awarded
+      emit:
+        event: rfq.awarded
+        fields:
+          rfq_id: entity.rfq_id
+          vendor_id: entity.top_vendor
+
+    award.rejected:                      # relay from the gate (reject or abandon)
+      advances_to: no_award
+      emit:
+        event: rfq.no_award
+        fields:
+          rfq_id: entity.rfq_id
+          reason: payload.reason
+
+    award.review_sla_breached:           # stage timer fired: nudge a human, do not move
+      action:
+        id: mailbox_write
+        mailbox:
+          item_type: escalation
+          severity: urgent
+          summary: "Award review has been waiting more than 48h"
+          payload:
+            rfq_id: { ref: entity.rfq_id }
+            top_vendor: { ref: entity.top_vendor }

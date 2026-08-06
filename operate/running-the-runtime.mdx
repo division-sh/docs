@@ -8,7 +8,7 @@ icon: "play"
 
 Two ways to start a runtime, picked by how long the work lives:
 
-- **`swarm run`** is a shortcut: boot a runtime in-process, publish one trigger event, stream
+- **`swarm run start`** is a shortcut: boot a runtime in-process, publish one trigger event, stream
   the trace, **exit when the run goes quiet** — nothing left running and no events waiting
   to be delivered (we call this quiescing). It works for any flow that completes from a
   single trigger, deterministic *or* agent-driven. The [Quickstart](/quickstart) uses it,
@@ -20,11 +20,14 @@ Two ways to start a runtime, picked by how long the work lives:
   decisions arriving later, multiple externally-driven events, anything you'll interact with
   over time.
 
-The most common newcomer confusion: trying `swarm run` for a flow that needs you to
+The most common newcomer confusion: trying `swarm run start` for a flow that needs you to
 interact with it mid-flight (decide a mailbox item, publish a follow-up event, watch a timer
 fire later), then being surprised the process exits before you can. For those, use
 `swarm serve` and drive it from a second terminal with `swarm event publish`, `swarm mailbox`,
 and the rest of the CLI.
+
+Both need a workspace data directory: pass `--data <dir>` (or set
+`workspace.data_source` in `swarm.yaml`) — boot fails without one.
 
 The rest of this page is about `swarm serve`.
 
@@ -35,7 +38,7 @@ default it binds `127.0.0.1:8081`, serving health, readiness, `/v1/rpc`, `/v1/ws
 MCP routes on one listener.
 
 ```bash
-swarm serve --contracts ./my-flow
+swarm serve --contracts ./my-flow --data ./data
 ```
 
 The loopback default means the runtime is only reachable from the same machine. To accept
@@ -59,6 +62,13 @@ A few flags matter for operations:
 - **`--dev`** bundles the loose settings for local work: it turns on `--abandon-active-runs` and
   `--no-require-bundle-match`, makes boot verbose, and deletes the per-entity workspace containers
   when the runtime shuts down. Handy locally, but not something to point at state you want to keep.
+
+<Warning>
+  **Editing contracts and restarting on the same store** can currently leave publish failing
+  with `connect route snapshot generation is stale` (tracked upstream). Until fixed, treat a
+  contract edit as a fresh store: stop the runtime and delete the project's directory under
+  `~/.swarm/stores/projects/` before restarting.
+</Warning>
 
 ## Boot verification
 

@@ -34,7 +34,7 @@ Run this loop, not a freestyle "write the whole thing then verify" pass.
 3. **Read analyzer errors literally.** They cite a check id (e.g. `entity_writer_coverage`, `event_producer_exists`, `transition_reference_validation`), a scope (`[root]`, `[<state>]`, `[<event>]`), and the exact field or path. The check id is searchable in `platform-spec.yaml` and on [`/reference/analyzer-checks`](/reference/analyzer-checks).
 4. **Add one thing, re-verify.** Three small iterations beat one large one.
 5. **When you need a pattern you haven't authored before, grep `tests/`** for the construct (`grep -rln "rules:" tests/`, `grep -rln "mailbox_write" tests/`, etc.). Read a bundle that uses it; mirror its shape.
-6. **`swarm run`** is the fastest end-to-end check: it boots a runtime in-process, fires one event, exits when the run quiesces. No DB service, SQLite by default; use it for one-shot deterministic flows.
+6. **`swarm run start`** is the fastest end-to-end check: it boots a runtime in-process, fires one event, exits when the run quiesces. No DB service, SQLite by default; use it for one-shot deterministic flows.
 
 <Note>
   For flows that need follow-up interaction (timers, human mailbox decisions, multiple
@@ -82,7 +82,7 @@ A good gap report has:
 - **Version**: commit hash from `swarm version --server`, or just `git rev-parse HEAD` of the swarm checkout.
 - **Repro**: smallest verifying bundle that exhibits the behavior (`package.yaml`, `schema.yaml`, `events.yaml`, `nodes.yaml`, plus any others). 5-10 lines per file beats a 50-file dump.
 - **Expected vs observed**: spec citation or docs citation for "expected"; literal output for "observed."
-- **Surface**: SQLite vs Postgres, `swarm run` vs `swarm serve`, etc. Gaps often live on one path and not the other.
+- **Surface**: SQLite vs Postgres, `swarm run start` vs `swarm serve`, etc. Gaps often live on one path and not the other.
 - **One issue per defect class.** Don't bundle a routing bug with a docs typo.
 
 For known gaps currently under work, browse the

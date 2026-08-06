@@ -1,0 +1,75 @@
+# Root flow: one RFQ moving through intake -> parallel assessment -> award.
+# FRICTION: docs say "each instance owns exactly one entity", and the root flow is
+# (implicitly) a single instance. Yet every doc example (orders, sessions, incident-log)
+# creates one entity per business key inside a single flow via create_entity /
+# select_or_create_entity. Which model is true for a root flow receiving many RFQs?
+# Proceeding the way the examples do: one entity per rfq.submitted.
+stages:
+  intake:
+    initial: true
+  awaiting_assessments: {}       # the join waits here
+  deliberating: {}
+  awaiting_award_approval:
+    gate:
+      decision: award_review
+      context:
+        title: entity.title
+        top_vendor: entity.top_vendor
+        top_score: entity.top_score
+      outcomes:
+        # FRICTION: verify rejects any entity.* read in a gate outcome's emit fields
+        # ("stage gate emits support only literals or exact decision.<field>
+        # references") — the docs never say this. So each outcome now emits a thin
+        # internal event and a node handler enriches it from the entity, which also
+        # forces two extra relay stages (awarding / closing_no_award), because the gate
+        # cannot advance straight to the terminal stage without stranding its own emit.
+        approve:
+          advances_to: awarding
+          emit: award.approved
+        reject:
+          input:
+            reason: {type: text, required: true}
+          advances_to: closing_no_award
+          emit:
+            event: award.rejected
+            fields:
+              reason: decision.reason
+    timers:
+      - after: 48h
+        emit: award.review_sla_breached   # emit-only: nudge a human, stay in the stage
+  partial_review:                # join timed out; a human decides what to do with partial data
+    gate:
+      decision: partial_results_review
+      context:
+        title: entity.title
+        assessed_count: entity.assessed_count
+      outcomes:
+        proceed:
+          advances_to: deliberating
+          emit: rfq.assessments_complete
+        abandon:
+          input:
+            reason: {type: text, required: true}
+          advances_to: closing_no_award
+          emit:
+            event: award.rejected
+            fields:
+              reason: decision.reason
+  awarding: {}                   # relay: gate said approve, handler finishes the job
+  closing_no_award: {}           # relay: gate said reject/abandon
+  awarded:
+    terminal: true
+  no_award:
+    terminal: true
+
+pins:
+  inputs:
+    events:
+      - rfq.submitted
+      # FRICTION: the fan-in resolution pin from parallel-work.mdx (mode: fan-in,
+      # aggregation, window, dedup_by, singleton) fails on a ROOT flow with
+      # root_receiver_resolution_invalid. Falling back to a bare input pin and letting
+      # the join row own dedup/window — which of the two owns what is never specified.
+      - vendor.assessed
+  outputs:
+    events: [vendor.discovered]

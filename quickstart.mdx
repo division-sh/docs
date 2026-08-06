@@ -84,15 +84,20 @@ Run the commands below from any directory.
   </Step>
 
   <Step title="Run it">
-    Write a payload for the trigger event, then run the flow. `swarm run` boots a runtime in
+    Write a payload for the trigger event, then run the flow. `swarm run start` boots a runtime in
     process on loopback, publishes `greeting.requested`, and streams the run's trace. It is the
     one-shot way to run a flow; for a long-running server you operate, use `swarm serve`
     (see [Running the runtime](/operate/running-the-runtime)).
 
     ```bash
     echo '{"message": "hello"}' > payload.json
-    swarm run --contracts ./greeting-flow --event greeting.requested --payload payload.json
+    mkdir -p data
+    swarm run start --contracts ./greeting-flow --event greeting.requested \
+      --payload payload.json --data ./data
     ```
+
+    `--data` names the read-only reference directory agents can see; the runtime requires one
+    even when (as here) it is empty.
 
     Both `payload.json` and the runtime's `.swarm/` directory (store + workspace data) are
     created in the directory you run from. Use a scratch directory if you don't want them in
@@ -105,13 +110,20 @@ Run the commands below from any directory.
     The trace shows `greeting.requested` arriving, the `greeter` node creating an entity, and
     the entity advancing to `done` (a terminal stage). Press Ctrl-C to stop the local runtime
     once you have seen it.
+
+    <Note>
+      The in-process runtime binds `127.0.0.1:8081` and MCP on `:8082`. If another runtime is
+      already using them, start a server on free ports and connect instead:
+      `swarm serve --contracts ./greeting-flow --data ./data --api-port 8091` then
+      `swarm run start --connect http://127.0.0.1:8091 --event greeting.requested --payload payload.json`.
+    </Note>
   </Step>
 </Steps>
 
 ## What just happened
 
 1. `swarm verify` checked the bundle against the platform specification.
-2. `swarm run` started a runtime (using SQLite at `.swarm/dev.db` by default) and published your event.
+2. `swarm run` started a runtime (SQLite by default, stored under `~/.swarm/stores/projects/`) and published your event.
 3. The `greeter` node handled `greeting.requested` in one transaction: it created an entity
    and advanced it to `done`.
 4. Every step was persisted, which is why the trace could stream it and a crash could replay

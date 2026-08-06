@@ -42,7 +42,7 @@ retired `SWARM_*` variables fail with a teaching error naming the flag or config
 | Command | Targets | Purpose |
 |---|---|---|
 | `swarm serve` | local | Start the runtime, API, health, and MCP listener. |
-| `swarm run` | RPC + local | Start (or reattach to) a run and stream its trace. |
+| `swarm run start` | RPC + local | Start (or reattach to) a run and stream its trace. Requires `--data` (or `workspace.data_source`) when booting in-process. |
 | `swarm verify` | local | Validate a contract bundle on disk. |
 | `swarm test [scenario...]` | RPC | Run deterministic scenario tests (see [Testing](/build/testing)). |
 | `swarm doctor` | local | Check prerequisites and diagnose setup problems (config layers, backends, credentials). |
@@ -55,8 +55,8 @@ retired `SWARM_*` variables fail with a teaching error naming the flag or config
 | `swarm version [--server]` | local / `health.check` | Print binary version; `--server` adds runtime identity. |
 | `swarm completion <shell>` | local | Generate shell completion. |
 
-`swarm run` without `--connect` boots a runtime in-process; with `--connect <url>` it drives a
-running one. It takes `--event <name>` and `--payload <file>`.
+`swarm run start` without `--connect` boots a runtime in-process; with `--connect <url>` it drives a
+running one. It takes `--event <name>`, `--payload <file>`, and `--data <dir>`.
 
 ## Runs
 

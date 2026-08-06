@@ -443,15 +443,16 @@ consistent, or it runs at volume. See [Why Swarm](/why-swarm) for the full pictu
 ## Run it
 
 The runtime defaults to SQLite at `.swarm/dev.db`, so no DB service is needed; the agents do
-need an LLM runtime configured to answer (see [Installation](/installation)). `swarm run`
+need an LLM runtime configured to answer (see [Installation](/installation)). `swarm run start`
 boots a runtime in process on loopback, publishes the trigger, and streams the trace:
 
 ```bash
 echo '{"ticket_id": "t-42", "subject": "Export button is greyed out", "body": "The CSV export button on the reports page is greyed out and I cannot click it."}' > ticket.json
-swarm run --contracts ./ticket-flow --event ticket.created --payload ticket.json
+mkdir -p data
+swarm run start --contracts ./ticket-flow --event ticket.created --payload ticket.json --data ./data
 ```
 
-On loopback, `swarm run` uses a built-in dev API token; an explicit token (`--api-token-file`) is only
+On loopback, `swarm run start` uses a built-in dev API token; an explicit token (`--api-token-file`) is only
 needed when exposing the API beyond loopback.
 
 <Note>

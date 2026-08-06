@@ -1,0 +1,12 @@
+worker:
+  event_handlers:
+    item.assigned:
+      data_accumulation:
+        writes: [item_id, batch_id]
+        source_event: item.assigned
+      advances_to: finished
+      emit:
+        event: item.done
+        fields:
+          item_id: entity.item_id
+          batch_id: entity.batch_id

@@ -45,3 +45,6 @@ Every condition must carry a context prefix, `payload.`, `entity.`, `policy.`,
 error — every name must say which namespace it comes from. See
 [Dialect rules](/reference/dialect-rules) and the full
 [CEL reference](/reference/expressions-cel).
+
+CEL's conditional operator is available too: `cond ? a : b` — the way to write a
+running max/min fold in a `data_accumulation` expression.

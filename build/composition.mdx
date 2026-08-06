@@ -103,7 +103,10 @@ declare the event, or the wire does not exist.
 
 Cross-flow delivery has exactly one mechanism: the package root's **`connect:` block** binds
 output pins to input pins, edge by edge. Pin addresses are `<flow-id>.<pin-name>`; the root
-flow's own pins use a leading dot (`.pin-name`):
+flow's own pins use a leading dot (`.pin-name`). **A pin declared in the short form is named
+after its event** — `outputs: events: [vendor.assessed]` creates a pin addressed
+`evaluation.vendor.assessed` (flow id, then the dotted event name; only the *leading* dot
+means root). The long form's `name:` overrides that:
 
 ```yaml package.yaml
 name: jobs

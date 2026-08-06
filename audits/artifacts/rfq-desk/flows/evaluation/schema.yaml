@@ -1,0 +1,28 @@
+# FRICTION: verify demanded a `name:` field here ("flow schema evaluation missing
+# required field name") — no schema.yaml example in the docs shows one.
+name: evaluation
+mode: template
+instance: vendor_id               # one instance (and one assessor session) per vendor
+
+stages:
+  investigating:
+    initial: true
+  assessed:
+    terminal: true
+
+pins:
+  inputs:
+    events:
+      - name: vendor_discovered
+        event: vendor.discovered
+        resolution:
+          mode: select-or-create   # first event for a new vendor_id mints the instance
+        carries:
+          vendor_id: {from: payload.vendor_id, type: text}
+  outputs:
+    events: [vendor.assessed]
+
+required_agents:
+  - role: assessor-agent
+    subscribes_to: [vendor.discovered]
+    emits: [assessment.drafted]

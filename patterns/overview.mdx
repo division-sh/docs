@@ -82,12 +82,12 @@ own agent), and a staged `join:` owns completion.
 batch.requested:
   fan_out:
     items_from: payload.items
-    as: item      # the loop variable used in fields:
-    identity: item.item_id  # what makes each dispatched item distinct
+    as: entry     # the loop variable used in fields: (`item` is reserved and rejected)
+    identity: entry.item_id  # what makes each dispatched item distinct
     emit:
       event: item.assigned
       fields:
-        item_id: item.item_id
+        item_id: entry.item_id
   data_accumulation:
     writes:
       - target_field: item_ids
