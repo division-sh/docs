@@ -97,13 +97,14 @@ or persisted. See [Configuration](/reference/configuration) for the full list.
 
 ```bash
 # Validate a contract bundle without a running runtime (local, no DB needed)
-swarm verify ./my-flow
+swarm verify ./my-flow --portable
 
 # Print binary version; add --server to query a running runtime
 swarm version
 ```
 
-Source verification uses a [positional directory](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/cli.go#L366).
+Source verification uses a [positional directory](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/cli.go#L366);
+[`--portable`](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/cli.go#L386) limits it to source structure without deployment checks.
 API-backed operations such as `swarm run trace <run-id>` and `swarm version --server`
 need a running `swarm serve <directory>` and authenticate to its API
 ([trace client](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/diagnostics.go#L426),
