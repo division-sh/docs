@@ -10,34 +10,34 @@ production deployments.
 
 ## Requirements
 
-Go 1.23. Docker is needed only for the workspace image used by the `claude_cli` backend; SQLite
+[Go 1.26+](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/README.md#L248) is required. Docker is needed only for the workspace image used by the `claude_cli` backend; SQLite
 is the default store and needs no service.
 
 ## Build and run
 
-There are no prebuilt releases yet; install from source (Go 1.22+):
+[Install from source](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/README.md#L97):
 
 ```bash
 git clone https://github.com/division-sh/swarm && cd swarm
 ```
 
-Then:
+Then, using the [positional source directory](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/cli.go#L273):
 
 ```bash
 go install ./cmd/swarm
-swarm serve --contracts ./my-flow
+swarm serve ./my-flow
 ```
 
 `swarm serve` uses SQLite at `.swarm/dev.db` by default, so no database service is required for
 local development. To opt into Postgres, add `--store postgres` and point the runtime at a
-Postgres 16 it can reach:
+Postgres 16 it can reach ([serve syntax](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/cli.go#L273)):
 
 ```bash
 docker run -d --name swarm-postgres \
   -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=swarm \
   -p 5432:5432 postgres:16
 
-swarm serve --store postgres --contracts ./my-flow
+swarm serve --store postgres ./my-flow
 ```
 
 `swarm serve` is the long-running process: it runs the engine and serves the HTTP API, the
@@ -71,14 +71,19 @@ named variable becomes the one accepted environment read.
 
 ## Credentials and backend selection
 
-Beyond `swarm verify`, you always need an API token, and an LLM credential once your flow runs
-agents:
+Local source commands (`swarm new`, `swarm verify <directory> --portable`,
+`swarm test <directory> <scenario>`, and `swarm describe <directory>`) do not require
+a running `swarm serve`, an API token, or provider credentials
+([source workflow](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/examples/integrations/telegram-agent/README.md#L5),
+[source describe](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/describe.go#L171)).
+
+For live runtime execution:
 
 - **An API token.** A `swarm serve`/`swarm run start` bound to a loopback address like `127.0.0.1`
   (numeric, not a hostname) uses a built-in dev token (with
   bearer auth still enabled); any non-loopback bind requires an explicit token via
-  `--api-token-file` / `serve.api_token_file`. Every command except `swarm verify`
-  authenticates against this.
+  `--api-token-file` / `serve.api_token_file`. API-backed commands authenticate
+  against this endpoint ([bearer authentication](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/cli_api.go#L727)).
 - **An LLM credential.** Needed only when your flow has agents; an agent-free flow boots without
   one. Select a backend with the `--backend` flag on `swarm serve`/`swarm run start` (or `llm.backend`
   in `config.yaml`); env vars never select the backend. The default is `anthropic`; the alternatives
@@ -92,14 +97,17 @@ or persisted. See [Configuration](/reference/configuration) for the full list.
 
 ```bash
 # Validate a contract bundle without a running runtime (local, no DB needed)
-swarm verify --contracts ./my-flow
+swarm verify ./my-flow
 
 # Print binary version; add --server to query a running runtime
 swarm version
 ```
 
-`swarm verify` is the one command that works purely against files on disk, every other
-command targets the running runtime's API.
+Source verification uses a [positional directory](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/cli.go#L366).
+API-backed operations such as `swarm run trace <run-id>` and `swarm version --server`
+need a running `swarm serve <directory>` and authenticate to its API
+([trace client](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/diagnostics.go#L426),
+[server version](https://github.com/division-sh/swarm/blob/79c940e6bd149dee41853782c6e495bc5c428119/internal/cliapp/cli.go#L468)).
 
 <Card title="Trigger your first run" icon="rocket" href="/quickstart">
   Boot the runtime and watch a run execute.
